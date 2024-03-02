@@ -1,7 +1,8 @@
 /* This file has been written and/or modified by the following people:
  *
  * Yang You
- *
+ * Alex Schutz
+ * 
  */
 
 #ifndef _BELIEFPARTICLES_H_

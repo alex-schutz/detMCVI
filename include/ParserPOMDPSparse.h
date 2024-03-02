@@ -1,11 +1,12 @@
 /* This file has been written and/or modified by the following people:
  *
  * Yang You
+ * Alex Schutz
  * 
  */
 
 #ifndef _PARSERPOMDPSPARSE_H_
-#define _PARSERPOMDPSPARSE_H_ 1
+#define _PARSERPOMDPSPARSE_H_
 
 #include <iostream>
 #include <fstream>
