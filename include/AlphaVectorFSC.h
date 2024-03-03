@@ -21,3 +21,5 @@ AlphaVectorFSC::AlphaVectorFSC(/* args */)
 AlphaVectorFSC::~AlphaVectorFSC()
 {
 }
+
+
