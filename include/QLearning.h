@@ -21,12 +21,14 @@ using namespace std;
 class QLearning {
  public:
   QLearning(const PomdpInterface* sim, double epsilon, double learning_rate,
-            double pb_random_explore, int nb_restarts_simulation,
+            double decay, int nb_restarts_simulation,
             uint64_t seed = random_device{}())
       : sim(sim),
         epsilon(epsilon),
         learning_rate(learning_rate),
-        pb_random_explore(pb_random_explore),
+        decay(decay),
+        discount(sim->GetDiscount()),
+        pb_random_explore(1.0),
         nb_restarts_simulation(nb_restarts_simulation),
         q_table(InitQTable()),
         rng(seed) {}
@@ -55,12 +57,16 @@ class QLearning {
   const PomdpInterface* sim;
   double epsilon;
   double learning_rate;
+  double decay;
+  double discount;
   double pb_random_explore;
   int nb_restarts_simulation;
   vector<vector<double>> q_table;
   mutable std::mt19937_64 rng;
 
   vector<vector<double>> InitQTable() const;
+
+  void DecayParameters();
 };
 
 #endif /* !_QLEARNING_H_ */

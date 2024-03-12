@@ -5,7 +5,7 @@
 double UpperBoundEvaluation(const Belief& belief, const PomdpInterface* sim) {
   // We only use the underlying MDP dynamics of sim to compute the value
   auto q_engine =
-      QLearning(sim, epsilon, learning_rate, pb_random_explore, nb_restarts);
+      QLearning(sim, epsilon, learning_rate, decay_rate, nb_restarts);
   // Estimate the value of each state in the belief
   for (const auto& [state, prob] : belief) q_engine.EstimateValue(state);
 

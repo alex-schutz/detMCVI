@@ -24,7 +24,6 @@ using Belief = unordered_map<int, double>;
  * @param sim A POMDP simulator object
  * @return double
  */
-
 double UpperBoundEvaluation(const Belief& belief, const PomdpInterface* sim);
 
 #endif /* !_BOUND_H_ */

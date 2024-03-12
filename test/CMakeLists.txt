@@ -1,5 +1,3 @@
-enable_testing()
-
 if(MSVC)
 add_compile_options(/W4 /WX)
 else()
