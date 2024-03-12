@@ -9,6 +9,8 @@
 #define _BOUND_H_
 
 #include <unordered_map>
+
+#include "PomdpInterface.h"
 using namespace std;
 
 using Belief = unordered_map<int, double>;
