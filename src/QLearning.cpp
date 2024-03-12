@@ -3,8 +3,8 @@
 #include <algorithm>
 
 vector<vector<double>> QLearning::InitQTable() const {
-  return vector<vector<double>>{sim->GetSizeOfS(),
-                                vector<double>(sim->GetSizeOfA(), 0.0)};
+  return vector<vector<double>>(sim->GetSizeOfS(),
+                                vector<double>(sim->GetSizeOfA(), 0.0));
 }
 
 double QLearning::EstimateValue(int stateInit) {
