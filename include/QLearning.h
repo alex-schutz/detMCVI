@@ -49,12 +49,12 @@ class QLearning {
 
   /// @brief Return the maximum Q-value for the state index across all actions,
   /// and the best action index.
-  tuple<double, int> MaxQ(int state) const;
+  tuple<double, int> MaxQ(int state);
 
   /// @brief Choose the index of the action to take in the state index. Chooses
   /// a random action with probability epsilon, otherwise chooses the
   /// current best action.
-  int ChooseAction(int state) const;
+  int ChooseAction(int state);
 
  private:
   SimInterface* sim;
@@ -69,7 +69,7 @@ class QLearning {
   map<int, vector<double>> q_table;
   mutable std::mt19937_64 rng;
 
-  void InitQTableRow(int state);
+  map<int, vector<double>>::iterator GetQTableRow(int state);
 
   void DecayParameters();
 };

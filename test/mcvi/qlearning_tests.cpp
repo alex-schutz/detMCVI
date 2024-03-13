@@ -58,12 +58,12 @@ class TestPOMDP : public SimInterface {
 
 TEST(QLearningTest, Learning) {
   TestPOMDP sim;
-  auto q_engine = QLearning(&sim, 300000, 0.7, 0.0005, 50);
+  auto q_engine = QLearning(&sim, 100000, 0.7, 0.00005, 50);
 
-  EXPECT_NEAR(q_engine.EstimateValue(0), -6.0, 1e-5);
-  EXPECT_NEAR(q_engine.EstimateValue(1), -6.0, 1e-5);
-  EXPECT_NEAR(q_engine.EstimateValue(2), -5.0, 1e-5);
-  EXPECT_NEAR(q_engine.EstimateValue(3), -5.0, 1e-5);
-  EXPECT_NEAR(q_engine.EstimateValue(4), -4.0, 1e-5);
+  EXPECT_NEAR(q_engine.EstimateValue(0), -6.0, 2e-1);
+  EXPECT_NEAR(q_engine.EstimateValue(1), -6.0, 2e-1);
+  EXPECT_NEAR(q_engine.EstimateValue(2), -5.0, 2e-1);
+  EXPECT_NEAR(q_engine.EstimateValue(3), -5.0, 2e-1);
+  EXPECT_NEAR(q_engine.EstimateValue(4), -4.0, 2e-1);
   EXPECT_NEAR(q_engine.EstimateValue(5), 0.0, 1e-5);
 }

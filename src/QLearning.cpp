@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <iostream>
 
-void QLearning::InitQTableRow(int state) {
-  q_table[state] = vector<double>(sim->GetSizeOfA(), 0.0);
+map<int, vector<double>>::iterator QLearning::GetQTableRow(int state) {
+  const auto row = q_table.find(state);
+  if (row != q_table.end()) return row;
+  // Initialise row
+  return q_table.insert({state, vector<double>(sim->GetSizeOfA(), 0.0)}).first;
 }
 
 double QLearning::EstimateValue(int stateInit) {
@@ -50,21 +53,17 @@ void QLearning::UpdateQValue(int state, int action, double reward,
 }
 
 double QLearning::GetQValue(int state, int action) {
-  const auto row = q_table.find(state);
-  if (row != q_table.end()) return row->second.at(action);
-  InitQTableRow(state);
-  return 0.0;
+  const auto row = GetQTableRow(state);
+  return row->second.at(action);
 }
 
-tuple<double, int> QLearning::MaxQ(int state) const {
-  const auto& row = q_table.at(state);
-  const auto best = max_element(row.cbegin(), row.cend());
-  //   std::cerr << __func__ << " state: " << state << " value: " << *best
-  //             << " action: " << best - row.cbegin() << std::endl;
-  return make_tuple(*best, best - row.cbegin());
+tuple<double, int> QLearning::MaxQ(int state) {
+  const auto row = GetQTableRow(state);
+  const auto best = max_element(row->second.cbegin(), row->second.cend());
+  return make_tuple(*best, best - row->second.cbegin());
 }
 
-int QLearning::ChooseAction(int state) const {
+int QLearning::ChooseAction(int state) {
   // check if we should explore randomly
   uniform_real_distribution<double> unif(0, 1);
   const double u = unif(rng);
