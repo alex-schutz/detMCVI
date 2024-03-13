@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-class TestPOMDP : public PomdpInterface {
+class TestPOMDP : public SimInterface {
  private:
   std::vector<string> states{"s0", "s1", "s2", "s3", "s4", "sg"};
   std::vector<string> actions{"a00", "a01", "a1", "a21",      "a20",
@@ -13,109 +13,52 @@ class TestPOMDP : public PomdpInterface {
 
  public:
   double GetDiscount() const override { return 0.99; }
-  int GetSizeOfS() const override { return states.size(); }
+  int GetNbAgent() const { return 1; }
   int GetSizeOfA() const override { return actions.size(); }
   int GetSizeOfObs() const override { return observations.size(); }
-  double TransFunc(int sI, int aI, int s_newI) const override {
+  int SampleStartState() { return 0; }
+  tuple<int, int, double, bool> Step(int sI, int aI) override {
     switch (sI) {
       case 0:
         if (aI == 0)
-          return (s_newI == 2) ? 1.0 : 0.0;
+          return {2, 0, -1.0, false};
         else if (aI == 1)
-          return (s_newI == 1) ? 1.0 : 0.0;
-        break;
+          return {1, 0, -1.0, false};
+        return {sI, 0, -50.0, false};
       case 1:
-        if (aI == 2) return (s_newI == 2) ? 1.0 : 0.0;
-        break;
+        if (aI == 2) return {2, 0, -1.0, false};
+        return {sI, 0, -50.0, false};
       case 2:
         if (aI == 3)
-          return (s_newI == 1) ? 1.0 : 0.0;
+          return {1, 0, -1.0, false};
         else if (aI == 4)
-          return (s_newI == 4) ? 1.0 : 0.0;
-        break;
+          return {4, 0, -1.0, false};
+        return {sI, 0, -50.0, false};
       case 3:
-        if (aI == 7) return (s_newI == 4) ? 1.0 : 0.0;
-        break;
+        if (aI == 7) return {4, 0, -1.0, false};
+        return {sI, 0, -50.0, false};
       case 4:
         if (aI == 5)
-          return (s_newI == 5) ? 1.0 : 0.0;
+          return {5, 0, -5.0, true};
         else if (aI == 6) {
-          if (s_newI == 3) return 0.4;
-          if (s_newI == 5) return 0.6;
-          return 0.0;
+          std::mt19937_64 rng(random_device{}());
+          uniform_real_distribution<double> unif(0, 1);
+          const double u = unif(rng);
+          const int s_next = u < 0.4 ? 3 : 5;
+          return {s_next, 0, -2.0, s_next == 5};
         }
-        break;
+        return {sI, 0, -50.0, false};
       case 5:
-        if (aI == 8) return (s_newI == 5) ? 1.0 : 0.0;
-        break;
+        if (aI == 8) return {5, 0, 0.0, true};
+        return {sI, 0, -50.0, true};
     }
-    // invalid action
-    if (sI == s_newI) return 1.0;
-    return 0.0;
-  }
-  double ObsFunc(int oI, int s_newI, int aI) const override {
-    (void)s_newI;
-    (void)aI;
-    if (oI == 0) return 1.0;
-    return 0.0;
-  }
-  double Reward(int sI, int aI) const override {
-    switch (sI) {
-      case 0:
-        if (aI == 0)
-          return 1;
-        else if (aI == 1)
-          return -1;
-        return -50;
-      case 1:
-        if (aI == 2) return -1;
-        return -50;
-      case 2:
-        if (aI == 3)
-          return -1;
-        else if (aI == 4)
-          return -1;
-        return -50;
-      case 3:
-        if (aI == 7) return -1;
-        return -50;
-      case 4:
-        if (aI == 5)
-          return -5;
-        else if (aI == 6)
-          return -2;
-        return -50;
-    }
-    return -50;
-  }
-  const std::vector<string> &GetAllStates() const override { return states; }
-  const std::vector<string> &GetAllActions() const override { return actions; }
-  const std::vector<string> &GetAllObservations() const override {
-    return observations;
-  }
-  tuple<int, int, double, bool> Step(int sI, int aI) const override {
-    std::mt19937_64 rng(random_device{}());
-    uniform_real_distribution<double> unif(0, 1);
-
-    // sample next state
-    const double u_s = unif(rng);
-    int s_next = -1;
-    double p_s = 0.0;
-    for (int s = 0; s < GetSizeOfS(); ++s) {
-      p_s += TransFunc(sI, aI, s);
-      if (p_s > u_s) {
-        s_next = s;
-        break;
-      }
-    }
-
-    return {s_next, 0, Reward(sI, aI), (s_next == 5)};
+    return {sI, 0, -50.0, false};
   }
 };
 
 TEST(QLearningTest, Learning) {
   TestPOMDP sim;
-  auto q_engine = QLearning(&sim, 0.00001, 0.1, 0.00005, 30000);
+  auto q_engine = QLearning(&sim, 300000, 0.7, 0.0005, 50);
 
   EXPECT_NEAR(q_engine.EstimateValue(0), -6.0, 1e-5);
   EXPECT_NEAR(q_engine.EstimateValue(1), -6.0, 1e-5);

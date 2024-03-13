@@ -10,7 +10,7 @@
 
 #include <unordered_map>
 
-#include "PomdpInterface.h"
+#include "SimInterface.h"
 using namespace std;
 
 using Belief = unordered_map<int, double>;
@@ -24,6 +24,6 @@ using Belief = unordered_map<int, double>;
  * @param sim A POMDP simulator object
  * @return double
  */
-double UpperBoundEvaluation(const Belief& belief, const PomdpInterface* sim);
+double UpperBoundEvaluation(const Belief& belief, SimInterface* sim);
 
 #endif /* !_BOUND_H_ */

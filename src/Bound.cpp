@@ -2,10 +2,9 @@
 
 #include "../include/QLearning.h"
 
-double UpperBoundEvaluation(const Belief& belief, const PomdpInterface* sim) {
+double UpperBoundEvaluation(const Belief& belief, SimInterface* sim) {
   // We only use the underlying MDP dynamics of sim to compute the value
-  auto q_engine =
-      QLearning(sim, epsilon, learning_rate, decay_rate, nb_restarts);
+  auto q_engine = QLearning(sim, 10, 0.7, 0.005, 50);
   // Estimate the value of each state in the belief
   for (const auto& [state, prob] : belief) q_engine.EstimateValue(state);
 
