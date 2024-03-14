@@ -1,7 +1,7 @@
 Goals 
 - MC-JESP for solving MA-CTPs
-    - [ ] Improve MC-JESP by using MCVI in each MC-JESP's iteration for solving the best-response POMDP (Improvements for general Dec-POMDPs and POMDPs)
-    - [ ] Further improvements considering (MA-)CTP problems' features about deterministic dynamics (Contributions for solving MACTPs - Alex)
+    - [ ] Improve MC-JESP by using MCVI in each MC-JESP's iteration for solving the best-response POMDP
+    - [ ] Further improvements considering (MA-)CTP problems' features about deterministic dynamics (Contributions specialized for solving MACTPs & deterministic Dec-POMDPs - Alex)
         - [ ] Better heuristics (faster and tighter bound estimations than previous methods for general POMDPs)
         - [ ] Smarter belief expansion (prune some branches based on certain bound estimations?)
         - [ ] Improve Monte-Carlo BackUP for deterministic POMDPs
