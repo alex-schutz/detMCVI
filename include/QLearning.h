@@ -7,6 +7,7 @@
 
 #ifndef _QLEARNING_H_
 #define _QLEARNING_H_
+#include <iostream>
 #include <map>
 #include <random>
 #include <tuple>
@@ -16,16 +17,17 @@
 
 using namespace std;
 
+using Belief = unordered_map<int, double>;
+
 /**
  * @brief Perform Q-learning on a POMDP
  */
 class QLearning {
  public:
-  QLearning(SimInterface* sim, int n_sims, double learning_rate, double decay,
+  QLearning(SimInterface* sim, double learning_rate, double decay,
             int sim_depth, double epsilon_init = 1.0,
             double epsilon_final = 0.1, uint64_t seed = random_device{}())
       : sim(sim),
-        n_sims(n_sims),
         learning_rate(learning_rate),
         decay(decay),
         sim_depth(sim_depth),
@@ -36,8 +38,13 @@ class QLearning {
         q_table(),
         rng(seed) {}
 
+  /// @brief Train the Q-learning model on the given belief until improvement
+  /// across the belief is less than epsilon or max_episodes is reached.
+  void Train(Belief belief, int max_episodes, int episode_size, int num_sims,
+             double epsilon, ostream& os = cout);
+
   /// @brief Return the estimated Q-value for the given state index.
-  double EstimateValue(int state);
+  double EstimateValue(int state, int n_sims);
 
   /// @brief Use the update equation for the q value associated with given state
   /// index and action index. Updates `q_table` internally.
@@ -66,10 +73,10 @@ class QLearning {
   double epsilon_final;
   double discount;
   double epsilon;
-  map<int, vector<double>> q_table;
+  unordered_map<int, vector<double>> q_table;
   mutable std::mt19937_64 rng;
 
-  map<int, vector<double>>::iterator GetQTableRow(int state);
+  unordered_map<int, vector<double>>::iterator GetQTableRow(int state);
 
   void DecayParameters();
 };

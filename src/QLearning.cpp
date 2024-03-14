@@ -1,16 +1,17 @@
 #include "../include/QLearning.h"
 
 #include <algorithm>
-#include <iostream>
+#include <limits>
 
-map<int, vector<double>>::iterator QLearning::GetQTableRow(int state) {
+unordered_map<int, vector<double>>::iterator QLearning::GetQTableRow(
+    int state) {
   const auto row = q_table.find(state);
   if (row != q_table.end()) return row;
   // Initialise row
   return q_table.insert({state, vector<double>(sim->GetSizeOfA(), 0.0)}).first;
 }
 
-double QLearning::EstimateValue(int stateInit) {
+double QLearning::EstimateValue(int stateInit, int n_sims) {
   for (int i = 0; i < n_sims; i++) {
     int state = stateInit;
     int depth = 0;
@@ -27,7 +28,6 @@ double QLearning::EstimateValue(int stateInit) {
 
       if (done) break;
     }
-    DecayParameters();
   }
   return get<0>(MaxQ(stateInit));
 }
@@ -74,4 +74,29 @@ int QLearning::ChooseAction(int state) {
 
   // choose the best action
   return get<1>(MaxQ(state));
+}
+
+void QLearning::Train(Belief belief, int max_episodes, int episode_size,
+                      int num_sims, double epsilon, ostream& os) {
+  double improvement = numeric_limits<double>::infinity();
+  double avg_curr = -numeric_limits<double>::infinity();
+  int i_episode = 0;
+  while (improvement > epsilon && i_episode < max_episodes) {
+    os << "------ Episode: " << i_episode << " ------" << endl;
+    double ep_value = 0.0;
+    for (int i = 0; i < episode_size; ++i) {
+      double sum = 0.0;
+      for (const auto& [state, prob] : belief) {
+        if (prob == 0) continue;
+        sum += EstimateValue(state, num_sims) * prob;
+      }
+      ep_value += sum;
+      DecayParameters();
+    }
+    ep_value /= episode_size;
+    improvement = abs(ep_value - avg_curr);
+    avg_curr = ep_value;
+    os << "Avg value: " << avg_curr << endl;
+    ++i_episode;
+  }
 }
