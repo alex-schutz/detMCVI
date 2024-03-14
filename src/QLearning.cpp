@@ -44,11 +44,6 @@ void QLearning::UpdateQValue(int state, int action, double reward,
   const double old_val = GetQValue(state, action);
   const double new_val = reward + discount * get<0>(MaxQ(next_state));
   const double new_Q = (1 - learning_rate) * old_val + learning_rate * new_val;
-  //   std::cerr << __func__ << " state: " << state << " action: " << action
-  //             << " reward: " << reward << " next state: " << next_state
-  //             << " new_Q: " << new_Q << " old value " << old_val << " new
-  //             value "
-  //             << new_val << std::endl;
   q_table[state][action] = new_Q;
 }
 
@@ -86,10 +81,8 @@ void QLearning::Train(Belief belief, int max_episodes, int episode_size,
     double ep_value = 0.0;
     for (int i = 0; i < episode_size; ++i) {
       double sum = 0.0;
-      for (const auto& [state, prob] : belief) {
-        if (prob == 0) continue;
+      for (const auto& [state, prob] : belief)
         sum += EstimateValue(state, num_sims) * prob;
-      }
       ep_value += sum;
       DecayParameters();
     }
