@@ -12,6 +12,7 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <random>
 
 using namespace std;
 
@@ -32,6 +33,7 @@ public:
     virtual const std::vector<string> &GetAllStates() const = 0;
     virtual const std::vector<string> &GetAllActions() const = 0;
     virtual const std::vector<string> &GetAllObservations() const = 0;
+
     // for sparse representation
     virtual const map<int, double> *GetTransProbDist(int sI, int aI) const
     {
