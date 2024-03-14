@@ -1,7 +1,12 @@
 Goals 
 - MC-JESP for solving MA-CTPs
-    - [ ] Improve MC-JESP by using MCVI in each MC-JESP's iteration for solving the best-response POMDP
-    - [ ] Further improvements considering (MA-)CTP problems' features about deterministic dynamics
+    - [ ] Improve MC-JESP by using MCVI in each MC-JESP's iteration for solving the best-response POMDP (Improvements for general Dec-POMDPs and POMDPs)
+    - [ ] Further improvements considering (MA-)CTP problems' features about deterministic dynamics (Contributions for solving MACTPs - Alex)
+        - [ ] Better heuristics (faster and tighter bound estimations than previous methods for general POMDPs)
+        - [ ] Smarter belief expansion (prune some branches based on certain bound estimations?)
+        - [ ] Improve Monte-Carlo BackUP for deterministic POMDPs
+            - In deterministic POMDPs, some observations are strictly linked to certain beliefs/states
+            - Restrict Backup for beliefs (fsc nodes) to only relevant observations and relvant child nodes
 
 
 Current MCVI C++ Implementation Progress
@@ -19,9 +24,7 @@ Current MCVI C++ Implementation Progress
     - [ ] Monte-Carlo BackUp
         - [x] Basic implementation
         - [ ] Testing
-    - Testing with POMDP and CTP benchmarks
-        - [ ] Tiger
-        - [ ] Rock Sample
+    - Testing with CTP benchmarks
         - [ ] Alex's CTP problems
 
 Current MCVI Julia Implementation Progress 
