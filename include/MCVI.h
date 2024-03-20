@@ -2,32 +2,26 @@
  *
  * Yang You
  * Alex Schutz
- * 
+ *
  */
 
 #ifndef _MCVIPLANNER_H_
 #define _MCVIPLANNER_H_
 
 #include <iostream>
+
 #include "PomdpInterface.h"
 
-class MCVI
-{
-private:
-    /* data */
-public:
-    MCVI(/* args */);
-    ~MCVI();
+class MCVI {
+ private:
+  /* data */
+ public:
+  MCVI(/* args */);
+  ~MCVI();
 };
 
-MCVI::MCVI(/* args */)
-{
-}
+MCVI::MCVI(/* args */) {}
 
-MCVI::~MCVI()
-{
-}
-
-
+MCVI::~MCVI() {}
 
 #endif /* !_MCVIPLANNER_H_ */
