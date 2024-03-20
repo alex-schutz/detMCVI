@@ -20,7 +20,7 @@
  * The upper bound value of the belief is the expected sum of each possible
  * state's MDP value
  *
- * @param belief A map from state indices to probabilities.
+ * @param belief A set of belief particles
  * @param sim A POMDP simulator object
  * @param learning_rate Initial learning rate to use in Q-learning
  * @param decay Decay rate for learning rate and random action probability
@@ -45,12 +45,12 @@ double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
 /**
  * @brief Return a lower bound for the value of the belief
  *
- * @param belief
- * @param sim
- * @param fsc
- * @param num_sims
- * @param max_depth
- * @param epsilon
+ * @param belief A set of belief particles
+ * @param sim A POMDP simulator object
+ * @param fsc A Finite State Controller object
+ * @param num_sims Number of simulations to run
+ * @param max_depth Maximum depth of a simulation run
+ * @param epsilon Threshold for maximum decay
  * @return double
  */
 double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,

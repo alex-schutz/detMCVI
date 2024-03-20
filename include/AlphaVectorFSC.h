@@ -22,9 +22,10 @@ class AlphaVectorFSC {
     }
   };
 
-  std::vector<
-      std::unordered_map<std::pair<int64_t, int64_t>, int64_t, PairHash>>
-      _eta;
+  using AOMap =
+      std::unordered_map<std::pair<int64_t, int64_t>, int64_t, PairHash>;
+
+  std::vector<AOMap> _eta;
   std::vector<AlphaVectorNode> _nodes;
   std::vector<int64_t> _action_space;
   std::vector<int64_t> _observation_space;
@@ -33,30 +34,28 @@ class AlphaVectorFSC {
   AlphaVectorFSC(int64_t max_node_size,
                  const std::vector<int64_t>& action_space,
                  const std::vector<int64_t>& observation_space)
-      : _eta(max_node_size, std::unordered_map<std::pair<int64_t, int64_t>,
-                                               int64_t, PairHash>()),
+      : _eta(max_node_size, AOMap()),
         _nodes(),
         _action_space(action_space),
         _observation_space(observation_space) {}
 
-  ~AlphaVectorFSC() = default;
-
+  /// @brief Return a reference to node number nI
   AlphaVectorNode& GetNode(int64_t nI) { return _nodes[nI]; }
+
+  /// @brief Return the number of nodes in the FSC
   size_t NumNodes() const { return _nodes.size(); }
-  void AddNode(const BeliefParticles& state_particles,
-               const std::vector<int64_t>& action_space,
-               const std::vector<int64_t>& observation_space) {
-    _nodes.emplace_back(
-        AlphaVectorNode(state_particles, action_space, observation_space));
-  }
+
+  /// @brief Add a node to the FSC with the given state particles, action space
+  /// and observation space. Returns the index of the added node.
+  int64_t AddNode(const BeliefParticles& state_particles);
 
   /// @brief Return the eta value assosciated with node nI, action a and
   /// observation o. Returns -1 if it does not exist.
   int64_t GetEtaValue(int64_t nI, int64_t a, int64_t o) const;
 
-  void UpdateEta(int64_t nI, int64_t a, int64_t o, int64_t nI_new) {
-    _eta[nI][{a, o}] = nI_new;
-  }
+  /// @brief Set the eta value assosciated with node nI, action a and
+  /// observation o to nI_new.
+  void UpdateEta(int64_t nI, int64_t a, int64_t o, int64_t nI_new);
 
   const std::vector<int64_t>& GetActionSpace() { return _action_space; }
   const std::vector<int64_t>& GetObsSpace() { return _observation_space; }

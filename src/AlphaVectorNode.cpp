@@ -59,3 +59,20 @@ void AlphaVectorNode::UpdateBestValue() {
   const int best_action = GetBestAction();
   _V_node = _Q_action.at(best_action);
 }
+
+const std::unordered_map<int64_t, double>&
+AlphaVectorNode::GetActionObservationValues(int64_t a, int64_t o) const {
+  return _V_a_o_n.at(a).at(o);
+}
+
+void AlphaVectorNode::ReInit(const std::vector<int64_t>& action_space,
+                             const std::vector<int64_t>& observation_space) {
+  _R_action = InitDoubleKeys(action_space);
+  _Q_action = InitDoubleKeys(action_space);
+  _V_a_o_n = InitValueMap(action_space, observation_space);
+}
+
+void AlphaVectorNode::UpdateValue(int64_t action, int64_t observation,
+                                  int64_t nI, double val) {
+  _V_a_o_n[action][observation][nI] += val;
+}

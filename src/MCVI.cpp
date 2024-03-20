@@ -81,9 +81,7 @@ void BackUp(int64_t nI_new, AlphaVectorFSC& fsc, int64_t max_depth_sim,
   double V_nI_new = node.V_node();
   std::cout << "nI_new: " << nI_new << ", V: " << V_nI_new << std::endl;
 
-  node.InitR(action_space);
-  node.InitQ(action_space);
-  node.InitVals(action_space, observation_space);
+  node.ReInit(action_space, observation_space);
 
   for (const auto& action : action_space) {
     for (int64_t i = 0; i < nb_sample; ++i) {
@@ -111,7 +109,7 @@ void BackUp(int64_t nI_new, AlphaVectorFSC& fsc, int64_t max_depth_sim,
 
 void MCVIPlanning(int64_t nb_particles, const BeliefParticles& b0,
                   AlphaVectorFSC fsc, SimInterface* pomdp, double epsilon) {
-  fsc.AddNode(b0, fsc.GetActionSpace(), fsc.GetObsSpace());
+  fsc.AddNode(b0);
 
   while (true) {
     // TODO: C++ implementation of the solver

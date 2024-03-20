@@ -35,6 +35,7 @@ class SimInterface {
   virtual int GetNbAgent() const = 0;
   // --------------------------------------------------------
 
+  /// @brief Return an action chosen randomly
   virtual int RandomAction() const {
     std::mt19937_64 rng;
     uniform_int_distribution<> action_dist(0, GetSizeOfA() - 1);

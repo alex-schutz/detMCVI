@@ -21,9 +21,15 @@ class BeliefParticles {
                   uint64_t seed = std::random_device{}())
       : _particles(particles), _rng(seed) {}
 
+  /// @brief Return one state sampled from the set of particles
   int64_t SampleOneState() const;
+
+  /// @brief Return the number of particles in the belief
   size_t GetParticleCount() const { return _particles.size(); }
+
+  /// @brief Return the entire vector of state particles
   const std::vector<int64_t>& GetParticles() const { return _particles; }
+
   double operator[](int i) { return _particles[i]; }
   bool operator==(BeliefParticles& o) { return _particles == o._particles; }
 };
