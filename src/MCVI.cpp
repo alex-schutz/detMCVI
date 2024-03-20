@@ -85,7 +85,7 @@ void BackUp(int64_t nI_new, AlphaVectorFSC& fsc, int64_t max_depth_sim,
       const int64_t state = node.SampleParticle();
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
       node.AddR(action, reward);
-      for (int64_t nI = 0; nI < fsc.NumNodes(); ++nI) {
+      for (int64_t nI = 0; (size_t)nI < fsc.NumNodes(); ++nI) {
         const double V_nI_sNext =
             SimulateTrajectory(nI, fsc, sNext, max_depth_sim, pomdp);
         node.UpdateValue(action, obs, nI, V_nI_sNext);
