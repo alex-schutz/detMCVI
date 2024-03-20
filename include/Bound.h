@@ -10,6 +10,7 @@
 
 #include <unordered_map>
 
+#include "AlphaVectorFSC.h"
 #include "QLearning.h"
 #include "SimInterface.h"
 
@@ -42,5 +43,10 @@ double UpperBoundEvaluation(const Belief& belief, SimInterface* sim,
                             double random_action_pb_init = 1.0,
                             double random_action_pb_final = 0.1,
                             uint64_t seed = random_device{}());
+
+double LowerBoundEvaluation(const std::vector<int64_t>& belief,
+                            SimInterface* sim, AlphaVectorFSC& fsc,
+                            int64_t num_sims, int64_t max_depth,
+                            double epsilon);
 
 #endif /* !_BOUND_H_ */
