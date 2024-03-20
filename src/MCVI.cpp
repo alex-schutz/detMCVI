@@ -1,4 +1,55 @@
+
+#include "../include/MCVI.h"
+
+#include <algorithm>
+#include <limits>
+
 #include "../include/AlphaVectorFSC.h"
+
+// Naive way of sampling a discrete distribution
+int SampleBelief(Belief belief) {
+  std::mt19937_64 rng;
+  uniform_real_distribution<double> unif(0, 1);
+  const double u = unif(rng);
+  double p_sum = 0.0;
+  for (const auto& [state, prob] : belief) {
+    p_sum += prob;
+    if (u < p_sum) return state;
+  }
+  throw std::runtime_error("Failed to sample belief");
+}
+
+double FindRLower(SimInterface* pomdp, Belief b0, std::vector<int> action_space,
+                  int max_restarts, double epsilon, int max_depth) {
+  std::unordered_map<int, double> action_min_reward;
+  for (const auto& action : action_space) {
+    double min_reward = std::numeric_limits<double>::infinity();
+    for (int i = 0; i < max_restarts; ++i) {
+      int state = SampleBelief(b0);
+      int step = 0;
+      while ((step < max_depth) &&
+             (std::pow(pomdp->GetDiscount(), step) > epsilon)) {
+        const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+        if (reward < min_reward) {
+          action_min_reward[action] = reward;
+          min_reward = reward;
+        }
+        if (done) break;
+        state = sNext;
+        ++step;
+      }
+    }
+  }
+  const double max_min_reward =
+      std::max_element(std::begin(action_min_reward),
+                       std::end(action_min_reward),
+                       [](const std::pair<int, double>& p1,
+                          const std::pair<int, double>& p2) {
+                         return p1.second < p2.second;
+                       })
+          ->second;
+  return max_min_reward / (1 - pomdp->GetDiscount());
+}
 
 // gen function should be implemented!!!
 
