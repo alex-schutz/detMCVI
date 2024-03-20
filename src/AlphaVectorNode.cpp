@@ -29,10 +29,9 @@ AlphaVectorNode::ValueMap AlphaVectorNode::InitValueMap(
   return v;
 }
 
-AlphaVectorNode::AlphaVectorNode(const std::vector<int64_t>& state_particles,
+AlphaVectorNode::AlphaVectorNode(const BeliefParticles& state_particles,
                                  const std::vector<int64_t>& action_space,
-                                 const std::vector<int64_t>& observation_space,
-                                 uint64_t seed)
+                                 const std::vector<int64_t>& observation_space)
     : _state_particles(state_particles),
       _Q_action(InitDoubleKeys(action_space)),
       _R_action(InitDoubleKeys(action_space)),
@@ -40,13 +39,7 @@ AlphaVectorNode::AlphaVectorNode(const std::vector<int64_t>& state_particles,
       _V_node_s(),
       _V_node_s_count(),
       _V_node(0.0),
-      _best_action_update(InitBoolKeys(action_space)),
-      _rng(seed) {}
-
-AlphaVectorNode::AlphaVectorNode(const std::vector<int64_t>& action_space,
-                                 const std::vector<int64_t>& observation_space,
-                                 uint64_t seed)
-    : AlphaVectorNode({}, action_space, observation_space, seed) {}
+      _best_action_update(InitBoolKeys(action_space)) {}
 
 int64_t AlphaVectorNode::GetBestAction() const {
   const auto best_action =
@@ -59,8 +52,7 @@ int64_t AlphaVectorNode::GetBestAction() const {
 }
 
 int64_t AlphaVectorNode::SampleParticle() const {
-  std::uniform_int_distribution<> dist(0, _state_particles.size() - 1);
-  return _state_particles[dist(_rng)];
+  return _state_particles.SampleOneState();
 }
 
 void AlphaVectorNode::UpdateBestValue() {

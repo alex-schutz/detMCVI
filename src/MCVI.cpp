@@ -5,12 +5,7 @@
 #include <limits>
 
 #include "../include/AlphaVectorFSC.h"
-
-int64_t SampleParticle(const std::vector<int64_t> particles) {
-  std::mt19937_64 rng;
-  std::uniform_int_distribution<> dist(0, particles.size() - 1);
-  return particles[dist(rng)];
-}
+#include "../include/BeliefParticles.h"
 
 int64_t RandomAction(SimInterface* pomdp) {
   std::mt19937_64 rng;
@@ -18,14 +13,14 @@ int64_t RandomAction(SimInterface* pomdp) {
   return action_dist(rng);
 }
 
-double FindRLower(SimInterface* pomdp, const std::vector<int64_t>& b0,
+double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
                   const std::vector<int>& action_space, int64_t max_restarts,
                   double epsilon, int64_t max_depth) {
   std::unordered_map<int, double> action_min_reward;
   for (const auto& action : action_space) {
     double min_reward = std::numeric_limits<double>::infinity();
     for (int64_t i = 0; i < max_restarts; ++i) {
-      int64_t state = SampleParticle(b0);
+      int64_t state = b0.SampleOneState();
       int64_t step = 0;
       while ((step < max_depth) &&
              (std::pow(pomdp->GetDiscount(), step) > epsilon)) {
@@ -120,7 +115,7 @@ void BackUp(int64_t nI_new, AlphaVectorFSC& fsc, int64_t max_depth_sim,
   node.UpdateBestValue();
 }
 
-void MCVIPlanning(int64_t nb_particles, const std::vector<int64_t>& b0,
+void MCVIPlanning(int64_t nb_particles, const BeliefParticles& b0,
                   AlphaVectorFSC fsc, SimInterface* pomdp, double epsilon) {
   fsc.AddNode(b0, fsc.GetActionSpace(), fsc.GetObsSpace());
 

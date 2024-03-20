@@ -12,13 +12,15 @@
 #include <unordered_map>
 #include <vector>
 
+#include "BeliefParticles.h"
+
 class AlphaVectorNode {
   using ValueMap = std::unordered_map<
       int64_t,
       std::unordered_map<int64_t, std::unordered_map<int64_t, double>>>;
 
  private:
-  std::vector<int64_t> _state_particles;
+  BeliefParticles _state_particles;
   std::unordered_map<int64_t, double> _Q_action;
   std::unordered_map<int64_t, double> _R_action;  // expected instant reward
   ValueMap _V_a_o_n;
@@ -26,18 +28,11 @@ class AlphaVectorNode {
   std::unordered_map<int64_t, int64_t> _V_node_s_count;
   double _V_node;
   std::unordered_map<int64_t, bool> _best_action_update;
-  mutable std::mt19937_64 _rng;
 
  public:
-  AlphaVectorNode(const std::vector<int64_t>& state_particles,
+  AlphaVectorNode(const BeliefParticles& state_particles,
                   const std::vector<int64_t>& action_space,
-                  const std::vector<int64_t>& observation_space,
-                  uint64_t seed = std::random_device{}());
-  AlphaVectorNode(const std::vector<int64_t>& action_space,
-                  const std::vector<int64_t>& observation_space,
-                  uint64_t seed = std::random_device{}());
-
-  ~AlphaVectorNode() = default;
+                  const std::vector<int64_t>& observation_space);
 
   int64_t GetBestAction() const;
 
@@ -74,13 +69,12 @@ class AlphaVectorNode {
   void UpdateBestValue();
 
  private:
-  std::unordered_map<int64_t, double> AlphaVectorNode::InitDoubleKeys(
+  std::unordered_map<int64_t, double> InitDoubleKeys(
       const std::vector<int64_t>& action_space) const;
-  std::unordered_map<int64_t, bool> AlphaVectorNode::InitBoolKeys(
+  std::unordered_map<int64_t, bool> InitBoolKeys(
       const std::vector<int64_t>& action_space) const;
-  ValueMap AlphaVectorNode::InitValueMap(
-      const std::vector<int64_t>& action_space,
-      const std::vector<int64_t>& observation_space) const;
+  ValueMap InitValueMap(const std::vector<int64_t>& action_space,
+                        const std::vector<int64_t>& observation_space) const;
 };
 
 #endif /* !_ALPHAVECTORNODE_H_ */

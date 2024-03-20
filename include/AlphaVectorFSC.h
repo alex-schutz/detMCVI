@@ -30,7 +30,7 @@ class AlphaVectorFSC {
 
   AlphaVectorNode& GetNode(int64_t nI) { return _nodes[nI]; }
   size_t NumNodes() const { return _nodes.size(); }
-  void AddNode(const std::vector<int64_t>& state_particles,
+  void AddNode(const BeliefParticles& state_particles,
                const std::vector<int64_t>& action_space,
                const std::vector<int64_t>& observation_space,
                uint64_t seed = std::random_device{}()) {

@@ -72,7 +72,7 @@ int QLearning::ChooseAction(int state) {
   return get<1>(MaxQ(state));
 }
 
-void QLearning::Train(const std::vector<int64_t>& belief, int max_episodes,
+void QLearning::Train(const BeliefParticles& belief, int max_episodes,
                       int episode_size, int num_sims, double epsilon,
                       ostream& os) {
   double improvement = numeric_limits<double>::infinity();
@@ -83,8 +83,9 @@ void QLearning::Train(const std::vector<int64_t>& belief, int max_episodes,
     double ep_value = 0.0;
     for (int i = 0; i < episode_size; ++i) {
       double sum = 0.0;
-      for (const auto& state : belief) sum += EstimateValue(state, num_sims);
-      ep_value += sum / belief.size();
+      for (const auto& state : belief.GetParticles())
+        sum += EstimateValue(state, num_sims);
+      ep_value += sum / belief.GetParticleCount();
       DecayParameters();
     }
     ep_value /= episode_size;

@@ -34,17 +34,16 @@
  * @param seed Random seed
  * @return double
  */
-double UpperBoundEvaluation(const std::vector<int64_t>& belief,
-                            SimInterface* sim, double learning_rate,
-                            double decay, int sim_depth, int max_episodes,
-                            int episode_size, int num_sims,
+double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
+                            double learning_rate, double decay, int sim_depth,
+                            int max_episodes, int episode_size, int num_sims,
                             double ep_convergence_threshold,
                             double random_action_pb_init = 1.0,
                             double random_action_pb_final = 0.1,
                             uint64_t seed = std::random_device{}());
 
 /**
- * @brief Return a lower bound for the value of the (particle) belief
+ * @brief Return a lower bound for the value of the belief
  *
  * @param belief
  * @param sim
@@ -54,9 +53,8 @@ double UpperBoundEvaluation(const std::vector<int64_t>& belief,
  * @param epsilon
  * @return double
  */
-double LowerBoundEvaluation(const std::vector<int64_t>& belief,
-                            SimInterface* sim, AlphaVectorFSC& fsc,
-                            int64_t num_sims, int64_t max_depth,
-                            double epsilon);
+double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
+                            AlphaVectorFSC& fsc, int64_t num_sims,
+                            int64_t max_depth, double epsilon);
 
 #endif /* !_BOUND_H_ */

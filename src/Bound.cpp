@@ -1,9 +1,8 @@
 #include "../include/Bound.h"
 
-double UpperBoundEvaluation(const std::vector<int64_t>& belief,
-                            SimInterface* sim, double learning_rate,
-                            double decay, int sim_depth, int max_episodes,
-                            int episode_size, int num_sims,
+double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
+                            double learning_rate, double decay, int sim_depth,
+                            int max_episodes, int episode_size, int num_sims,
                             double ep_convergence_threshold,
                             double random_action_pb_init,
                             double random_action_pb_final, uint64_t seed) {
@@ -16,15 +15,15 @@ double UpperBoundEvaluation(const std::vector<int64_t>& belief,
 
   // Calculate the upper bound
   double V_upper_b = 0.0;
-  for (const auto& state : belief) V_upper_b += get<0>(q_engine.MaxQ(state));
+  for (const auto& state : belief.GetParticles())
+    V_upper_b += get<0>(q_engine.MaxQ(state));
 
-  return V_upper_b / belief.size();
+  return V_upper_b / belief.GetParticleCount();
 }
 
-double LowerBoundEvaluation(const std::vector<int64_t>& belief,
-                            SimInterface* sim, AlphaVectorFSC& fsc,
-                            int64_t num_sims, int64_t max_depth,
-                            double epsilon) {
+double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
+                            AlphaVectorFSC& fsc, int64_t num_sims,
+                            int64_t max_depth, double epsilon) {
   const double gamma = sim->GetDiscount();
 
   int64_t nI = 0;
@@ -33,7 +32,7 @@ double LowerBoundEvaluation(const std::vector<int64_t>& belief,
   double sum_r;
   for (int64_t i = 0; i < num_sims; ++i) {
     double sum_r_sim_i = 0.0;
-    int state = SampleParticle(belief);
+    int state = belief.SampleOneState();
 
     while ((step < max_depth) && (std::pow(gamma, step) > epsilon)) {
       if (nI == -1) random_pi = true;
