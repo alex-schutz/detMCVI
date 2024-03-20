@@ -9,7 +9,10 @@
 #define _BELIEFPARTICLES_H_
 
 #include <random>
+#include <unordered_map>
 #include <vector>
+
+#include "SimInterface.h"
 
 class BeliefParticles {
  private:
@@ -33,5 +36,11 @@ class BeliefParticles {
   double operator[](int i) { return _particles[i]; }
   bool operator==(BeliefParticles& o) { return _particles == o._particles; }
 };
+
+/// @brief Generate a set of next beliefs mapped by observation, obtained by
+/// taking `action` in belief state `b`
+std::unordered_map<int64_t, std::vector<int64_t>> BeliefUpdate(
+    const BeliefParticles& b, int64_t action, int64_t num_sims,
+    SimInterface* pomdp);
 
 #endif /* !_BELIEFPARTICLES_H_ */
