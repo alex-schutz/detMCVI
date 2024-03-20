@@ -34,4 +34,4 @@ class BeliefParticles {
   bool operator==(BeliefParticles& o) { return _particles == o._particles; }
 };
 
-#endif
+#endif /* !_BELIEFPARTICLES_H_ */
