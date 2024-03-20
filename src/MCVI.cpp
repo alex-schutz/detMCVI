@@ -6,27 +6,27 @@
 
 #include "../include/AlphaVectorFSC.h"
 
-// Naive way of sampling a discrete distribution
-int SampleBelief(Belief belief) {
+int64_t SampleParticle(const std::vector<int64_t> particles) {
   std::mt19937_64 rng;
-  uniform_real_distribution<double> unif(0, 1);
-  const double u = unif(rng);
-  double p_sum = 0.0;
-  for (const auto& [state, prob] : belief) {
-    p_sum += prob;
-    if (u < p_sum) return state;
-  }
-  throw std::runtime_error("Failed to sample belief");
+  std::uniform_int_distribution<> dist(0, particles.size() - 1);
+  return particles[dist(rng)];
 }
 
-double FindRLower(SimInterface* pomdp, Belief b0, std::vector<int> action_space,
-                  int max_restarts, double epsilon, int max_depth) {
+int64_t RandomAction(SimInterface* pomdp) {
+  std::mt19937_64 rng;
+  uniform_int_distribution<> action_dist(0, pomdp->GetSizeOfA() - 1);
+  return action_dist(rng);
+}
+
+double FindRLower(SimInterface* pomdp, const std::vector<int64_t>& b0,
+                  const std::vector<int>& action_space, int64_t max_restarts,
+                  double epsilon, int64_t max_depth) {
   std::unordered_map<int, double> action_min_reward;
   for (const auto& action : action_space) {
     double min_reward = std::numeric_limits<double>::infinity();
-    for (int i = 0; i < max_restarts; ++i) {
-      int state = SampleBelief(b0);
-      int step = 0;
+    for (int64_t i = 0; i < max_restarts; ++i) {
+      int64_t state = SampleParticle(b0);
+      int64_t step = 0;
       while ((step < max_depth) &&
              (std::pow(pomdp->GetDiscount(), step) > epsilon)) {
         const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
@@ -51,86 +51,78 @@ double FindRLower(SimInterface* pomdp, Belief b0, std::vector<int> action_space,
   return max_min_reward / (1 - pomdp->GetDiscount());
 }
 
-// gen function should be implemented!!!
-
-double SimulateTrajectory(int nI, AlphaVectorFSC fsc, double s, int L,
-                          POMDP pomdp) {
-  double gamma = std::pow(pomdp.discount(), 1.0);
+double SimulateTrajectory(int64_t nI, AlphaVectorFSC& fsc, int64_t state,
+                          int64_t max_depth, SimInterface* pomdp) {
+  const double gamma = pomdp->GetDiscount();
   double V_n_s = 0.0;
-  int nI_current = nI;
-  for (int step = 0; step < L; ++step) {
-    double a = GetBestAction(fsc.nodes[nI_current]);
-    std::vector<double> sp, o, r;
-    // TODO: C++ implementation of the`gen` function
+  int64_t nI_current = nI;
+  for (int64_t step = 0; step < max_depth; ++step) {
+    const int64_t action = (nI_current != -1)
+                               ? fsc.GetNode(nI_current).GetBestAction()
+                               : RandomAction(pomdp);
+    const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+    if (nI_current != -1) nI_current = fsc.GetEtaValue(nI_current, action, obs);
 
-    if (fsc.eta[nI_current].find(std::make_pair(a, o)) !=
-        fsc.eta[nI_current].end()) {
-      nI_current = fsc.eta[nI_current][std::make_pair(a, o)];
-    }
-    V_n_s += (gamma ^ step) * r;
-    s = sp;
+    V_n_s += std::pow(gamma, step) * reward;
+    if (done) break;
+    state = sNext;
   }
 
   return V_n_s;
 }
 
-int FindMaxValueNode(int n, AlphaVectorFSC fsc, int a, int o) {
-  int max_V = std::numeric_limits<int>::min();
-  int max_nI = 1;
-  for (int nI = 1; nI < length(fsc.nodes); ++nI) {
-    double V_temp = fsc.nodes[n].V_a_o_n[a][o][nI];
-    if (V_temp > max_V) {
-      max_V = V_temp;
-      max_nI = nI;
-    }
-  }
-  return max_V, max_nI;
+std::pair<double, int64_t> FindMaxValueNode(int64_t n, AlphaVectorFSC& fsc,
+                                            int64_t a, int64_t o) {
+  const auto& v = fsc.GetNode(n).GetActionObservationValues(a, o);
+  const auto it = std::max_element(std::begin(v), std::end(v),
+                                   [](const std::pair<int64_t, double>& p1,
+                                      const std::pair<int64_t, double>& p2) {
+                                     return p1.second < p2.second;
+                                   });
+  return {it->second, it->first};
 }
 
-void BackUp(double b, AlphaVectorFSC fsc, int L, int nb_sample, POMDP pomdp) {
-  std::vector<int> action_space = pomdp.action_space();
-  std::vector<int> obs_space = pomdp.obs_space();
+void BackUp(int64_t nI_new, AlphaVectorFSC& fsc, int64_t max_depth_sim,
+            int64_t nb_sample, SimInterface* pomdp,
+            const std::vector<int64_t>& action_space,
+            const std::vector<int64_t>& observation_space) {
+  // a new node (alpha-vector in MCVI)
+  const double gamma = pomdp->GetDiscount();
+  auto& node = fsc.GetNode(nI_new);
+  double V_nI_new = node.V_node();
+  std::cout << "nI_new: " << nI_new << ", V: " << V_nI_new << std::endl;
 
-  // TODO: C++ implementation of the`CreatNode` function
+  node.InitR(action_space);
+  node.InitQ(action_space);
+  node.InitVals(action_space, observation_space);
 
-  for (int a = 0; a < action_space.size(); ++a) {
-    for (int o = 0; o < obs_space.size(); ++o) {
-      for (int nI = 0; nI < length(fsc.nodes); ++nI) {
-        fsc.nodes[nI].V_a_o_n[a][o] = 0;
-      }
-    }
-  }
-
-  for (int a = 0; a < action_space.size(); ++a) {
-    for (int i = 0; i < nb_sample; ++i) {
-      double s = rand(fsc.nodes[0]._state_particles);
-      std::vector<double> sp, o, r;
-      // TODO: C++ implementation of the`gen` function
-
-      fsc.nodes[0]._R_action[a] += r;
-      for (int nI = 0; nI < length(fsc.nodes); ++nI) {
-        double V_nI = SimulateTrajectory(nI, fsc, sp, L, pomdp);
-        fsc.nodes[nI].V_a_o_n[a][o] += V_nI;
+  for (const auto& action : action_space) {
+    for (int64_t i = 0; i < nb_sample; ++i) {
+      const int64_t state = node.SampleParticle();
+      const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+      node.AddR(action, reward);
+      for (int64_t nI = 0; nI < fsc.NumNodes(); ++nI) {
+        const double V_nI_sNext =
+            SimulateTrajectory(nI, fsc, sNext, max_depth_sim, pomdp);
+        node.UpdateValue(action, obs, nI, V_nI_sNext);
       }
     }
 
-    for (int o = 0; o < obs_space.size(); ++o) {
-      int V_a_o, nI_a_o = FindMaxValueNode(fsc.nodes[0], fsc, a, o);
-      fsc.eta[length(fsc.nodes)][a][o] = nI_a_o;
-      fsc.nodes[length(fsc.nodes)].Q_action[a] += pomdp.discount() * V_a_o;
+    for (const auto& obs : observation_space) {
+      const auto [V_a_o, nI_a_o] = FindMaxValueNode(nI_new, fsc, action, obs);
+      fsc.UpdateEta(nI_new, action, obs, nI_a_o);
+      node.AddQ(action, gamma * V_a_o);
     }
-    fsc.nodes[0].Q_action[a] /= nb_sample;
+    node.AddQ(action, node.GetR(action));
+    node.NormaliseQ(action, nb_sample);
   }
 
-  // TODO: C++ implementation of the`GetBestAction` function
+  node.UpdateBestValue();
 }
 
-void MCVIPlanning(int nb_particles, double b0, AlphaVectorFSC fsc, POMDP pomdp,
-                  double epsilon) {
-  AlphaVectorFSC node_start = CreatNode(b0, fsc._action_space, fsc._obs_space);
-  fsc.nodes.push_back(node_start);
-
-  // TODO: C++ implementation of the`CreatNode` function
+void MCVIPlanning(int64_t nb_particles, const std::vector<int64_t>& b0,
+                  AlphaVectorFSC fsc, SimInterface* pomdp, double epsilon) {
+  fsc.AddNode(b0, fsc.GetActionSpace(), fsc.GetObsSpace());
 
   while (true) {
     // TODO: C++ implementation of the solver

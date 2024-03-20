@@ -10,7 +10,7 @@
 
 #include <iostream>
 
-#include "PomdpInterface.h"
+#include "SimInterface.h"
 
 class MCVI {
  private:
