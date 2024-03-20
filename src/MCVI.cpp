@@ -7,6 +7,11 @@
 #include "../include/AlphaVectorFSC.h"
 #include "../include/BeliefParticles.h"
 
+static bool CmpPair(const std::pair<int64_t, double>& p1,
+                    const std::pair<int64_t, double>& p2) {
+  return p1.second < p2.second;
+}
+
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
                   const std::vector<int>& action_space, int64_t max_restarts,
                   double epsilon, int64_t max_depth) {
@@ -31,11 +36,7 @@ double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
   }
   const double max_min_reward =
       std::max_element(std::begin(action_min_reward),
-                       std::end(action_min_reward),
-                       [](const std::pair<int, double>& p1,
-                          const std::pair<int, double>& p2) {
-                         return p1.second < p2.second;
-                       })
+                       std::end(action_min_reward), CmpPair)
           ->second;
   return max_min_reward / (1 - pomdp->GetDiscount());
 }
@@ -63,11 +64,7 @@ double SimulateTrajectory(int64_t nI, AlphaVectorFSC& fsc, int64_t state,
 std::pair<double, int64_t> FindMaxValueNode(int64_t n, AlphaVectorFSC& fsc,
                                             int64_t a, int64_t o) {
   const auto& v = fsc.GetNode(n).GetActionObservationValues(a, o);
-  const auto it = std::max_element(std::begin(v), std::end(v),
-                                   [](const std::pair<int64_t, double>& p1,
-                                      const std::pair<int64_t, double>& p2) {
-                                     return p1.second < p2.second;
-                                   });
+  const auto it = std::max_element(std::begin(v), std::end(v), CmpPair);
   return {it->second, it->first};
 }
 
