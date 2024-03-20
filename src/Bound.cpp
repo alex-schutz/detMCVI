@@ -29,7 +29,7 @@ double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
   int64_t nI = 0;
   bool random_pi = false;
   int64_t step = 0;
-  double sum_r;
+  double sum_r = 0.0;
   for (int64_t i = 0; i < num_sims; ++i) {
     double sum_r_sim_i = 0.0;
     int state = belief.SampleOneState();
@@ -37,7 +37,7 @@ double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
     while ((step < max_depth) && (std::pow(gamma, step) > epsilon)) {
       if (nI == -1) random_pi = true;
       const int64_t action =
-          (random_pi) ? RandomAction(sim) : fsc.GetNode(nI).GetBestAction();
+          (random_pi) ? sim->RandomAction() : fsc.GetNode(nI).GetBestAction();
 
       const auto [sNext, obs, reward, done] = sim->Step(state, action);
 

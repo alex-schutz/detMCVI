@@ -7,12 +7,6 @@
 #include "../include/AlphaVectorFSC.h"
 #include "../include/BeliefParticles.h"
 
-int64_t RandomAction(SimInterface* pomdp) {
-  std::mt19937_64 rng;
-  uniform_int_distribution<> action_dist(0, pomdp->GetSizeOfA() - 1);
-  return action_dist(rng);
-}
-
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
                   const std::vector<int>& action_space, int64_t max_restarts,
                   double epsilon, int64_t max_depth) {
@@ -54,7 +48,7 @@ double SimulateTrajectory(int64_t nI, AlphaVectorFSC& fsc, int64_t state,
   for (int64_t step = 0; step < max_depth; ++step) {
     const int64_t action = (nI_current != -1)
                                ? fsc.GetNode(nI_current).GetBestAction()
-                               : RandomAction(pomdp);
+                               : pomdp->RandomAction();
     const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
     if (nI_current != -1) nI_current = fsc.GetEtaValue(nI_current, action, obs);
 

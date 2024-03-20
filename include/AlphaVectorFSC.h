@@ -12,7 +12,19 @@
 
 class AlphaVectorFSC {
  private:
-  std::vector<std::unordered_map<std::pair<int64_t, int64_t>, int64_t>> _eta;
+  struct PairHash {
+    std::size_t operator()(const std::pair<int64_t, int64_t>& p) const {
+      size_t hash = 0x9e3779b97f4a7c15;
+      hash ^= std::hash<int64_t>{}(p.first) + 0x9e3779b9;
+      hash ^= std::hash<int64_t>{}(p.second) + 0x9e3779b9 + (hash << 6) +
+              (hash >> 2);
+      return hash;
+    }
+  };
+
+  std::vector<
+      std::unordered_map<std::pair<int64_t, int64_t>, int64_t, PairHash>>
+      _eta;
   std::vector<AlphaVectorNode> _nodes;
   std::vector<int64_t> _action_space;
   std::vector<int64_t> _observation_space;
@@ -21,7 +33,8 @@ class AlphaVectorFSC {
   AlphaVectorFSC(int64_t max_node_size,
                  const std::vector<int64_t>& action_space,
                  const std::vector<int64_t>& observation_space)
-      : _eta(max_node_size, {}),
+      : _eta(max_node_size, std::unordered_map<std::pair<int64_t, int64_t>,
+                                               int64_t, PairHash>()),
         _nodes(),
         _action_space(action_space),
         _observation_space(observation_space) {}
@@ -32,10 +45,9 @@ class AlphaVectorFSC {
   size_t NumNodes() const { return _nodes.size(); }
   void AddNode(const BeliefParticles& state_particles,
                const std::vector<int64_t>& action_space,
-               const std::vector<int64_t>& observation_space,
-               uint64_t seed = std::random_device{}()) {
-    _nodes.emplace_back(AlphaVectorNode(state_particles, action_space,
-                                        observation_space, seed));
+               const std::vector<int64_t>& observation_space) {
+    _nodes.emplace_back(
+        AlphaVectorNode(state_particles, action_space, observation_space));
   }
 
   /// @brief Return the eta value assosciated with node nI, action a and
