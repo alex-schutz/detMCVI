@@ -15,10 +15,6 @@
 
 #include "SimInterface.h"
 
-using namespace std;
-
-using Belief = unordered_map<int, double>;
-
 /**
  * @brief Perform Q-learning on a POMDP
  */
@@ -40,8 +36,9 @@ class QLearning {
 
   /// @brief Train the Q-learning model on the given belief until improvement
   /// across the belief is less than epsilon or max_episodes is reached.
-  void Train(Belief belief, int max_episodes, int episode_size, int num_sims,
-             double epsilon, ostream& os = cout);
+  void Train(const std::vector<int64_t>& belief, int max_episodes,
+             int episode_size, int num_sims, double epsilon,
+             ostream& os = cout);
 
   /// @brief Return the estimated Q-value for the given state index.
   double EstimateValue(int state, int n_sims);

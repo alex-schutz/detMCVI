@@ -60,9 +60,7 @@ TEST(QLearningTest, Learning) {
   TestPOMDP sim;
   auto q_engine = QLearning(&sim, 0.7, 0.05, 50);
 
-  unordered_map<int, double> belief = {{0, 1.0 / 6}, {1, 1.0 / 6},
-                                       {2, 1.0 / 6}, {3, 1.0 / 6},
-                                       {4, 1.0 / 6}, {5, 1.0 / 6}};
+  std::vector<int64_t> belief = {0, 1, 2, 3, 4, 5};
   q_engine.Train(belief, 20, 100, 1000, 0.001);
 
   EXPECT_NEAR(get<0>(q_engine.MaxQ(0)), -5.851, 2e-2);  // -6

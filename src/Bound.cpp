@@ -1,8 +1,9 @@
 #include "../include/Bound.h"
 
-double UpperBoundEvaluation(const Belief& belief, SimInterface* sim,
-                            double learning_rate, double decay, int sim_depth,
-                            int max_episodes, int episode_size, int num_sims,
+double UpperBoundEvaluation(const std::vector<int64_t>& belief,
+                            SimInterface* sim, double learning_rate,
+                            double decay, int sim_depth, int max_episodes,
+                            int episode_size, int num_sims,
                             double ep_convergence_threshold,
                             double random_action_pb_init,
                             double random_action_pb_final, uint64_t seed) {
@@ -15,10 +16,9 @@ double UpperBoundEvaluation(const Belief& belief, SimInterface* sim,
 
   // Calculate the upper bound
   double V_upper_b = 0.0;
-  for (const auto& [state, prob] : belief)
-    V_upper_b += prob * get<0>(q_engine.MaxQ(state));
+  for (const auto& state : belief) V_upper_b += get<0>(q_engine.MaxQ(state));
 
-  return V_upper_b;
+  return V_upper_b / belief.size();
 }
 
 double LowerBoundEvaluation(const std::vector<int64_t>& belief,
