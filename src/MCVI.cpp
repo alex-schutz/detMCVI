@@ -104,11 +104,13 @@ void BackUp(int64_t nI_new, AlphaVectorFSC& fsc, int64_t max_depth_sim,
   node.UpdateBestValue();
 }
 
+/*
 void MCVIPlanning(int64_t nb_particles, const BeliefParticles& b0,
                   AlphaVectorFSC fsc, SimInterface* pomdp, double epsilon) {
-  fsc.AddNode(b0);
+  int64_t n_start = fsc.AddNode(b0);
 
   while (true) {
     // TODO: C++ implementation of the solver
   }
 }
+*/
