@@ -18,6 +18,7 @@ class TestPOMDP : public SimInterface {
   int GetSizeOfObs() const override { return observations.size(); }
   int SampleStartState() { return 0; }
   tuple<int, int, double, bool> Step(int sI, int aI) override {
+    if (aI == 9) return {sI, 0, -13.0, false};
     switch (sI) {
       case 0:
         if (aI == 0)
@@ -63,6 +64,10 @@ TEST(MCVITest, FindRLower) {
   const std::vector<int64_t> all_actions = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
   const double R_lower_all =
-      FindRLower(&sim, belief, all_actions, 1, 0.001, 10);
+      FindRLower(&sim, belief, all_actions, 20, 0.0001, 100);
   EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
+
+  const double R_lower_9 =
+      FindRLower(&sim, belief, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 20, 0.0001, 100);
+  EXPECT_NEAR(R_lower_9, -13 / 0.01, 1e-9);
 }
