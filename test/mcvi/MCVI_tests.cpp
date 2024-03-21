@@ -1,4 +1,4 @@
-#include <QLearning.h>
+#include <MCVI.h>
 #include <gtest/gtest.h>
 
 #include <iostream>
@@ -18,6 +18,7 @@ class TestPOMDP : public SimInterface {
   int GetSizeOfObs() const override { return observations.size(); }
   int SampleStartState() { return 0; }
   tuple<int, int, double, bool> Step(int sI, int aI) override {
+    if (aI == 9) return {sI, 0, -13.0, false};
     switch (sI) {
       case 0:
         if (aI == 0)
@@ -56,17 +57,17 @@ class TestPOMDP : public SimInterface {
   }
 };
 
-TEST(QLearningTest, Learning) {
+TEST(MCVITest, FindRLower) {
   TestPOMDP sim;
-  auto q_engine = QLearning(&sim, 0.7, 0.05, 50);
 
   const auto belief = BeliefParticles({0, 1, 2, 3, 4, 5});
-  q_engine.Train(belief, 20, 100, 1000, 0.001);
+  const std::vector<int64_t> all_actions = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
-  EXPECT_NEAR(get<0>(q_engine.MaxQ(0)), -5.851, 2e-2);  // -6
-  EXPECT_NEAR(get<0>(q_engine.MaxQ(1)), -5.851, 2e-2);  // -6
-  EXPECT_NEAR(get<0>(q_engine.MaxQ(2)), -4.898, 2e-2);  // -5
-  EXPECT_NEAR(get<0>(q_engine.MaxQ(3)), -4.898, 2e-2);  // -5
-  EXPECT_NEAR(get<0>(q_engine.MaxQ(4)), -3.945, 2e-2);  // -4
-  EXPECT_NEAR(get<0>(q_engine.MaxQ(5)), 0.0, 1e-5);     // 0
+  const double R_lower_all =
+      FindRLower(&sim, belief, all_actions, 20, 0.0001, 100);
+  EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
+
+  const double R_lower_9 =
+      FindRLower(&sim, belief, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 20, 0.0001, 100);
+  EXPECT_NEAR(R_lower_9, -13 / 0.01, 1e-9);
 }
