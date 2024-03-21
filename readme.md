@@ -13,13 +13,13 @@ Current MCVI C++ Implementation Progress
 - Basic Interfaces
     - [x] POMDP Interface
     - [x] Simulator Interface
-    - [ ] Finite State Controller 
+    - [x] Finite State Controller 
     - [ ] Belief Expansion Tree
 
 - Main Components
-    - [ ] Upper Bound Evaluation
+    - [x] Upper Bound Evaluation
         - [x] Q-learning implementation
-    - [ ] Lower Bound Evaluation (Simulation with the FSC built)
+    - [x] Lower Bound Evaluation (Simulation with the FSC built)
     - [ ] Belief Expand Method
     - [ ] Monte-Carlo BackUp
         - [x] Basic implementation
