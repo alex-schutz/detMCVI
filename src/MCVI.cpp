@@ -4,9 +4,6 @@
 #include <algorithm>
 #include <limits>
 
-#include "../include/AlphaVectorFSC.h"
-#include "../include/BeliefParticles.h"
-
 static bool CmpPair(const std::pair<int64_t, double>& p1,
                     const std::pair<int64_t, double>& p2) {
   return p1.second < p2.second;

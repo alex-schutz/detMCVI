@@ -10,21 +10,18 @@
 
 #include <iostream>
 
+#include "AlphaVectorFSC.h"
+#include "BeliefParticles.h"
 #include "SimInterface.h"
 
 class MCVI {
  private:
   /* data */
  public:
-  MCVI(/* args */);
-  ~MCVI();
+  MCVI(/* args */) {}
 };
 
-MCVI::MCVI(/* args */) {}
-
-MCVI::~MCVI() {}
-
-/// @brief Determine the lower bound reward pf belief, by choosing an action
+/// @brief Determine the lower bound reward of the belief, by choosing an action
 /// that maximises the minimum instant reward for all situations
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
                   const std::vector<int64_t>& action_space,
