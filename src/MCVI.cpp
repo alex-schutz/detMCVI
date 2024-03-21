@@ -13,9 +13,9 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
 }
 
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
-                  const std::vector<int>& action_space, int64_t max_restarts,
-                  double epsilon, int64_t max_depth) {
-  std::unordered_map<int, double> action_min_reward;
+                  const std::vector<int64_t>& action_space,
+                  int64_t max_restarts, double epsilon, int64_t max_depth) {
+  std::unordered_map<int64_t, double> action_min_reward;
   for (const auto& action : action_space) {
     double min_reward = std::numeric_limits<double>::infinity();
     for (int64_t i = 0; i < max_restarts; ++i) {

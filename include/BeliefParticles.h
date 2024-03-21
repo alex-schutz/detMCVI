@@ -33,7 +33,7 @@ class BeliefParticles {
   /// @brief Return the entire vector of state particles
   const std::vector<int64_t>& GetParticles() const { return _particles; }
 
-  double operator[](int i) { return _particles[i]; }
+  double operator[](int64_t i) { return _particles[i]; }
   bool operator==(BeliefParticles& o) { return _particles == o._particles; }
 };
 

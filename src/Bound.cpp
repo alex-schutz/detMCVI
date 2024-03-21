@@ -1,8 +1,9 @@
 #include "../include/Bound.h"
 
 double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
-                            double learning_rate, double decay, int sim_depth,
-                            int max_episodes, int episode_size, int num_sims,
+                            double learning_rate, double decay,
+                            int64_t sim_depth, int64_t max_episodes,
+                            int64_t episode_size, int64_t num_sims,
                             double ep_convergence_threshold,
                             double random_action_pb_init,
                             double random_action_pb_final, uint64_t seed) {
@@ -32,7 +33,7 @@ double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
   double sum_r = 0.0;
   for (int64_t i = 0; i < num_sims; ++i) {
     double sum_r_sim_i = 0.0;
-    int state = belief.SampleOneState();
+    int64_t state = belief.SampleOneState();
 
     while ((step < max_depth) && (std::pow(gamma, step) > epsilon)) {
       if (nI == -1) random_pi = true;

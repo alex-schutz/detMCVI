@@ -27,7 +27,7 @@ MCVI::~MCVI() {}
 /// @brief Determine the lower bound reward pf belief, by choosing an action
 /// that maximises the minimum instant reward for all situations
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
-                  const std::vector<int>& action_space, int64_t max_restarts,
-                  double epsilon, int64_t max_depth);
+                  const std::vector<int64_t>& action_space,
+                  int64_t max_restarts, double epsilon, int64_t max_depth);
 
 #endif /* !_MCVIPLANNER_H_ */

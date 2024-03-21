@@ -56,7 +56,7 @@ int64_t AlphaVectorNode::SampleParticle() const {
 }
 
 void AlphaVectorNode::UpdateBestValue() {
-  const int best_action = GetBestAction();
+  const int64_t best_action = GetBestAction();
   _V_node = _Q_action.at(best_action);
 }
 

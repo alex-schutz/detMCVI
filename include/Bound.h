@@ -35,8 +35,9 @@
  * @return double
  */
 double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
-                            double learning_rate, double decay, int sim_depth,
-                            int max_episodes, int episode_size, int num_sims,
+                            double learning_rate, double decay,
+                            int64_t sim_depth, int64_t max_episodes,
+                            int64_t episode_size, int64_t num_sims,
                             double ep_convergence_threshold,
                             double random_action_pb_init = 1.0,
                             double random_action_pb_final = 0.1,
