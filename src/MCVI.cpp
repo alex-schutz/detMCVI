@@ -134,3 +134,31 @@ AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
   fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
   return fsc;
 }
+
+void SimulationWithFSC(const BeliefParticles& b0, SimInterface* pomdp,
+                       AlphaVectorFSC& fsc, int64_t steps) {
+  const double gamma = pomdp->GetDiscount();
+  int64_t state = b0.SampleOneState();
+  double sum_r = 0.0;
+  int64_t nI = fsc.GetStartNodeIndex();
+  for (int64_t i = 0; i < steps; ++i) {
+    const int64_t action = fsc.GetNode(nI).GetBestAction();
+    std::cout << "---------" << std::endl;
+    std::cout << "step: " << i << std::endl;
+    std::cout << "state: " << state << std::endl;
+    std::cout << "perform action: " << action << std::endl;
+    const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+
+    std::cout << "receive obs: " << obs << std::endl;
+    std::cout << "nI: " << nI << std::endl;
+    std::cout << "nI value: " << fsc.GetNode(nI).V_node() << std::endl;
+    std::cout << "reward: " << reward << std::endl;
+
+    sum_r += std::pow(gamma, i) * reward;
+    nI = fsc.GetEtaValue(nI, action, obs);
+
+    if (done) break;
+    state = sNext;
+  }
+  std::cout << "sum reward: " << sum_r << std::endl;
+}

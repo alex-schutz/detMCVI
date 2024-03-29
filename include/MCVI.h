@@ -28,6 +28,10 @@ AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
                             int64_t nb_sample, int64_t nb_iter,
                             const QLearning::QLearningPolicy policy);
 
+/// @brief Simulate an FSC execution
+void SimulationWithFSC(const BeliefParticles& b0, SimInterface* pomdp,
+                       AlphaVectorFSC& fsc, int64_t steps);
+
 /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
 void BackUp(BeliefTreeNode& Tr_node, AlphaVectorFSC& fsc, int64_t max_depth_sim,
             int64_t nb_sample, SimInterface* pomdp,
