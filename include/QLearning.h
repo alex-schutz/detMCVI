@@ -21,25 +21,30 @@
  */
 class QLearning {
  public:
-  QLearning(SimInterface* sim, double learning_rate, double decay,
-            int64_t sim_depth, double epsilon_init = 1.0,
-            double epsilon_final = 0.1, uint64_t seed = random_device{}())
+  struct QLearningPolicy {
+    double learning_rate;  // Initial learning rate
+    double decay;  // Decay rate for learning rate and random action probability
+    int64_t sim_depth;                // Max depth of a simulation run
+    int64_t max_episodes;             // Max number of episodes to learn
+    int64_t episode_size;             // Number of trials in a learning episode
+    int64_t num_sims;                 // Number of simulation runs in a trial
+    double ep_convergence_threshold;  // Threshold for when to stop learning
+    double epsilon_init = 1.0;   // Initial probability of taking random actions
+    double epsilon_final = 0.1;  // Final probability of taking random actions
+  };
+
+  QLearning(SimInterface* sim, QLearningPolicy policy,
+            uint64_t seed = random_device{}())
       : sim(sim),
-        learning_rate(learning_rate),
-        decay(decay),
-        sim_depth(sim_depth),
-        epsilon_init(epsilon_init),
-        epsilon_final(epsilon_final),
+        policy(policy),
         discount(sim->GetDiscount()),
-        epsilon(epsilon_init),
+        epsilon(policy.epsilon_init),
         q_table(),
         rng(seed) {}
 
   /// @brief Train the Q-learning model on the given belief until improvement
   /// across the belief is less than epsilon or max_episodes is reached.
-  void Train(const BeliefParticles& belief, int64_t max_episodes,
-             int64_t episode_size, int64_t num_sims, double epsilon,
-             ostream& os = cout);
+  void Train(const BeliefParticles& belief, ostream& os = cout);
 
   /// @brief Return the estimated Q-value for the given state index.
   double EstimateValue(int64_t state, int64_t n_sims);
@@ -65,11 +70,7 @@ class QLearning {
  private:
   SimInterface* sim;
   int64_t n_sims;
-  double learning_rate;
-  double decay;
-  int64_t sim_depth;
-  double epsilon_init;
-  double epsilon_final;
+  QLearningPolicy policy;
   double discount;
   double epsilon;
   unordered_map<int64_t, vector<double>> q_table;
