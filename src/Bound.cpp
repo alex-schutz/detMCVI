@@ -1,55 +1,57 @@
 #include "../include/Bound.h"
 
-double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
-                            double learning_rate, double decay,
-                            int64_t sim_depth, int64_t max_episodes,
-                            int64_t episode_size, int64_t num_sims,
-                            double ep_convergence_threshold,
-                            double random_action_pb_init,
-                            double random_action_pb_final, uint64_t seed) {
-  // We only use the underlying MDP dynamics of sim to compute the value
-  auto q_engine =
-      QLearning(sim, learning_rate, decay, sim_depth, random_action_pb_init,
-                random_action_pb_final, seed);
-  q_engine.Train(belief, max_episodes, episode_size, num_sims,
-                 ep_convergence_threshold);
+#include <algorithm>
+#include <limits>
 
-  // Calculate the upper bound
-  double V_upper_b = 0.0;
-  for (const auto& state : belief.GetParticles())
-    V_upper_b += get<0>(q_engine.MaxQ(state));
-
-  return V_upper_b / belief.GetParticleCount();
+static bool CmpPair(const std::pair<int64_t, double>& p1,
+                    const std::pair<int64_t, double>& p2) {
+  return p1.second < p2.second;
 }
 
-double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
-                            AlphaVectorFSC& fsc, int64_t num_sims,
-                            int64_t max_depth, double epsilon) {
-  const double gamma = sim->GetDiscount();
+tuple<int64_t, double> UpperBoundEvaluation(
+    const BeliefParticles& belief, SimInterface* sim,
+    const std::vector<int64_t>& action_space, QLearning::QLearningPolicy policy,
+    uint64_t seed) {
+  auto q_engine = QLearning(sim, policy, seed);
+  q_engine.Train(belief);
 
-  int64_t nI = 0;
-  bool random_pi = false;
-  int64_t step = 0;
-  double sum_r = 0.0;
-  for (int64_t i = 0; i < num_sims; ++i) {
-    double sum_r_sim_i = 0.0;
-    int64_t state = belief.SampleOneState();
-
-    while ((step < max_depth) && (std::pow(gamma, step) > epsilon)) {
-      if (nI == -1) random_pi = true;
-      const int64_t action =
-          (random_pi) ? sim->RandomAction() : fsc.GetNode(nI).GetBestAction();
-
-      const auto [sNext, obs, reward, done] = sim->Step(state, action);
-
-      sum_r_sim_i += std::pow(gamma, step) * reward;
-      nI = fsc.GetEtaValue(nI, action, obs);
-
-      if (done) break;
-      state = sNext;
-      ++step;
-    }
-    sum_r += sum_r_sim_i;
+  std::unordered_map<int64_t, double> action_vals;
+  for (const auto& a : action_space) {
+    for (const auto& state : belief.GetParticles())
+      action_vals[a] += q_engine.GetQValue(state, a);
   }
-  return sum_r / num_sims;
+
+  // Calculate the upper bound and best action
+  const auto best =
+      std::max_element(std::begin(action_vals), std::end(action_vals), CmpPair);
+  return std::make_tuple(best->first, best->second / belief.GetParticleCount());
+}
+
+double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
+                  const std::vector<int64_t>& action_space,
+                  int64_t max_restarts, double epsilon, int64_t max_depth) {
+  std::unordered_map<int64_t, double> action_min_reward;
+  for (const auto& action : action_space) {
+    double min_reward = std::numeric_limits<double>::infinity();
+    for (int64_t i = 0; i < max_restarts; ++i) {
+      int64_t state = b0.SampleOneState();
+      int64_t step = 0;
+      while ((step < max_depth) &&
+             (std::pow(pomdp->GetDiscount(), step) > epsilon)) {
+        const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+        if (reward < min_reward) {
+          action_min_reward[action] = reward;
+          min_reward = reward;
+        }
+        if (done) break;
+        state = sNext;
+        ++step;
+      }
+    }
+  }
+  const double max_min_reward =
+      std::max_element(std::begin(action_min_reward),
+                       std::end(action_min_reward), CmpPair)
+          ->second;
+  return max_min_reward / (1 - pomdp->GetDiscount());
 }

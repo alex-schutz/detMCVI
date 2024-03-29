@@ -12,12 +12,12 @@ target_link_libraries(
 gtest_discover_tests(qlearning_tests)
 
 add_executable(
-  MCVI_tests
-  MCVI_tests.cpp
+  bound_tests
+  bound_tests.cpp
 )
 target_link_libraries(
-  MCVI_tests
+  bound_tests
   GTest::gtest_main
   mcvi_library
 )
-gtest_discover_tests(MCVI_tests)
+gtest_discover_tests(bound_tests)

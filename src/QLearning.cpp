@@ -58,8 +58,8 @@ double QLearning::GetQValue(int64_t state, int64_t action) {
 
 tuple<double, int64_t> QLearning::MaxQ(int64_t state) {
   const auto row = GetQTableRow(state);
-  const auto best = max_element(row->second.cbegin(), row->second.cend());
-  return make_tuple(*best, best - row->second.cbegin());
+  const auto best = std::max_element(row->second.cbegin(), row->second.cend());
+  return std::make_tuple(*best, best - row->second.cbegin());
 }
 
 int64_t QLearning::ChooseAction(int64_t state) {

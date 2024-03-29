@@ -22,40 +22,28 @@
  *
  * @param belief A set of belief particles
  * @param sim A POMDP simulator object
- * @param learning_rate Initial learning rate to use in Q-learning
- * @param decay Decay rate for learning rate and random action probability
- * @param sim_depth Max depth of a simulation run
- * @param max_episodes Max number of episodes to learn
- * @param episode_size Number of trials in a learning episode
- * @param num_sims Number of simulation runs in a trial
- * @param ep_convergence_threshold Threshold for when to stop learning
- * @param random_action_pb_init Initial probability of taking random actions
- * @param random_action_pb_final Final probability of taking random actions
+ * @param action_space The set of accessible actions
+ * @param policy Q-learning policy to use for the evaluation
  * @param seed Random seed
- * @return double
+ * @return tuple<int64_t, double> best action, upper bound
  */
-double UpperBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
-                            double learning_rate, double decay,
-                            int64_t sim_depth, int64_t max_episodes,
-                            int64_t episode_size, int64_t num_sims,
-                            double ep_convergence_threshold,
-                            double random_action_pb_init = 1.0,
-                            double random_action_pb_final = 0.1,
-                            uint64_t seed = std::random_device{}());
+tuple<int64_t, double> UpperBoundEvaluation(
+    const BeliefParticles& belief, SimInterface* sim,
+    const std::vector<int64_t>& action_space, QLearning::QLearningPolicy policy,
+    uint64_t seed = std::random_device{}());
 
 /**
  * @brief Return a lower bound for the value of the belief
  *
  * @param belief A set of belief particles
  * @param sim A POMDP simulator object
- * @param fsc A Finite State Controller object
- * @param num_sims Number of simulations to run
- * @param max_depth Maximum depth of a simulation run
+ * @param action_space The set of accessible actions
+ * @param max_restarts Number of simulations to run
  * @param epsilon Threshold for maximum decay
+ * @param max_depth Maximum depth of a simulation run
  * @return double
  */
-double LowerBoundEvaluation(const BeliefParticles& belief, SimInterface* sim,
-                            AlphaVectorFSC& fsc, int64_t num_sims,
-                            int64_t max_depth, double epsilon);
-
+double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
+                  const std::vector<int64_t>& action_space,
+                  int64_t max_restarts, double epsilon, int64_t max_depth);
 #endif /* !_BOUND_H_ */
