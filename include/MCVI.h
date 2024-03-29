@@ -14,12 +14,19 @@
 #include "BeliefParticles.h"
 #include "SimInterface.h"
 
-class MCVI {
- private:
-  /* data */
- public:
-  MCVI(/* args */) {}
-};
+/// @brief Run the MCVI planner
+/// @param b0 Initial belief particles
+/// @param fsc Initial FSC
+/// @param pomdp Simulator
+/// @param max_depth_sim Maximum depth to simulate
+/// @param nb_sample Number of samples in belief expansion
+/// @param nb_iter Number of tree traversals
+/// @param policy Q-learning policy for bound seting
+/// @return
+AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
+                            SimInterface* pomdp, int64_t max_depth_sim,
+                            int64_t nb_sample, int64_t nb_iter,
+                            const QLearning::QLearningPolicy policy);
 
 /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
 void BackUp(BeliefTreeNode& Tr_node, AlphaVectorFSC& fsc, int64_t max_depth_sim,

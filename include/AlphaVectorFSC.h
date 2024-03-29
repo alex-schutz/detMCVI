@@ -30,6 +30,7 @@ class AlphaVectorFSC {
   std::vector<AlphaVectorNode> _nodes;
   std::vector<int64_t> _action_space;
   std::vector<int64_t> _observation_space;
+  int64_t _start_node_index;
 
  public:
   AlphaVectorFSC(int64_t max_node_size,
@@ -38,7 +39,8 @@ class AlphaVectorFSC {
       : _edges(max_node_size, EdgeMap()),
         _nodes(),
         _action_space(action_space),
-        _observation_space(observation_space) {}
+        _observation_space(observation_space),
+        _start_node_index(-1) {}
 
   /// @brief Return a reference to node number nI
   AlphaVectorNode& GetNode(int64_t nI) { return _nodes[nI]; }
@@ -60,6 +62,9 @@ class AlphaVectorFSC {
 
   const std::vector<int64_t>& GetActionSpace() { return _action_space; }
   const std::vector<int64_t>& GetObsSpace() { return _observation_space; }
+
+  int64_t GetStartNodeIndex() const { return _start_node_index; }
+  void SetStartNodeIndex(int64_t idx) { _start_node_index = idx; }
 };
 
 #endif /* !_ALPHAVECTORFSC_H_ */

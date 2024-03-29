@@ -98,8 +98,39 @@ void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, AlphaVectorFSC& fsc,
   Tr_node->SetFSCNodeIndex(nI);
 }
 
-void MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
-                  SimInterface* pomdp, int64_t max_depth_sim, int64_t nb_sample,
-                  double epsilon, int64_t nb_iter,
-                  const QLearning::QLearningPolicy policy,
-                  std::shared_ptr<BeliefTreeNode> Tr_root) {}
+AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
+                            SimInterface* pomdp, int64_t max_depth_sim,
+                            int64_t nb_sample, int64_t nb_iter,
+                            const QLearning::QLearningPolicy policy) {
+  std::vector<int64_t> action_space, observation_space;
+  for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
+  for (int64_t o = 0; o < pomdp->GetSizeOfObs(); ++o)
+    observation_space.push_back(o);
+  std::shared_ptr<BeliefTreeNode> Tr_root =
+      CreateBeliefRootNode(b0, action_space, policy, pomdp);
+  const auto node = AlphaVectorNode(action_space, observation_space);
+  fsc.AddNode(node);
+  Tr_root->SetFSCNodeIndex(fsc.NumNodes() - 1);
+
+  for (int64_t i = 0; i < nb_iter; ++i) {
+    std::cout << "--- Iter " << i << " ---" << std::endl;
+    std::cout << "Tr_root upper bound: " << Tr_root->GetUpper() << std::endl;
+    std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
+    std::cout << "Belief Expand Process" << std::endl;
+
+    std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
+    SampleBeliefs(Tr_root, b0.SampleOneState(), 0, max_depth_sim, nb_sample,
+                  action_space, pomdp, policy, traversal_list);
+
+    std::cout << "Backup Process" << std::endl;
+    while (!traversal_list.empty()) {
+      auto tr_node = traversal_list.back();
+      traversal_list.pop_back();
+      BackUp(tr_node, fsc, max_depth_sim, nb_sample, pomdp, action_space,
+             observation_space);
+    }
+  }
+
+  fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
+  return fsc;
+}
