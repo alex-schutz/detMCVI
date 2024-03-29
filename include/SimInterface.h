@@ -5,8 +5,7 @@
  *
  */
 
-#ifndef _SIMINTERFACE_H_
-#define _SIMINTERFACE_H_
+#pragma once
 
 #include <cmath>
 #include <fstream>
@@ -16,7 +15,8 @@
 #include <string>
 
 #include "PomdpInterface.h"
-using namespace std;
+
+namespace MCVI {
 
 class SimInterface {
  private:
@@ -26,7 +26,7 @@ class SimInterface {
   virtual ~SimInterface(){};
 
   // ------- obligate functions ----------
-  virtual tuple<int, int, double, bool> Step(
+  virtual std::tuple<int, int, double, bool> Step(
       int sI, int aI) = 0;  // sI_next, oI, Reward, Done
   virtual int SampleStartState() = 0;
   virtual int GetSizeOfObs() const = 0;
@@ -38,11 +38,11 @@ class SimInterface {
   /// @brief Return an action chosen randomly
   virtual int RandomAction() const {
     std::mt19937_64 rng;
-    uniform_int_distribution<> action_dist(0, GetSizeOfA() - 1);
+    std::uniform_int_distribution<> action_dist(0, GetSizeOfA() - 1);
     return action_dist(rng);
   }
 
   // Maybe add visulization functions? :)
 };
 
-#endif
+}  // namespace MCVI

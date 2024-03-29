@@ -1,16 +1,18 @@
-#include "../include/Bound.h"
+#include "Bound.h"
 
 #include <algorithm>
 #include <limits>
+
+namespace MCVI {
 
 static bool CmpPair(const std::pair<int64_t, double>& p1,
                     const std::pair<int64_t, double>& p2) {
   return p1.second < p2.second;
 }
 
-tuple<int64_t, double> UpperBoundEvaluation(
+std::tuple<int64_t, double> UpperBoundEvaluation(
     const BeliefParticles& belief, SimInterface* sim,
-    const std::vector<int64_t>& action_space, QLearning::QLearningPolicy policy,
+    const std::vector<int64_t>& action_space, QLearningPolicy policy,
     uint64_t seed) {
   auto q_engine = QLearning(sim, policy, seed);
   q_engine.Train(belief);
@@ -55,3 +57,5 @@ double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
           ->second;
   return max_min_reward / (1 - pomdp->GetDiscount());
 }
+
+}  // namespace MCVI

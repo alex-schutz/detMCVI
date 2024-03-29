@@ -5,14 +5,15 @@
  *
  */
 
-#ifndef _MCVIPLANNER_H_
-#define _MCVIPLANNER_H_
+#pragma once
 
 #include <iostream>
 
 #include "AlphaVectorFSC.h"
 #include "BeliefParticles.h"
 #include "SimInterface.h"
+
+namespace MCVI {
 
 /// @brief Run the MCVI planner
 /// @param b0 Initial belief particles
@@ -26,7 +27,7 @@
 AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
                             SimInterface* pomdp, int64_t max_depth_sim,
                             int64_t nb_sample, int64_t nb_iter,
-                            const QLearning::QLearningPolicy policy);
+                            const QLearningPolicy policy);
 
 /// @brief Simulate an FSC execution
 void SimulationWithFSC(const BeliefParticles& b0, SimInterface* pomdp,
@@ -58,4 +59,4 @@ int64_t FindOrInsertNode(const AlphaVectorNode& node,
 int64_t InsertNode(const AlphaVectorNode& node,
                    const AlphaVectorFSC::EdgeMap& edges, AlphaVectorFSC& fsc);
 
-#endif /* !_MCVIPLANNER_H_ */
+}  // namespace MCVI

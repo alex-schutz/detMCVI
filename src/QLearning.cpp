@@ -1,7 +1,9 @@
-#include "../include/QLearning.h"
+#include "QLearning.h"
 
 #include <algorithm>
 #include <limits>
+
+namespace MCVI {
 
 std::unordered_map<int64_t, std::vector<double>>::iterator
 QLearning::GetQTableRow(int64_t state) {
@@ -56,7 +58,7 @@ double QLearning::GetQValue(int64_t state, int64_t action) {
   return row->second.at(action);
 }
 
-tuple<double, int64_t> QLearning::MaxQ(int64_t state) {
+std::tuple<double, int64_t> QLearning::MaxQ(int64_t state) {
   const auto row = GetQTableRow(state);
   const auto best = std::max_element(row->second.cbegin(), row->second.cend());
   return std::make_tuple(*best, best - row->second.cbegin());
@@ -64,10 +66,10 @@ tuple<double, int64_t> QLearning::MaxQ(int64_t state) {
 
 int64_t QLearning::ChooseAction(int64_t state) {
   // check if we should explore randomly
-  uniform_real_distribution<double> unif(0, 1);
+  std::uniform_real_distribution<double> unif(0, 1);
   const double u = unif(rng);
   if (u < epsilon) {
-    uniform_int_distribution<> action_dist(0, sim->GetSizeOfA() - 1);
+    std::uniform_int_distribution<> action_dist(0, sim->GetSizeOfA() - 1);
     return action_dist(rng);
   }
 
@@ -75,13 +77,13 @@ int64_t QLearning::ChooseAction(int64_t state) {
   return get<1>(MaxQ(state));
 }
 
-void QLearning::Train(const BeliefParticles& belief, ostream& os) {
-  double improvement = numeric_limits<double>::infinity();
-  double avg_curr = -numeric_limits<double>::infinity();
+void QLearning::Train(const BeliefParticles& belief, std::ostream& os) {
+  double improvement = std::numeric_limits<double>::infinity();
+  double avg_curr = -std::numeric_limits<double>::infinity();
   int64_t i_episode = 0;
   while (improvement > policy.ep_convergence_threshold &&
          i_episode < policy.max_episodes) {
-    os << "------ Episode: " << i_episode << " ------" << endl;
+    os << "------ Episode: " << i_episode << " ------" << std::endl;
     double ep_value = 0.0;
     for (int64_t i = 0; i < policy.episode_size; ++i) {
       double sum = 0.0;
@@ -93,7 +95,9 @@ void QLearning::Train(const BeliefParticles& belief, ostream& os) {
     ep_value /= policy.episode_size;
     improvement = abs(ep_value - avg_curr);
     avg_curr = ep_value;
-    os << "Avg value: " << avg_curr << endl;
+    os << "Avg value: " << avg_curr << std::endl;
     ++i_episode;
   }
 }
+
+}  // namespace MCVI

@@ -5,8 +5,7 @@
  *
  */
 
-#ifndef _BELIEFPARTICLES_H_
-#define _BELIEFPARTICLES_H_
+#pragma once
 
 #include <random>
 #include <unordered_map>
@@ -14,15 +13,22 @@
 
 #include "SimInterface.h"
 
+namespace MCVI {
+
 class BeliefParticles {
  private:
   std::vector<int64_t> _particles;
   mutable std::mt19937_64 _rng;
 
  public:
+  BeliefParticles() = default;
   BeliefParticles(const std::vector<int64_t>& particles,
                   uint64_t seed = std::random_device{}())
       : _particles(particles), _rng(seed) {}
+
+  bool operator==(const BeliefParticles& other) const {
+    return _particles == other._particles;
+  }
 
   /// @brief Return one state sampled from the set of particles
   int64_t SampleOneState() const;
@@ -37,4 +43,4 @@ class BeliefParticles {
   bool operator==(BeliefParticles& o) { return _particles == o._particles; }
 };
 
-#endif /* !_BELIEFPARTICLES_H_ */
+}  // namespace MCVI

@@ -5,10 +5,11 @@
  *
  */
 
-#ifndef _ALPHAVECTORFSC_H_
-#define _ALPHAVECTORFSC_H_
+#pragma once
 
 #include "AlphaVectorNode.h"
+
+namespace MCVI {
 
 class AlphaVectorFSC {
  public:
@@ -46,19 +47,19 @@ class AlphaVectorFSC {
   AlphaVectorNode& GetNode(int64_t nI) { return _nodes[nI]; }
 
   /// @brief Return the number of nodes in the FSC
-  size_t NumNodes() const { return _nodes.size(); }
+  int64_t NumNodes() const { return _nodes.size(); }
 
   /// @brief Add a node to the FSC
   int64_t AddNode(const AlphaVectorNode& node);
 
   /// @brief Return the node index assosciated with node nI, action a and
   /// observation o. Returns -1 if it does not exist.
-  int64_t GetEtaValue(int64_t nI, int64_t a, int64_t o) const;
+  int64_t GetEdgeValue(int64_t nI, int64_t a, int64_t o) const;
 
   /// @brief Set the node index assosciated with node nI, action a and
   /// observation o to nI_new.
-  void UpdateEta(int64_t nI, int64_t a, int64_t o, int64_t nI_new);
-  void UpdateEta(int64_t nI, const AlphaVectorFSC::EdgeMap& edges);
+  void UpdateEdge(int64_t nI, int64_t a, int64_t o, int64_t nI_new);
+  void UpdateEdge(int64_t nI, const AlphaVectorFSC::EdgeMap& edges);
 
   const std::vector<int64_t>& GetActionSpace() { return _action_space; }
   const std::vector<int64_t>& GetObsSpace() { return _observation_space; }
@@ -67,4 +68,4 @@ class AlphaVectorFSC {
   void SetStartNodeIndex(int64_t idx) { _start_node_index = idx; }
 };
 
-#endif /* !_ALPHAVECTORFSC_H_ */
+}  // namespace MCVI

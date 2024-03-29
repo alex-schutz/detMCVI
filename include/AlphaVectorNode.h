@@ -5,15 +5,17 @@
  *
  */
 
-#ifndef _ALPHAVECTORNODE_H_
-#define _ALPHAVECTORNODE_H_
+#pragma once
 
+#include <memory>
 #include <random>
 #include <unordered_map>
 #include <vector>
 
 #include "BeliefParticles.h"
 #include "BeliefTree.h"
+
+namespace MCVI {
 
 class AlphaVectorNode {
   using ValueMap = std::unordered_map<
@@ -74,4 +76,4 @@ class AlphaVectorNode {
   int64_t CalculateBestAction() const;
 };
 
-#endif /* !_ALPHAVECTORNODE_H_ */
+}  // namespace MCVI

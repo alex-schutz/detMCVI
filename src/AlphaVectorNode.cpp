@@ -1,7 +1,9 @@
-#include "../include/AlphaVectorNode.h"
+#include "AlphaVectorNode.h"
 
 #include <algorithm>
 #include <limits>
+
+namespace MCVI {
 
 std::unordered_map<int64_t, double> AlphaVectorNode::InitDoubleKeys(
     const std::vector<int64_t>& action_space) const {
@@ -54,3 +56,5 @@ void AlphaVectorNode::UpdateValue(int64_t action, int64_t observation,
                                   int64_t nI, double val) {
   _V_a_o_n[action][observation][nI] += val;
 }
+
+}  // namespace MCVI

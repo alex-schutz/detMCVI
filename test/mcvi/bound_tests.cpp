@@ -4,11 +4,13 @@
 #include <iostream>
 #include <string>
 
+using namespace MCVI;
+
 class TestPOMDP : public SimInterface {
  private:
-  std::vector<string> states{"s0", "s1", "s2", "s3", "s4", "sg"};
-  std::vector<string> actions{"a00", "a01", "a1", "a21",      "a20",
-                              "a40", "a41", "a3", "self_loop"};
+  std::vector<std::string> states{"s0", "s1", "s2", "s3", "s4", "sg"};
+  std::vector<std::string> actions{"a00", "a01", "a1", "a21",      "a20",
+                                   "a40", "a41", "a3", "self_loop"};
   std::vector<std::string> observations{"ob"};
 
  public:
@@ -17,7 +19,7 @@ class TestPOMDP : public SimInterface {
   int GetSizeOfA() const override { return actions.size(); }
   int GetSizeOfObs() const override { return observations.size(); }
   int SampleStartState() { return 0; }
-  tuple<int, int, double, bool> Step(int sI, int aI) override {
+  std::tuple<int, int, double, bool> Step(int sI, int aI) override {
     if (aI == 9) return {sI, 0, -13.0, false};
     switch (sI) {
       case 0:
@@ -42,8 +44,8 @@ class TestPOMDP : public SimInterface {
         if (aI == 5)
           return {5, 0, -5.0, true};
         else if (aI == 6) {
-          std::mt19937_64 rng(random_device{}());
-          uniform_real_distribution<double> unif(0, 1);
+          std::mt19937_64 rng(std::random_device{}());
+          std::uniform_real_distribution<double> unif(0, 1);
           const double u = unif(rng);
           const int s_next = u < 0.4 ? 3 : 5;
           return {s_next, 0, -2.0, s_next == 5};

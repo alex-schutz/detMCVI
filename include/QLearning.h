@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef _QLEARNING_H_
-#define _QLEARNING_H_
+#pragma once
+
 #include <iostream>
 #include <map>
 #include <random>
@@ -16,25 +16,27 @@
 #include "BeliefParticles.h"
 #include "SimInterface.h"
 
+namespace MCVI {
+
+struct QLearningPolicy {
+  double learning_rate;  // Initial learning rate
+  double decay;  // Decay rate for learning rate and random action probability
+  int64_t sim_depth;                // Max depth of a simulation run
+  int64_t max_episodes;             // Max number of episodes to learn
+  int64_t episode_size;             // Number of trials in a learning episode
+  int64_t num_sims;                 // Number of simulation runs in a trial
+  double ep_convergence_threshold;  // Threshold for when to stop learning
+  double epsilon_init = 1.0;   // Initial probability of taking random actions
+  double epsilon_final = 0.1;  // Final probability of taking random actions
+};
+
 /**
  * @brief Perform Q-learning on a POMDP
  */
 class QLearning {
  public:
-  struct QLearningPolicy {
-    double learning_rate;  // Initial learning rate
-    double decay;  // Decay rate for learning rate and random action probability
-    int64_t sim_depth;                // Max depth of a simulation run
-    int64_t max_episodes;             // Max number of episodes to learn
-    int64_t episode_size;             // Number of trials in a learning episode
-    int64_t num_sims;                 // Number of simulation runs in a trial
-    double ep_convergence_threshold;  // Threshold for when to stop learning
-    double epsilon_init = 1.0;   // Initial probability of taking random actions
-    double epsilon_final = 0.1;  // Final probability of taking random actions
-  };
-
   QLearning(SimInterface* sim, QLearningPolicy policy,
-            uint64_t seed = random_device{}())
+            uint64_t seed = std::random_device{}())
       : sim(sim),
         policy(policy),
         discount(sim->GetDiscount()),
@@ -44,7 +46,7 @@ class QLearning {
 
   /// @brief Train the Q-learning model on the given belief until improvement
   /// across the belief is less than epsilon or max_episodes is reached.
-  void Train(const BeliefParticles& belief, ostream& os = cout);
+  void Train(const BeliefParticles& belief, std::ostream& os = std::cout);
 
   /// @brief Return the estimated Q-value for the given state index.
   double EstimateValue(int64_t state, int64_t n_sims);
@@ -60,7 +62,7 @@ class QLearning {
 
   /// @brief Return the maximum Q-value for the state index across all actions,
   /// and the best action index.
-  tuple<double, int64_t> MaxQ(int64_t state);
+  std::tuple<double, int64_t> MaxQ(int64_t state);
 
   /// @brief Choose the index of the action to take in the state index. Chooses
   /// a random action with probability epsilon, otherwise chooses the
@@ -73,12 +75,13 @@ class QLearning {
   QLearningPolicy policy;
   double discount;
   double epsilon;
-  unordered_map<int64_t, vector<double>> q_table;
+  std::unordered_map<int64_t, std::vector<double>> q_table;
   mutable std::mt19937_64 rng;
 
-  unordered_map<int64_t, vector<double>>::iterator GetQTableRow(int64_t state);
+  std::unordered_map<int64_t, std::vector<double>>::iterator GetQTableRow(
+      int64_t state);
 
   void DecayParameters();
 };
 
-#endif /* !_QLEARNING_H_ */
+}  // namespace MCVI

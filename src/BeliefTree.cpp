@@ -1,4 +1,6 @@
-#include "../include/BeliefTree.h"
+#include "BeliefTree.h"
+
+namespace MCVI {
 
 void BeliefTreeNode::AddChild(int64_t action, int64_t observation,
                               std::shared_ptr<BeliefTreeNode> child) {
@@ -23,8 +25,7 @@ void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
                           int64_t action, int64_t observation,
                           const BeliefParticles& belief,
                           const std::vector<int64_t>& action_space,
-                          QLearning::QLearningPolicy policy,
-                          SimInterface* sim) {
+                          QLearningPolicy policy, SimInterface* sim) {
   const auto [a_best, U] =
       UpperBoundEvaluation(belief, sim, action_space, policy);
   const auto new_tree_node = BeliefTreeNode(
@@ -37,7 +38,7 @@ void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
     const BeliefParticles& belief, const std::vector<int64_t>& action_space,
-    QLearning::QLearningPolicy policy, SimInterface* sim) {
+    QLearningPolicy policy, SimInterface* sim) {
   const auto [a_best, U] =
       UpperBoundEvaluation(belief, sim, action_space, policy);
   const auto root = std::make_shared<BeliefTreeNode>(
@@ -50,7 +51,7 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
 void SampleBeliefs(
     std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
     int64_t max_depth, int64_t nb_sim, const std::vector<int64_t>& action_space,
-    SimInterface* pomdp, QLearning::QLearningPolicy policy,
+    SimInterface* pomdp, QLearningPolicy policy,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list) {
   if (depth >= max_depth) return;
   if (node == nullptr) throw std::logic_error("Invalid node");
@@ -97,3 +98,5 @@ std::pair<int64_t, std::unordered_map<int64_t, BeliefParticles>> BeliefUpdate(
   for (const auto& [o, v] : next_beliefs) belief_map[o] = BeliefParticles(v);
   return std::make_pair(most_prob_obs->first, belief_map);
 }
+
+}  // namespace MCVI

@@ -5,14 +5,15 @@
  *
  */
 
-#ifndef _BOUND_H_
-#define _BOUND_H_
+#pragma once
 
 #include <unordered_map>
 
-#include "AlphaVectorFSC.h"
+#include "BeliefParticles.h"
 #include "QLearning.h"
 #include "SimInterface.h"
+
+namespace MCVI {
 
 /**
  * @brief Return an upper bound for the value of the belief.
@@ -27,9 +28,9 @@
  * @param seed Random seed
  * @return tuple<int64_t, double> best action, upper bound
  */
-tuple<int64_t, double> UpperBoundEvaluation(
+std::tuple<int64_t, double> UpperBoundEvaluation(
     const BeliefParticles& belief, SimInterface* sim,
-    const std::vector<int64_t>& action_space, QLearning::QLearningPolicy policy,
+    const std::vector<int64_t>& action_space, QLearningPolicy policy,
     uint64_t seed = std::random_device{}());
 
 /**
@@ -47,4 +48,5 @@ tuple<int64_t, double> UpperBoundEvaluation(
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
                   const std::vector<int64_t>& action_space,
                   int64_t max_restarts, double epsilon, int64_t max_depth);
-#endif /* !_BOUND_H_ */
+
+}  // namespace MCVI

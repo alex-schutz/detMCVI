@@ -1,8 +1,10 @@
 
-#include "../include/MCVI.h"
+#include "MCVI.h"
 
 #include <algorithm>
 #include <limits>
+
+namespace MCVI {
 
 static bool CmpPair(const std::pair<int64_t, double>& p1,
                     const std::pair<int64_t, double>& p2) {
@@ -19,7 +21,8 @@ double SimulateTrajectory(int64_t nI, AlphaVectorFSC& fsc, int64_t state,
                                ? fsc.GetNode(nI_current).GetBestAction()
                                : pomdp->RandomAction();
     const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
-    if (nI_current != -1) nI_current = fsc.GetEtaValue(nI_current, action, obs);
+    if (nI_current != -1)
+      nI_current = fsc.GetEdgeValue(nI_current, action, obs);
 
     V_n_s += std::pow(gamma, step) * reward;
     if (done) break;
@@ -39,7 +42,7 @@ std::pair<double, int64_t> FindMaxValueNode(const AlphaVectorNode& node,
 int64_t InsertNode(const AlphaVectorNode& node,
                    const AlphaVectorFSC::EdgeMap& edges, AlphaVectorFSC& fsc) {
   const int64_t nI = fsc.AddNode(node);
-  fsc.UpdateEta(nI, edges);
+  fsc.UpdateEdge(nI, edges);
   return nI;
 }
 
@@ -52,7 +55,7 @@ int64_t FindOrInsertNode(const AlphaVectorNode& node,
     // First check the best action
     if (fsc.GetNode(nI).GetBestAction() == action) {
       for (const auto& obs : observation_space) {
-        const int64_t edge_node = fsc.GetEtaValue(nI, action, obs);
+        const int64_t edge_node = fsc.GetEdgeValue(nI, action, obs);
         if (edge_node == -1 || edge_node != edges.at({action, obs}))
           return InsertNode(node, edges, fsc);
       }
@@ -76,7 +79,7 @@ void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, AlphaVectorFSC& fsc,
       const int64_t state = belief.SampleOneState();
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
       node_new.AddR(action, reward);
-      for (int64_t nI = 0; (size_t)nI < fsc.NumNodes(); ++nI) {
+      for (int64_t nI = 0; nI < fsc.NumNodes(); ++nI) {
         const double V_nI_sNext =
             SimulateTrajectory(nI, fsc, sNext, max_depth_sim, pomdp);
         node_new.UpdateValue(action, obs, nI, V_nI_sNext);
@@ -101,7 +104,7 @@ void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, AlphaVectorFSC& fsc,
 AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
                             SimInterface* pomdp, int64_t max_depth_sim,
                             int64_t nb_sample, int64_t nb_iter,
-                            const QLearning::QLearningPolicy policy) {
+                            const QLearningPolicy policy) {
   std::vector<int64_t> action_space, observation_space;
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
   for (int64_t o = 0; o < pomdp->GetSizeOfObs(); ++o)
@@ -155,10 +158,12 @@ void SimulationWithFSC(const BeliefParticles& b0, SimInterface* pomdp,
     std::cout << "reward: " << reward << std::endl;
 
     sum_r += std::pow(gamma, i) * reward;
-    nI = fsc.GetEtaValue(nI, action, obs);
+    nI = fsc.GetEdgeValue(nI, action, obs);
 
     if (done) break;
     state = sNext;
   }
   std::cout << "sum reward: " << sum_r << std::endl;
 }
+
+}  // namespace MCVI
