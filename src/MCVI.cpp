@@ -62,12 +62,12 @@ int64_t FindOrInsertNode(const AlphaVectorNode& node,
   return InsertNode(node, edges, fsc);
 }
 
-void BackUp(BeliefTreeNode& Tr_node, AlphaVectorFSC& fsc, int64_t max_depth_sim,
-            int64_t nb_sample, SimInterface* pomdp,
+void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, AlphaVectorFSC& fsc,
+            int64_t max_depth_sim, int64_t nb_sample, SimInterface* pomdp,
             const std::vector<int64_t>& action_space,
             const std::vector<int64_t>& observation_space) {
   const double gamma = pomdp->GetDiscount();
-  const BeliefParticles& belief = Tr_node.GetParticles();
+  const BeliefParticles& belief = Tr_node->GetParticles();
   auto node_new = AlphaVectorNode(action_space, observation_space);
 
   AlphaVectorFSC::EdgeMap node_edges;
@@ -95,16 +95,11 @@ void BackUp(BeliefTreeNode& Tr_node, AlphaVectorFSC& fsc, int64_t max_depth_sim,
   node_new.UpdateBestValue(Tr_node);
   const int64_t nI =
       FindOrInsertNode(node_new, node_edges, observation_space, fsc);
-  Tr_node.SetFSCNodeIndex(nI);
+  Tr_node->SetFSCNodeIndex(nI);
 }
 
-/*
-void MCVIPlanning(int64_t nb_particles, const BeliefParticles& b0,
-                  AlphaVectorFSC fsc, SimInterface* pomdp, double epsilon) {
-  int64_t n_start = fsc.AddNode(b0);
-
-  while (true) {
-    // TODO: C++ implementation of the solver
-  }
-}
-*/
+void MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
+                  SimInterface* pomdp, int64_t max_depth_sim, int64_t nb_sample,
+                  double epsilon, int64_t nb_iter,
+                  const QLearning::QLearningPolicy policy,
+                  std::shared_ptr<BeliefTreeNode> Tr_root) {}

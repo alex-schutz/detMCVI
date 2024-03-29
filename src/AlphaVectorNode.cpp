@@ -39,10 +39,10 @@ int64_t AlphaVectorNode::CalculateBestAction() const {
   return best_action->first;
 }
 
-void AlphaVectorNode::UpdateBestValue(BeliefTreeNode& tr) {
+void AlphaVectorNode::UpdateBestValue(std::shared_ptr<BeliefTreeNode> tr) {
   _best_action = CalculateBestAction();
   _V_node = _Q_action.at(_best_action);
-  tr.SetBestAction(_best_action, _V_node);
+  tr->SetBestAction(_best_action, _V_node);
 }
 
 const std::unordered_map<int64_t, double>&

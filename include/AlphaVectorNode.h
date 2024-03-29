@@ -61,7 +61,7 @@ class AlphaVectorNode {
   void UpdateValue(int64_t action, int64_t observation, int64_t nI, double val);
 
   /// @brief Recalculate _V_node by finding the best action
-  void UpdateBestValue(BeliefTreeNode& tr);
+  void UpdateBestValue(std::shared_ptr<BeliefTreeNode> tr);
 
  private:
   std::unordered_map<int64_t, double> InitDoubleKeys(
