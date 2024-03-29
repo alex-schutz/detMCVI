@@ -10,13 +10,6 @@ std::unordered_map<int64_t, double> AlphaVectorNode::InitDoubleKeys(
   return v;
 }
 
-std::unordered_map<int64_t, bool> AlphaVectorNode::InitBoolKeys(
-    const std::vector<int64_t>& action_space) const {
-  std::unordered_map<int64_t, bool> v;
-  for (const auto& a : action_space) v[a] = false;
-  return v;
-}
-
 AlphaVectorNode::ValueMap AlphaVectorNode::InitValueMap(
     const std::vector<int64_t>& action_space,
     const std::vector<int64_t>& observation_space) const {
@@ -29,19 +22,14 @@ AlphaVectorNode::ValueMap AlphaVectorNode::InitValueMap(
   return v;
 }
 
-AlphaVectorNode::AlphaVectorNode(const BeliefParticles& state_particles,
-                                 const std::vector<int64_t>& action_space,
+AlphaVectorNode::AlphaVectorNode(const std::vector<int64_t>& action_space,
                                  const std::vector<int64_t>& observation_space)
-    : _state_particles(state_particles),
-      _Q_action(InitDoubleKeys(action_space)),
+    : _Q_action(InitDoubleKeys(action_space)),
       _R_action(InitDoubleKeys(action_space)),
       _V_a_o_n(InitValueMap(action_space, observation_space)),
-      _V_node_s(),
-      _V_node_s_count(),
-      _V_node(0.0),
-      _best_action_update(InitBoolKeys(action_space)) {}
+      _V_node(0.0) {}
 
-int64_t AlphaVectorNode::GetBestAction() const {
+int64_t AlphaVectorNode::CalculateBestAction() const {
   const auto best_action =
       std::max_element(std::begin(_Q_action), std::end(_Q_action),
                        [](const std::pair<int64_t, double>& p1,
@@ -51,25 +39,15 @@ int64_t AlphaVectorNode::GetBestAction() const {
   return best_action->first;
 }
 
-int64_t AlphaVectorNode::SampleParticle() const {
-  return _state_particles.SampleOneState();
-}
-
-void AlphaVectorNode::UpdateBestValue() {
-  const int64_t best_action = GetBestAction();
-  _V_node = _Q_action.at(best_action);
+void AlphaVectorNode::UpdateBestValue(BeliefTreeNode& tr) {
+  _best_action = CalculateBestAction();
+  _V_node = _Q_action.at(_best_action);
+  tr.SetBestAction(_best_action, _V_node);
 }
 
 const std::unordered_map<int64_t, double>&
 AlphaVectorNode::GetActionObservationValues(int64_t a, int64_t o) const {
   return _V_a_o_n.at(a).at(o);
-}
-
-void AlphaVectorNode::ReInit(const std::vector<int64_t>& action_space,
-                             const std::vector<int64_t>& observation_space) {
-  _R_action = InitDoubleKeys(action_space);
-  _Q_action = InitDoubleKeys(action_space);
-  _V_a_o_n = InitValueMap(action_space, observation_space);
 }
 
 void AlphaVectorNode::UpdateValue(int64_t action, int64_t observation,

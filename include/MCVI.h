@@ -21,10 +21,30 @@ class MCVI {
   MCVI(/* args */) {}
 };
 
-/// @brief Determine the lower bound reward of the belief, by choosing an action
-/// that maximises the minimum instant reward for all situations
-double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
-                  const std::vector<int64_t>& action_space,
-                  int64_t max_restarts, double epsilon, int64_t max_depth);
+/// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
+void BackUp(BeliefTreeNode& Tr_node, AlphaVectorFSC& fsc, int64_t max_depth_sim,
+            int64_t nb_sample, SimInterface* pomdp,
+            const std::vector<int64_t>& action_space,
+            const std::vector<int64_t>& observation_space);
+
+/// @brief Simulate a trajectory using the policy graph beginning at node nI and
+/// the given state, returning the discounted reward of the simulation
+double SimulateTrajectory(int64_t nI, AlphaVectorFSC& fsc, int64_t state,
+                          int64_t max_depth, SimInterface* pomdp);
+
+/// @brief Find the node in the V_a_o_n set of the node with the highest value
+std::pair<double, int64_t> FindMaxValueNode(const AlphaVectorNode& node,
+                                            int64_t a, int64_t o);
+
+/// @brief Find a node matching the given node and edges, or insert it if it
+/// does not exist
+int64_t FindOrInsertNode(const AlphaVectorNode& node,
+                         const AlphaVectorFSC::EdgeMap& edges,
+                         const std::vector<int64_t>& observation_space,
+                         AlphaVectorFSC& fsc);
+
+/// @brief Insert the given node into the fsc
+int64_t InsertNode(const AlphaVectorNode& node,
+                   const AlphaVectorFSC::EdgeMap& edges, AlphaVectorFSC& fsc);
 
 #endif /* !_MCVIPLANNER_H_ */

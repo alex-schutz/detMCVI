@@ -11,7 +11,7 @@
 #include "AlphaVectorNode.h"
 
 class AlphaVectorFSC {
- private:
+ public:
   struct PairHash {
     std::size_t operator()(const std::pair<int64_t, int64_t>& p) const {
       size_t hash = 0x9e3779b97f4a7c15;
@@ -22,10 +22,11 @@ class AlphaVectorFSC {
     }
   };
 
-  using AOMap =
+  using EdgeMap =
       std::unordered_map<std::pair<int64_t, int64_t>, int64_t, PairHash>;
 
-  std::vector<AOMap> _eta;
+ private:
+  std::vector<EdgeMap> _edges;
   std::vector<AlphaVectorNode> _nodes;
   std::vector<int64_t> _action_space;
   std::vector<int64_t> _observation_space;
@@ -34,7 +35,7 @@ class AlphaVectorFSC {
   AlphaVectorFSC(int64_t max_node_size,
                  const std::vector<int64_t>& action_space,
                  const std::vector<int64_t>& observation_space)
-      : _eta(max_node_size, AOMap()),
+      : _edges(max_node_size, EdgeMap()),
         _nodes(),
         _action_space(action_space),
         _observation_space(observation_space) {}
@@ -45,17 +46,17 @@ class AlphaVectorFSC {
   /// @brief Return the number of nodes in the FSC
   size_t NumNodes() const { return _nodes.size(); }
 
-  /// @brief Add a node to the FSC with the given state particles, action space
-  /// and observation space. Returns the index of the added node.
-  int64_t AddNode(const BeliefParticles& state_particles);
+  /// @brief Add a node to the FSC
+  int64_t AddNode(const AlphaVectorNode& node);
 
-  /// @brief Return the eta value assosciated with node nI, action a and
+  /// @brief Return the node index assosciated with node nI, action a and
   /// observation o. Returns -1 if it does not exist.
   int64_t GetEtaValue(int64_t nI, int64_t a, int64_t o) const;
 
-  /// @brief Set the eta value assosciated with node nI, action a and
+  /// @brief Set the node index assosciated with node nI, action a and
   /// observation o to nI_new.
   void UpdateEta(int64_t nI, int64_t a, int64_t o, int64_t nI_new);
+  void UpdateEta(int64_t nI, const AlphaVectorFSC::EdgeMap& edges);
 
   const std::vector<int64_t>& GetActionSpace() { return _action_space; }
   const std::vector<int64_t>& GetObsSpace() { return _observation_space; }

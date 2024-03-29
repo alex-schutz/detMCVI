@@ -33,7 +33,8 @@ tuple<int64_t, double> UpperBoundEvaluation(
     uint64_t seed = std::random_device{}());
 
 /**
- * @brief Return a lower bound for the value of the belief
+ * @brief Determine the lower bound reward of the belief, by choosing an action
+ * that maximises the minimum instant reward for all situations
  *
  * @param belief A set of belief particles
  * @param sim A POMDP simulator object
