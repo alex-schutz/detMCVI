@@ -87,11 +87,17 @@ std::pair<int64_t, std::unordered_map<int64_t, BeliefParticles>> BeliefUpdate(
     SimInterface* pomdp) {
   std::unordered_map<int64_t, std::vector<int64_t>> next_beliefs;
 
+  double sum_r = 0.0;
   for (int i = 0; i < nb_sim; ++i) {
     const int64_t state = node->GetParticles().SampleOneState();
     auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+    sum_r += reward;
     next_beliefs[obs].push_back(state);
   }
+
+  node->SetReward(action, sum_r / nb_sim);
+  for (const auto& [o, v] : next_beliefs)
+    node->SetWeight(action, o, v.size() / (double)nb_sim);
 
   const auto most_prob_obs = std::max_element(
       std::begin(next_beliefs), std::end(next_beliefs), CmpPairSize);
@@ -99,6 +105,24 @@ std::pair<int64_t, std::unordered_map<int64_t, BeliefParticles>> BeliefUpdate(
   std::unordered_map<int64_t, BeliefParticles> belief_map;
   for (const auto& [o, v] : next_beliefs) belief_map[o] = BeliefParticles(v);
   return std::make_pair(most_prob_obs->first, belief_map);
+}
+
+double UpdateUpperBound(std::shared_ptr<BeliefTreeNode> node, double gamma,
+                        int64_t depth) {
+  if (!node) return 0.0;
+  const auto action = node->GetBestAction();
+  if (node->GetFSCNodeIndex() == -1 || !node->HasReward(action))
+    return std::pow(gamma, depth) * node->GetUpper();
+  const double R_a = node->GetReward(action);
+  double esti_U_future = 0.0;
+  for (const auto& [o, w] : node->GetWeights(action)) {
+    const double U_child =
+        UpdateUpperBound(node->GetChild(action, o), gamma, depth + 1);
+    esti_U_future += w * U_child;
+  }
+
+  node->SetUpper(R_a + gamma * esti_U_future);
+  return node->GetUpper();
 }
 
 }  // namespace MCVI

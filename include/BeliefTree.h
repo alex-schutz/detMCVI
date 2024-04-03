@@ -24,6 +24,11 @@ class BeliefTreeNode {
   BeliefParticles _state_particles;
   BeliefEdgeMap _child_nodes;
   int64_t _best_action;
+  std::unordered_map<int64_t, double>
+      _R_a;  // a map from actions to expected instant reward
+  std::unordered_map<int64_t, std::unordered_map<int64_t, double>>
+      _a_o_weights;  // a map that stores the weights of different observations
+                     // for a given action
   double _upper_bound;
   double _lower_bound;
   int64_t _fsc_node_index;
@@ -49,7 +54,20 @@ class BeliefTreeNode {
   void SetBestAction(int64_t action, double lower_bound);
 
   double GetUpper() const { return _upper_bound; }
+  void SetUpper(double upper_bound) { _upper_bound = upper_bound; }
   double GetLower() const { return _lower_bound; }
+
+  bool HasReward(int64_t action) const { return _R_a.contains(action); }
+  double GetReward(int64_t action) const { return _R_a.at(action); }
+  void SetReward(int64_t action, double reward) { _R_a[action] = reward; }
+
+  const std::unordered_map<int64_t, double>& GetWeights(int64_t action) const {
+    return _a_o_weights.at(action);
+  }
+  void SetWeight(int64_t action, int64_t observation, double weight) {
+    auto& aw = _a_o_weights[action];
+    aw[observation] = weight;
+  }
 
   std::shared_ptr<BeliefTreeNode> GetChild(int64_t action, int64_t observation);
 };
@@ -78,5 +96,9 @@ void SampleBeliefs(
 std::pair<int64_t, std::unordered_map<int64_t, BeliefParticles>> BeliefUpdate(
     std::shared_ptr<BeliefTreeNode> node, int64_t action, int64_t nb_sim,
     SimInterface* pomdp);
+
+// Update the upper bound of the given node based on its children
+double UpdateUpperBound(std::shared_ptr<BeliefTreeNode> node, double gamma,
+                        int64_t depth);
 
 }  // namespace MCVI

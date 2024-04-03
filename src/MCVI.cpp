@@ -112,6 +112,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
 
   for (int64_t i = 0; i < nb_iter; ++i) {
     std::cout << "--- Iter " << i << " ---" << std::endl;
+    UpdateUpperBound(Tr_root, _pomdp->GetDiscount(), 0);
     std::cout << "Tr_root upper bound: " << Tr_root->GetUpper() << std::endl;
     std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
     std::cout << "Belief Expand Process" << std::endl;
