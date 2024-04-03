@@ -1,0 +1,2 @@
+add_executable(tiger_experiment tiger.cpp)
+target_link_libraries(tiger_experiment mcvi_library)
