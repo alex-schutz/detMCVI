@@ -46,16 +46,21 @@ void QLearning::DecayParameters() {
 
 void QLearning::UpdateQValue(int64_t state, int64_t action, double reward,
                              int64_t next_state) {
-  const double old_val = GetQValue(state, action);
+  const double old_val = GetQValueOrInit(state, action);
   const double new_val = reward + discount * get<0>(MaxQ(next_state));
   const double new_Q =
       (1 - policy.learning_rate) * old_val + policy.learning_rate * new_val;
   q_table[state][action] = new_Q;
 }
 
-double QLearning::GetQValue(int64_t state, int64_t action) {
+double QLearning::GetQValueOrInit(int64_t state, int64_t action) {
   const auto row = GetQTableRow(state);
   return row->second.at(action);
+}
+
+double QLearning::GetQValue(int64_t state, int64_t action) const {
+  const auto row = q_table.at(state);
+  return row.at(action);
 }
 
 std::tuple<double, int64_t> QLearning::MaxQ(int64_t state) {

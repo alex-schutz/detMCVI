@@ -50,23 +50,23 @@ int main() {
   const double noise = 0.15;
   auto pomdp = TigerPOMDP(noise);
 
+  // Sample the initial belief
+  std::vector<int64_t> particles;
+  for (int i = 0; i < 500; ++i) particles.push_back(pomdp.SampleStartState());
+  const auto init_belief = BeliefParticles(particles);
+
   // Set the Q-learning policy
   const auto q_policy = QLearningPolicy(0.9, 0.01, 10, 10, 10, 20, 0.01);
 
   // Initialise the FSC
   const auto init_fsc = AlphaVectorFSC(10000, {0, 1, 2}, {0, 1});
 
-  // Sample the initial belief
-  std::vector<int64_t> particles;
-  for (int i = 0; i < 500; ++i) particles.push_back(pomdp.SampleStartState());
-  const auto init_belief = BeliefParticles(particles);
-
   // Run MCVI
-  auto planner = MCVIPlanner(&pomdp, init_fsc, q_policy);
-  planner.Plan(init_belief, 30, 200, 30);
+  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, q_policy);
+  planner.Plan(30, 200, 30);
 
   // Simulate the resultant FSC
-  planner.SimulationWithFSC(init_belief, 20);
+  planner.SimulationWithFSC(20);
 
   return 0;
 }

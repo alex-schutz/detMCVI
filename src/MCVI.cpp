@@ -98,15 +98,14 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   Tr_node->SetFSCNodeIndex(nI);
 }
 
-AlphaVectorFSC MCVIPlanner::Plan(const BeliefParticles& b0,
-                                 int64_t max_depth_sim, int64_t nb_sample,
+AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
                                  int64_t nb_iter) {
   std::vector<int64_t> action_space, observation_space;
   for (int64_t a = 0; a < _pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
   for (int64_t o = 0; o < _pomdp->GetSizeOfObs(); ++o)
     observation_space.push_back(o);
   std::shared_ptr<BeliefTreeNode> Tr_root =
-      CreateBeliefRootNode(b0, action_space, _policy, _pomdp);
+      CreateBeliefRootNode(_b0, action_space, _heuristic, _pomdp);
   const auto node = AlphaVectorNode(action_space, observation_space);
   _fsc.AddNode(node);
   Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);
@@ -118,8 +117,8 @@ AlphaVectorFSC MCVIPlanner::Plan(const BeliefParticles& b0,
     std::cout << "Belief Expand Process" << std::endl;
 
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
-    SampleBeliefs(Tr_root, b0.SampleOneState(), 0, max_depth_sim, nb_sample,
-                  action_space, _pomdp, _policy, traversal_list);
+    SampleBeliefs(Tr_root, _b0.SampleOneState(), 0, max_depth_sim, nb_sample,
+                  action_space, _pomdp, _heuristic, traversal_list);
 
     std::cout << "Backup Process" << std::endl;
     while (!traversal_list.empty()) {
@@ -134,10 +133,9 @@ AlphaVectorFSC MCVIPlanner::Plan(const BeliefParticles& b0,
   return _fsc;
 }
 
-void MCVIPlanner::SimulationWithFSC(const BeliefParticles& b0,
-                                    int64_t steps) const {
+void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   const double gamma = _pomdp->GetDiscount();
-  int64_t state = b0.SampleOneState();
+  int64_t state = _b0.SampleOneState();
   double sum_r = 0.0;
   int64_t nI = _fsc.GetStartNodeIndex();
   for (int64_t i = 0; i < steps; ++i) {

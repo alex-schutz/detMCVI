@@ -22,16 +22,13 @@ namespace MCVI {
  * state's MDP value
  *
  * @param belief A set of belief particles
- * @param sim A POMDP simulator object
  * @param action_space The set of accessible actions
- * @param policy Q-learning policy to use for the evaluation
- * @param seed Random seed
+ * @param heuristic Pre-trained Q-learning heuristic to use for the evaluation
  * @return tuple<int64_t, double> best action, upper bound
  */
 std::tuple<int64_t, double> UpperBoundEvaluation(
-    const BeliefParticles& belief, SimInterface* sim,
-    const std::vector<int64_t>& action_space, QLearningPolicy policy,
-    uint64_t seed = std::random_device{}());
+    const BeliefParticles& belief, const std::vector<int64_t>& action_space,
+    const QLearning& heuristic);
 
 /**
  * @brief Determine the lower bound reward of the belief, by choosing an action

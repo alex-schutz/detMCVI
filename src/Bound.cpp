@@ -11,16 +11,12 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
 }
 
 std::tuple<int64_t, double> UpperBoundEvaluation(
-    const BeliefParticles& belief, SimInterface* sim,
-    const std::vector<int64_t>& action_space, QLearningPolicy policy,
-    uint64_t seed) {
-  auto q_engine = QLearning(sim, policy, seed);
-  q_engine.Train(belief);
-
+    const BeliefParticles& belief, const std::vector<int64_t>& action_space,
+    const QLearning& heuristic) {
   std::unordered_map<int64_t, double> action_vals;
   for (const auto& a : action_space) {
     for (const auto& state : belief.GetParticles())
-      action_vals[a] += q_engine.GetQValue(state, a);
+      action_vals[a] += heuristic.GetQValue(state, a);
   }
 
   // Calculate the upper bound and best action

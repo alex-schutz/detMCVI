@@ -58,7 +58,8 @@ class QLearning {
 
   /// @brief Return the current q value associated with state index and
   /// action index.
-  double GetQValue(int64_t state, int64_t action);
+  double GetQValue(int64_t state, int64_t action) const;
+  double GetQValueOrInit(int64_t state, int64_t action);
 
   /// @brief Return the maximum Q-value for the state index across all actions,
   /// and the best action index.
@@ -68,6 +69,8 @@ class QLearning {
   /// a random action with probability epsilon, otherwise chooses the
   /// current best action.
   int64_t ChooseAction(int64_t state);
+
+  const QLearningPolicy& GetPolicy() const { return policy; }
 
  private:
   SimInterface* sim;

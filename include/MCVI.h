@@ -19,28 +19,30 @@ class MCVIPlanner {
  private:
   SimInterface* _pomdp;
   AlphaVectorFSC _fsc;
-  QLearningPolicy _policy;
+  BeliefParticles _b0;
+  QLearning _heuristic;
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
-              const QLearningPolicy& policy)
-      : _pomdp(pomdp), _fsc(init_fsc), _policy(policy) {}
+              const BeliefParticles& init_belief,
+              const QLearningPolicy& q_policy)
+      : _pomdp(pomdp),
+        _fsc(init_fsc),
+        _b0(init_belief),
+        _heuristic(_pomdp, q_policy) {
+    _heuristic.Train(_b0);
+  }
 
   /// @brief Run the MCVI planner
-  /// @param b0 Initial belief particles
-  /// @param fsc Initial FSC
-  /// @param pomdp Simulator
   /// @param max_depth_sim Maximum depth to simulate
   /// @param nb_sample Number of samples in belief expansion
   /// @param nb_iter Number of tree traversals
-  /// @param policy Q-learning policy for bound seting
   /// @return The FSC for the pomdp
-  AlphaVectorFSC Plan(const BeliefParticles& b0,
-                                     int64_t max_depth_sim, int64_t nb_sample,
-                                     int64_t nb_iter);
+  AlphaVectorFSC Plan(int64_t max_depth_sim, int64_t nb_sample,
+                      int64_t nb_iter);
 
-  /// @brief Simulate an FSC execution from an initial belief
-  void SimulationWithFSC(const BeliefParticles& b0, int64_t steps) const;
+  /// @brief Simulate an FSC execution from the initial belief
+  void SimulationWithFSC(int64_t steps) const;
 
  private:
   /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.

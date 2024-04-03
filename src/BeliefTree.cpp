@@ -25,33 +25,35 @@ void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
                           int64_t action, int64_t observation,
                           const BeliefParticles& belief,
                           const std::vector<int64_t>& action_space,
-                          QLearningPolicy policy, SimInterface* sim) {
+                          const QLearning& heuristic, SimInterface* sim) {
   const auto [a_best, U] =
-      UpperBoundEvaluation(belief, sim, action_space, policy);
+      UpperBoundEvaluation(belief, action_space, heuristic);
   const auto new_tree_node = BeliefTreeNode(
       belief, a_best, U,
-      FindRLower(sim, belief, action_space, policy.num_sims,
-                 policy.ep_convergence_threshold, policy.sim_depth));
+      FindRLower(sim, belief, action_space, heuristic.GetPolicy().num_sims,
+                 heuristic.GetPolicy().ep_convergence_threshold,
+                 heuristic.GetPolicy().sim_depth));
   parent->AddChild(action, observation,
                    std::make_shared<BeliefTreeNode>(new_tree_node));
 }
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
     const BeliefParticles& belief, const std::vector<int64_t>& action_space,
-    QLearningPolicy policy, SimInterface* sim) {
+    const QLearning& heuristic, SimInterface* sim) {
   const auto [a_best, U] =
-      UpperBoundEvaluation(belief, sim, action_space, policy);
+      UpperBoundEvaluation(belief, action_space, heuristic);
   const auto root = std::make_shared<BeliefTreeNode>(
       belief, a_best, U,
-      FindRLower(sim, belief, action_space, policy.num_sims,
-                 policy.ep_convergence_threshold, policy.sim_depth));
+      FindRLower(sim, belief, action_space, heuristic.GetPolicy().num_sims,
+                 heuristic.GetPolicy().ep_convergence_threshold,
+                 heuristic.GetPolicy().sim_depth));
   return root;
 }
 
 void SampleBeliefs(
     std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
     int64_t max_depth, int64_t nb_sim, const std::vector<int64_t>& action_space,
-    SimInterface* pomdp, QLearningPolicy policy,
+    SimInterface* pomdp, const QLearning& heuristic,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list) {
   if (depth >= max_depth) return;
   if (node == nullptr) throw std::logic_error("Invalid node");
@@ -66,13 +68,13 @@ void SampleBeliefs(
     const auto [o, next_beliefs] = BeliefUpdate(node, action, nb_sim, pomdp);
     obs = o;
     for (const auto& [ob, b_next] : next_beliefs)
-      CreateBeliefTreeNode(node, action, ob, b_next, action_space, policy,
+      CreateBeliefTreeNode(node, action, ob, b_next, action_space, heuristic,
                            pomdp);
   }
 
   traversal_list.push_back(node);
   SampleBeliefs(node->GetChild(action, obs), state, depth, max_depth, nb_sim,
-                action_space, pomdp, policy, traversal_list);
+                action_space, pomdp, heuristic, traversal_list);
 }
 
 static bool CmpPairSize(const std::pair<int64_t, std::vector<int64_t>>& p1,
