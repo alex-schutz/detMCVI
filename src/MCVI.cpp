@@ -11,8 +11,8 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
   return p1.second < p2.second;
 }
 
-double MCVI::SimulateTrajectory(int64_t nI, int64_t state,
-                                int64_t max_depth) const {
+double MCVIPlanner::SimulateTrajectory(int64_t nI, int64_t state,
+                                       int64_t max_depth) const {
   const double gamma = _pomdp->GetDiscount();
   double V_n_s = 0.0;
   int64_t nI_current = nI;
@@ -32,23 +32,23 @@ double MCVI::SimulateTrajectory(int64_t nI, int64_t state,
   return V_n_s;
 }
 
-std::pair<double, int64_t> MCVI::FindMaxValueNode(const AlphaVectorNode& node,
-                                                  int64_t a, int64_t o) const {
+std::pair<double, int64_t> MCVIPlanner::FindMaxValueNode(
+    const AlphaVectorNode& node, int64_t a, int64_t o) const {
   const auto& v = node.GetActionObservationValues(a, o);
   const auto it = std::max_element(std::begin(v), std::end(v), CmpPair);
   return {it->second, it->first};
 }
 
-int64_t MCVI::InsertNode(const AlphaVectorNode& node,
-                         const AlphaVectorFSC::EdgeMap& edges) {
+int64_t MCVIPlanner::InsertNode(const AlphaVectorNode& node,
+                                const AlphaVectorFSC::EdgeMap& edges) {
   const int64_t nI = _fsc.AddNode(node);
   _fsc.UpdateEdge(nI, edges);
   return nI;
 }
 
-int64_t MCVI::FindOrInsertNode(const AlphaVectorNode& node,
-                               const AlphaVectorFSC::EdgeMap& edges,
-                               const std::vector<int64_t>& observation_space) {
+int64_t MCVIPlanner::FindOrInsertNode(
+    const AlphaVectorNode& node, const AlphaVectorFSC::EdgeMap& edges,
+    const std::vector<int64_t>& observation_space) {
   const int64_t action = node.GetBestAction();
   for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
     // First check the best action
@@ -64,10 +64,10 @@ int64_t MCVI::FindOrInsertNode(const AlphaVectorNode& node,
   return InsertNode(node, edges);
 }
 
-void MCVI::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
-                  int64_t max_depth_sim, int64_t nb_sample,
-                  const std::vector<int64_t>& action_space,
-                  const std::vector<int64_t>& observation_space) {
+void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
+                         int64_t max_depth_sim, int64_t nb_sample,
+                         const std::vector<int64_t>& action_space,
+                         const std::vector<int64_t>& observation_space) {
   const double gamma = _pomdp->GetDiscount();
   const BeliefParticles& belief = Tr_node->GetParticles();
   auto node_new = AlphaVectorNode(action_space, observation_space);
@@ -98,9 +98,9 @@ void MCVI::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   Tr_node->SetFSCNodeIndex(nI);
 }
 
-AlphaVectorFSC MCVI::MCVIPlanning(const BeliefParticles& b0,
-                                  int64_t max_depth_sim, int64_t nb_sample,
-                                  int64_t nb_iter) {
+AlphaVectorFSC MCVIPlanner::Plan(const BeliefParticles& b0,
+                                 int64_t max_depth_sim, int64_t nb_sample,
+                                 int64_t nb_iter) {
   std::vector<int64_t> action_space, observation_space;
   for (int64_t a = 0; a < _pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
   for (int64_t o = 0; o < _pomdp->GetSizeOfObs(); ++o)
@@ -134,7 +134,8 @@ AlphaVectorFSC MCVI::MCVIPlanning(const BeliefParticles& b0,
   return _fsc;
 }
 
-void MCVI::SimulationWithFSC(const BeliefParticles& b0, int64_t steps) const {
+void MCVIPlanner::SimulationWithFSC(const BeliefParticles& b0,
+                                    int64_t steps) const {
   const double gamma = _pomdp->GetDiscount();
   int64_t state = b0.SampleOneState();
   double sum_r = 0.0;
