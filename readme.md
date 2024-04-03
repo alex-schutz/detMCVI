@@ -32,18 +32,18 @@ Current MCVI Julia Implementation Progress
     - [x] POMDP Interface
     - [x] Simulator Interface
     - [x] Finite State Controller 
-    - [ ] Belief Expansion Tree
+    - [x] Belief Expansion Tree
 
 - Main Components
     - [x] Upper Bound Evaluation
         - [x] Q-learning implementation
     - [x] Lower Bound Evaluation (Simulation with the FSC built)
-    - [ ] Belief Expand Method
+    - [x] Belief Expand Method
     - [x] Monte-Carlo BackUp
         - [x] Basic implementation
         - [x] Testing
 
 - Testing with POMDP and CTP benchmarks
-    - [ ] Tiger
-    - [ ] Rock Sample
+    - [x] Tiger
+    - [x] Rock Sample
     - [ ] Alex's CTP problems
