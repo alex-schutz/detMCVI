@@ -24,12 +24,19 @@ AlphaVectorNode::ValueMap AlphaVectorNode::InitValueMap(
   return v;
 }
 
+static int64_t RandomAction(const std::vector<int64_t>& action_space) {
+  std::mt19937_64 rng;
+  std::uniform_int_distribution<> action_dist(0, action_space.size() - 1);
+  return action_space[action_dist(rng)];
+}
+
 AlphaVectorNode::AlphaVectorNode(const std::vector<int64_t>& action_space,
                                  const std::vector<int64_t>& observation_space)
     : _Q_action(InitDoubleKeys(action_space)),
       _R_action(InitDoubleKeys(action_space)),
       _V_a_o_n(InitValueMap(action_space, observation_space)),
-      _V_node(0.0) {}
+      _V_node(0.0),
+      _best_action(RandomAction(action_space)) {}
 
 int64_t AlphaVectorNode::CalculateBestAction() const {
   const auto best_action =

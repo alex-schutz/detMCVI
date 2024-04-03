@@ -73,8 +73,8 @@ void SampleBeliefs(
   }
 
   traversal_list.push_back(node);
-  SampleBeliefs(node->GetChild(action, obs), state, depth, max_depth, nb_sim,
-                action_space, pomdp, heuristic, traversal_list);
+  SampleBeliefs(node->GetChild(action, obs), state, depth + 1, max_depth,
+                nb_sim, action_space, pomdp, heuristic, traversal_list);
 }
 
 static bool CmpPairSize(const std::pair<int64_t, std::vector<int64_t>>& p1,
