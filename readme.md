@@ -14,17 +14,18 @@ Current MCVI C++ Implementation Progress
     - [x] POMDP Interface
     - [x] Simulator Interface
     - [x] Finite State Controller 
-    - [ ] Belief Expansion Tree
+    - [x] Belief Expansion Tree
 
 - Main Components
     - [x] Upper Bound Evaluation
         - [x] Q-learning implementation
     - [x] Lower Bound Evaluation (Simulation with the FSC built)
-    - [ ] Belief Expand Method
-    - [ ] Monte-Carlo BackUp
+    - [x] Belief Expand Method
+    - [x] Monte-Carlo BackUp
         - [x] Basic implementation
         - [ ] Testing
-    - Testing with CTP benchmarks
+    - Testing with POMDP and CTP benchmarks
+        - [ ] POMDP benchmarks (not really necessary in C++)    
         - [ ] Alex's CTP problems
 
 Current MCVI Julia Implementation Progress 
