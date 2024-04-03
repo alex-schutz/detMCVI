@@ -93,7 +93,7 @@ void QLearning::Train(const BeliefParticles& belief, std::ostream& os) {
       DecayParameters();
     }
     ep_value /= policy.episode_size;
-    improvement = abs(ep_value - avg_curr);
+    improvement = std::abs(ep_value - avg_curr);
     avg_curr = ep_value;
     os << "Avg value: " << avg_curr << std::endl;
     ++i_episode;
