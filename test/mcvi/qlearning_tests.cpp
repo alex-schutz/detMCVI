@@ -63,7 +63,7 @@ TEST(QLearningTest, Learning) {
   auto q_engine = QLearning(&sim, {0.7, 0.05, 50, 20, 100, 1000, 0.001});
 
   const auto belief = BeliefParticles({0, 1, 2, 3, 4, 5});
-  q_engine.Train(belief);
+  q_engine.Train(belief, std::cerr);
 
   EXPECT_NEAR(get<0>(q_engine.MaxQ(0)), -5.851, 2e-2);  // -6
   EXPECT_NEAR(get<0>(q_engine.MaxQ(1)), -5.851, 2e-2);  // -6

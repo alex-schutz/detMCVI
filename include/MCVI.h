@@ -15,48 +15,55 @@
 
 namespace MCVI {
 
-/// @brief Run the MCVI planner
-/// @param b0 Initial belief particles
-/// @param fsc Initial FSC
-/// @param pomdp Simulator
-/// @param max_depth_sim Maximum depth to simulate
-/// @param nb_sample Number of samples in belief expansion
-/// @param nb_iter Number of tree traversals
-/// @param policy Q-learning policy for bound seting
-/// @return
-AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, AlphaVectorFSC fsc,
-                            SimInterface* pomdp, int64_t max_depth_sim,
-                            int64_t nb_sample, int64_t nb_iter,
-                            const QLearningPolicy policy);
+class MCVI {
+ private:
+  SimInterface* _pomdp;
+  AlphaVectorFSC _fsc;
+  QLearningPolicy _policy;
 
-/// @brief Simulate an FSC execution
-void SimulationWithFSC(const BeliefParticles& b0, SimInterface* pomdp,
-                       AlphaVectorFSC& fsc, int64_t steps);
+ public:
+  MCVI(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
+       const QLearningPolicy& policy)
+      : _pomdp(pomdp), _fsc(init_fsc), _policy(policy) {}
 
-/// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
-void BackUp(BeliefTreeNode& Tr_node, AlphaVectorFSC& fsc, int64_t max_depth_sim,
-            int64_t nb_sample, SimInterface* pomdp,
-            const std::vector<int64_t>& action_space,
-            const std::vector<int64_t>& observation_space);
+  /// @brief Run the MCVI planner
+  /// @param b0 Initial belief particles
+  /// @param fsc Initial FSC
+  /// @param pomdp Simulator
+  /// @param max_depth_sim Maximum depth to simulate
+  /// @param nb_sample Number of samples in belief expansion
+  /// @param nb_iter Number of tree traversals
+  /// @param policy Q-learning policy for bound seting
+  /// @return The FSC for the pomdp
+  AlphaVectorFSC MCVIPlanning(const BeliefParticles& b0, int64_t max_depth_sim,
+                              int64_t nb_sample, int64_t nb_iter);
 
-/// @brief Simulate a trajectory using the policy graph beginning at node nI and
-/// the given state, returning the discounted reward of the simulation
-double SimulateTrajectory(int64_t nI, AlphaVectorFSC& fsc, int64_t state,
-                          int64_t max_depth, SimInterface* pomdp);
+  /// @brief Simulate an FSC execution from an initial belief
+  void SimulationWithFSC(const BeliefParticles& b0, int64_t steps) const;
 
-/// @brief Find the node in the V_a_o_n set of the node with the highest value
-std::pair<double, int64_t> FindMaxValueNode(const AlphaVectorNode& node,
-                                            int64_t a, int64_t o);
+ private:
+  /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
+  void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, int64_t max_depth_sim,
+              int64_t nb_sample, const std::vector<int64_t>& action_space,
+              const std::vector<int64_t>& observation_space);
 
-/// @brief Find a node matching the given node and edges, or insert it if it
-/// does not exist
-int64_t FindOrInsertNode(const AlphaVectorNode& node,
-                         const AlphaVectorFSC::EdgeMap& edges,
-                         const std::vector<int64_t>& observation_space,
-                         AlphaVectorFSC& fsc);
+  /// @brief Simulate a trajectory using the policy graph beginning at node nI
+  /// and the given state, returning the discounted reward of the simulation
+  double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth) const;
 
-/// @brief Insert the given node into the fsc
-int64_t InsertNode(const AlphaVectorNode& node,
-                   const AlphaVectorFSC::EdgeMap& edges, AlphaVectorFSC& fsc);
+  /// @brief Find the node in the V_a_o_n set of the node with the highest value
+  std::pair<double, int64_t> FindMaxValueNode(const AlphaVectorNode& node,
+                                              int64_t a, int64_t o) const;
+
+  /// @brief Find a node matching the given node and edges, or insert it if it
+  /// does not exist
+  int64_t FindOrInsertNode(const AlphaVectorNode& node,
+                           const AlphaVectorFSC::EdgeMap& edges,
+                           const std::vector<int64_t>& observation_space);
+
+  /// @brief Insert the given node into the fsc
+  int64_t InsertNode(const AlphaVectorNode& node,
+                     const AlphaVectorFSC::EdgeMap& edges);
+};
 
 }  // namespace MCVI
