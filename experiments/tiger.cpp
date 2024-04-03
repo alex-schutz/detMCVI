@@ -12,8 +12,10 @@ class TigerPOMDP : public MCVI::SimInterface {
   TigerPOMDP(double noise) : noise(noise), rng(std::random_device{}()) {}
 
   std::tuple<int, int, double, bool> Step(int sI, int aI) override {
-    if (aI < 0 || aI > 2) throw std::range_error("Action out of range");
-    if (sI < 0 || sI > 1) throw std::range_error("State out of range");
+    if (aI < 0 || aI > 2)
+      throw std::range_error("Action " + std::to_string(aI) + " out of range");
+    if (sI < 0 || sI > 1)
+      throw std::range_error("State " + std::to_string(sI) + " out of range");
     if (aI == 2) {  // listen action
       return {sI, NoisyObservation(sI), -1, false};
     }
@@ -25,7 +27,7 @@ class TigerPOMDP : public MCVI::SimInterface {
   }
   int SampleStartState() override { return CoinFlip(); }
   int GetSizeOfObs() const override { return 2; }
-  int GetSizeOfA() const override { return 2; }
+  int GetSizeOfA() const override { return 3; }
   double GetDiscount() const override { return 0.95; }
   int GetNbAgent() const override { return 1; }
 
