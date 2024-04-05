@@ -67,6 +67,10 @@ class AlphaVectorFSC {
 
   int64_t GetStartNodeIndex() const { return _start_node_index; }
   void SetStartNodeIndex(int64_t idx) { _start_node_index = idx; }
+
+  void GenerateGraphviz(
+      std::ostream& ofs, const std::vector<std::string>& actions = {},
+      const std::vector<std::string>& observations = {}) const;
 };
 
 }  // namespace MCVI

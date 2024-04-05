@@ -99,7 +99,9 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
 }
 
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
-                                 int64_t nb_iter) {
+                                 int64_t nb_iter,
+                                 const std::vector<std::string>& actions,
+                                 const std::vector<std::string>& observations) {
   std::vector<int64_t> action_space, observation_space;
   for (int64_t a = 0; a < _pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
   for (int64_t o = 0; o < _pomdp->GetSizeOfObs(); ++o)
@@ -128,9 +130,10 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
       BackUp(tr_node, max_depth_sim, nb_sample, action_space,
              observation_space);
     }
+    _fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
+    _fsc.GenerateGraphviz(std::cout, actions, observations);
   }
 
-  _fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
   return _fsc;
 }
 

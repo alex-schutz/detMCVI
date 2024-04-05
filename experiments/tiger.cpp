@@ -65,7 +65,7 @@ int main() {
 
   // Run MCVI
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, q_policy);
-  planner.Plan(30, 200, 30);
+  planner.Plan(30, 200, 20, pomdp.actions, pomdp.observations);
 
   // Simulate the resultant FSC
   planner.SimulationWithFSC(20);
