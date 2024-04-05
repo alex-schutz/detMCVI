@@ -52,14 +52,16 @@ int64_t MCVIPlanner::FindOrInsertNode(
   const int64_t action = node.GetBestAction();
   for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
     // First check the best action
-    if (_fsc.GetNode(nI).GetBestAction() == action) {
-      for (const auto& obs : observation_space) {
-        const int64_t edge_node = _fsc.GetEdgeValue(nI, action, obs);
-        if (edge_node == -1 || edge_node != edges.at({action, obs}))
-          return InsertNode(node, edges);
+    if (_fsc.GetNode(nI).GetBestAction() != action) continue;
+    bool match = true;
+    for (const auto& obs : observation_space) {
+      const int64_t edge_node = _fsc.GetEdgeValue(nI, action, obs);
+      if (edge_node == -1 || edge_node != edges.at({action, obs})) {
+        match = false;
+        break;
       }
-      return nI;
     }
+    if (match) return nI;
   }
   return InsertNode(node, edges);
 }
