@@ -23,7 +23,7 @@ class TigerPOMDP : public MCVI::SimInterface {
     const int sI_next = SampleStartState();  // reset if a door is opened
     const int oI = CoinFlip();               // random observation
     const double reward = (aI == sI) ? -100 : 10;
-    return {sI_next, oI, reward, true};
+    return {sI_next, oI, reward, false};
   }
   int SampleStartState() override { return CoinFlip(); }
   int GetSizeOfObs() const override { return 2; }
