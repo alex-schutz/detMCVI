@@ -2,6 +2,7 @@
 #include "MCVI.h"
 
 #include <algorithm>
+#include <chrono>
 #include <limits>
 
 namespace MCVI {
@@ -12,18 +13,21 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
 }
 
 double MCVIPlanner::SimulateTrajectory(int64_t nI, int64_t state,
-                                       int64_t max_depth) const {
+                                       int64_t max_depth,
+                                       double R_lower) const {
   const double gamma = _pomdp->GetDiscount();
   double V_n_s = 0.0;
   int64_t nI_current = nI;
   for (int64_t step = 0; step < max_depth; ++step) {
-    const int64_t action = (nI_current != -1)
-                               ? _fsc.GetNode(nI_current).GetBestAction()
-                               : _pomdp->RandomAction();
-    const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
-    if (nI_current != -1)
-      nI_current = _fsc.GetEdgeValue(nI_current, action, obs);
+    if (nI_current == -1) {
+      const double reward = std::pow(gamma, max_depth) * R_lower;
+      V_n_s += std::pow(gamma, step) * reward;
+      break;
+    }
 
+    const int64_t action = _fsc.GetNode(nI_current).GetBestAction();
+    const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
+    nI_current = _fsc.GetEdgeValue(nI_current, action, obs);
     V_n_s += std::pow(gamma, step) * reward;
     if (done) break;
     state = sNext;
@@ -67,7 +71,8 @@ int64_t MCVIPlanner::FindOrInsertNode(
 }
 
 void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
-                         int64_t max_depth_sim, int64_t nb_sample,
+                         double R_lower, int64_t max_depth_sim,
+                         int64_t nb_sample,
                          const std::vector<int64_t>& action_space,
                          const std::vector<int64_t>& observation_space) {
   const double gamma = _pomdp->GetDiscount();
@@ -81,7 +86,8 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       node_new.AddR(action, reward);
       for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
-        const double V_nI_sNext = SimulateTrajectory(nI, sNext, max_depth_sim);
+        const double V_nI_sNext =
+            SimulateTrajectory(nI, sNext, max_depth_sim, R_lower);
         node_new.UpdateValue(action, obs, nI, V_nI_sNext);
       }
     }
@@ -100,42 +106,75 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   Tr_node->SetFSCNodeIndex(nI);
 }
 
+static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
+                          const std::chrono::steady_clock::time_point& end) {
+  return (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
+              .count()) /
+         1000.0;
+}
+
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
-                                 int64_t nb_iter,
+                                 double epsilon, int64_t max_nb_iter,
                                  const std::vector<std::string>& actions,
                                  const std::vector<std::string>& observations) {
   std::vector<int64_t> action_space, observation_space;
   for (int64_t a = 0; a < _pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
   for (int64_t o = 0; o < _pomdp->GetSizeOfObs(); ++o)
     observation_space.push_back(o);
+
+  // Calculate the lower bound
+  const double R_lower =
+      FindRLower(_pomdp, _b0, action_space, _heuristic.GetPolicy().episode_size,
+                 _heuristic.GetPolicy().ep_convergence_threshold,
+                 _heuristic.GetPolicy().sim_depth);
+
   std::shared_ptr<BeliefTreeNode> Tr_root =
       CreateBeliefRootNode(_b0, action_space, _heuristic, _pomdp);
   const auto node = AlphaVectorNode(action_space, observation_space);
   _fsc.AddNode(node);
   Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);
 
-  for (int64_t i = 0; i < nb_iter; ++i) {
+  int64_t i = 0;
+  while (i < max_nb_iter) {
     std::cout << "--- Iter " << i << " ---" << std::endl;
     UpdateUpperBound(Tr_root, _pomdp->GetDiscount(), 0);
     std::cout << "Tr_root upper bound: " << Tr_root->GetUpper() << std::endl;
     std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
-    std::cout << "Belief Expand Process" << std::endl;
+    const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
+    std::cout << "Precision: " << precision << std::endl;
+    if (precision < epsilon) {
+      std::cout << "MCVI planning complete, reached the target precision."
+                << std::endl;
+      return _fsc;
+    }
 
+    std::cout << "Belief Expand Process" << std::flush;
+    std::chrono::steady_clock::time_point begin =
+        std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
     SampleBeliefs(Tr_root, _b0.SampleOneState(), 0, max_depth_sim, nb_sample,
                   action_space, _pomdp, _heuristic, traversal_list);
+    std::chrono::steady_clock::time_point end =
+        std::chrono::steady_clock::now();
+    std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
 
-    std::cout << "Backup Process" << std::endl;
+    std::cout << "Backup Process" << std::flush;
+    begin = std::chrono::steady_clock::now();
     while (!traversal_list.empty()) {
       auto tr_node = traversal_list.back();
       traversal_list.pop_back();
-      BackUp(tr_node, max_depth_sim, nb_sample, action_space,
+      BackUp(tr_node, R_lower, max_depth_sim, nb_sample, action_space,
              observation_space);
     }
-    _fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
-    _fsc.GenerateGraphviz(std::cout, actions, observations);
-  }
+    end = std::chrono::steady_clock::now();
+    std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
 
+    _fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
+    _fsc.GenerateGraphviz(std::cerr, actions, observations);
+    ++i;
+  }
+  std::cout << "MCVI planning complete, reached the max iterations."
+            << std::endl;
   return _fsc;
 }
 

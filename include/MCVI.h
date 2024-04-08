@@ -36,11 +36,13 @@ class MCVIPlanner {
   /// @brief Run the MCVI planner
   /// @param max_depth_sim Maximum depth to simulate
   /// @param nb_sample Number of samples in belief expansion
-  /// @param nb_iter Number of tree traversals
+  /// @param epsilon Threshold for difference between upper and lower bounds
+  /// @param max_nb_iter Maximum number of tree traversals
   /// @param actions Action names
   /// @param observations Observation names
   /// @return The FSC for the pomdp
-  AlphaVectorFSC Plan(int64_t max_depth_sim, int64_t nb_sample, int64_t nb_iter,
+  AlphaVectorFSC Plan(int64_t max_depth_sim, int64_t nb_sample, double epsilon,
+                      int64_t max_nb_iter,
                       const std::vector<std::string>& actions = {},
                       const std::vector<std::string>& observations = {});
 
@@ -49,13 +51,15 @@ class MCVIPlanner {
 
  private:
   /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
-  void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, int64_t max_depth_sim,
-              int64_t nb_sample, const std::vector<int64_t>& action_space,
+  void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
+              int64_t max_depth_sim, int64_t nb_sample,
+              const std::vector<int64_t>& action_space,
               const std::vector<int64_t>& observation_space);
 
   /// @brief Simulate a trajectory using the policy graph beginning at node nI
   /// and the given state, returning the discounted reward of the simulation
-  double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth) const;
+  double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth,
+                            double R_lower) const;
 
   /// @brief Find the node in the V_a_o_n set of the node with the highest value
   std::pair<double, int64_t> FindMaxValueNode(const AlphaVectorNode& node,
