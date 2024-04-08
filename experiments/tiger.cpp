@@ -16,13 +16,13 @@ class TigerPOMDP : public MCVI::SimInterface {
       throw std::range_error("Action " + std::to_string(aI) + " out of range");
     if (sI < 0 || sI > 1)
       throw std::range_error("State " + std::to_string(sI) + " out of range");
-    if (aI == 2) {  // listen action
+    if (aI == 0) {  // listen action
       return {sI, NoisyObservation(sI), -1, false};
     }
     // open door action
     const int sI_next = SampleStartState();  // reset if a door is opened
     const int oI = CoinFlip();               // random observation
-    const double reward = (aI == sI) ? -100 : 10;
+    const double reward = (aI == sI + 1) ? -100 : 10;
     return {sI_next, oI, reward, false};
   }
   int SampleStartState() override { return CoinFlip(); }
@@ -31,7 +31,7 @@ class TigerPOMDP : public MCVI::SimInterface {
   double GetDiscount() const override { return 0.95; }
   int GetNbAgent() const override { return 1; }
 
-  std::vector<std::string> actions = {"open-left", "open-right", "listen"};
+  std::vector<std::string> actions = {"listen", "open-left", "open-right"};
   std::vector<std::string> observations = {"tiger-left", "tiger-right"};
   std::vector<std::string> states = {"tiger-left", "tiger-right"};
 
@@ -65,7 +65,9 @@ int main() {
 
   // Run MCVI
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, q_policy);
-  planner.Plan(40, 1000, 0.1, 30, pomdp.actions, pomdp.observations);
+  const auto fsc = planner.Plan(40, 1000, 0.1, 30);
+
+  fsc.GenerateGraphviz(std::cout, pomdp.actions, pomdp.observations);
 
   // Simulate the resultant FSC
   planner.SimulationWithFSC(20);

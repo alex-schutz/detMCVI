@@ -40,13 +40,9 @@ class MCVIPlanner {
   /// @param nb_sample Number of samples in belief expansion
   /// @param epsilon Threshold for difference between upper and lower bounds
   /// @param max_nb_iter Maximum number of tree traversals
-  /// @param actions Action names
-  /// @param observations Observation names
   /// @return The FSC for the pomdp
   AlphaVectorFSC Plan(int64_t max_depth_sim, int64_t nb_sample, double epsilon,
-                      int64_t max_nb_iter,
-                      const std::vector<std::string>& actions = {},
-                      const std::vector<std::string>& observations = {});
+                      int64_t max_nb_iter);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;

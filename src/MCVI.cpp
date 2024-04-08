@@ -120,9 +120,7 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 }
 
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
-                                 double epsilon, int64_t max_nb_iter,
-                                 const std::vector<std::string>& actions,
-                                 const std::vector<std::string>& observations) {
+                                 double epsilon, int64_t max_nb_iter) {
   std::vector<int64_t> action_space, observation_space;
   for (int64_t a = 0; a < _pomdp->GetSizeOfA(); ++a) action_space.push_back(a);
   for (int64_t o = 0; o < _pomdp->GetSizeOfObs(); ++o)
@@ -176,7 +174,6 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
 
     _fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
-    _fsc.GenerateGraphviz(std::cerr, actions, observations);
     ++i;
   }
   std::cout << "MCVI planning complete, reached the max iterations."
