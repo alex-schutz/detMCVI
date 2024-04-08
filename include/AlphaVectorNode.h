@@ -31,7 +31,8 @@ class AlphaVectorNode {
 
  public:
   AlphaVectorNode(const std::vector<int64_t>& action_space,
-                  const std::vector<int64_t>& observation_space);
+                  const std::vector<int64_t>& observation_space,
+                  int64_t init_best_action);
 
   /// @brief Return the best action
   int64_t GetBestAction() const { return _best_action; }
@@ -58,9 +59,9 @@ class AlphaVectorNode {
   /// @brief Divide the Q value at `action` by `N`
   void NormaliseQ(int64_t action, int64_t N) { _Q_action[action] /= N; }
 
-  /// @brief Set the value associated with `action`, `observation` and node `nI`
-  /// to `val`
-  void UpdateValue(int64_t action, int64_t observation, int64_t nI, double val);
+  /// @brief Add `val` to the value associated with `action`, `observation` and
+  /// node `nI`
+  void AddValue(int64_t action, int64_t observation, int64_t nI, double val);
 
   /// @brief Recalculate _V_node by finding the best action
   void UpdateBestValue(std::shared_ptr<BeliefTreeNode> tr);

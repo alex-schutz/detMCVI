@@ -21,6 +21,7 @@ class MCVIPlanner {
   AlphaVectorFSC _fsc;
   BeliefParticles _b0;
   QLearning _heuristic;
+  mutable std::mt19937_64 _rng;
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
@@ -29,7 +30,8 @@ class MCVIPlanner {
       : _pomdp(pomdp),
         _fsc(init_fsc),
         _b0(init_belief),
-        _heuristic(_pomdp, q_policy) {
+        _heuristic(_pomdp, q_policy),
+        _rng(std::random_device{}()) {
     _heuristic.Train(_b0);
   }
 
@@ -74,6 +76,8 @@ class MCVIPlanner {
   /// @brief Insert the given node into the fsc
   int64_t InsertNode(const AlphaVectorNode& node,
                      const AlphaVectorFSC::EdgeMap& edges);
+
+  int64_t RandomAction(const std::vector<int64_t>& action_space) const;
 };
 
 }  // namespace MCVI

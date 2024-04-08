@@ -106,6 +106,12 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   Tr_node->SetFSCNodeIndex(nI);
 }
 
+int64_t MCVIPlanner::RandomAction(
+    const std::vector<int64_t>& action_space) const {
+  std::uniform_int_distribution<> action_dist(0, action_space.size() - 1);
+  return action_space[action_dist(_rng)];
+}
+
 static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
                           const std::chrono::steady_clock::time_point& end) {
   return (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
