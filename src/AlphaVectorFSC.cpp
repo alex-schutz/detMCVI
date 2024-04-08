@@ -32,7 +32,7 @@ void AlphaVectorFSC::GenerateGraphviz(
 
   ofs << "digraph AlphaVectorFSC {" << std::endl;
 
-  ofs << "node [shape=circle, style=\"bold, filled\"];" << std::endl;
+  ofs << "node [shape=circle];" << std::endl;
 
   // Loop through each node
   for (int64_t i = 0; i < NumNodes(); ++i) {
