@@ -77,7 +77,8 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
                          const std::vector<int64_t>& observation_space) {
   const double gamma = _pomdp->GetDiscount();
   const BeliefParticles& belief = Tr_node->GetParticles();
-  auto node_new = AlphaVectorNode(action_space, observation_space);
+  auto node_new = AlphaVectorNode(action_space, observation_space,
+                                  RandomAction(action_space));
 
   AlphaVectorFSC::EdgeMap node_edges;
   for (const auto& action : action_space) {
@@ -88,7 +89,7 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
       for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
         const double V_nI_sNext =
             SimulateTrajectory(nI, sNext, max_depth_sim, R_lower);
-        node_new.UpdateValue(action, obs, nI, V_nI_sNext);
+        node_new.AddValue(action, obs, nI, V_nI_sNext);
       }
     }
 
