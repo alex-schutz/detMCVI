@@ -87,7 +87,7 @@ int main() {
   fsc.GenerateGraphviz(std::cerr, pomdp.actions, pomdp.observations);
 
   // Simulate the resultant FSC
-  //   planner.SimulationWithFSC(20);
+  planner.SimulationWithFSC(20);
 
   return 0;
 }
