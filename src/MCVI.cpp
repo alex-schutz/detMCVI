@@ -135,7 +135,8 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
 
   std::shared_ptr<BeliefTreeNode> Tr_root =
       CreateBeliefRootNode(_b0, action_space, _heuristic, _pomdp);
-  const auto node = AlphaVectorNode(action_space, observation_space);
+  const auto node = AlphaVectorNode(action_space, observation_space,
+                                    RandomAction(action_space));
   _fsc.AddNode(node);
   Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);
 
