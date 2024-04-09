@@ -150,7 +150,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
     std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
     const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
     std::cout << "Precision: " << precision << std::endl;
-    if (precision < epsilon) {
+    if (std::abs(precision) < epsilon) {
       std::cout << "MCVI planning complete, reached the target precision."
                 << std::endl;
       return _fsc;
