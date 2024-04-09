@@ -15,10 +15,10 @@ class TestPOMDP : public SimInterface {
 
  public:
   double GetDiscount() const override { return 0.99; }
-  int GetNbAgent() const { return 1; }
+  int GetNbAgent() const override { return 1; }
   int GetSizeOfA() const override { return actions.size(); }
   int GetSizeOfObs() const override { return observations.size(); }
-  int SampleStartState() { return 0; }
+  int SampleStartState() override { return 0; }
   std::tuple<int, int, double, bool> Step(int sI, int aI) override {
     switch (sI) {
       case 0:

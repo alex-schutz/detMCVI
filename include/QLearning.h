@@ -28,6 +28,22 @@ struct QLearningPolicy {
   double ep_convergence_threshold;  // Threshold for when to stop learning
   double epsilon_init = 1.0;   // Initial probability of taking random actions
   double epsilon_final = 0.1;  // Final probability of taking random actions
+
+  QLearningPolicy(double learning_rate,
+                  double decay,
+                  int64_t sim_depth,
+                  int64_t max_episodes,
+                  int64_t episode_size,
+                  int64_t num_sims,
+                  double ep_convergence_threshold) { 
+		this->learning_rate = learning_rate;
+		this->decay = decay;
+    this->sim_depth = sim_depth;
+    this->max_episodes = max_episodes;
+    this->episode_size = episode_size;
+    this->num_sims = num_sims;
+    this->ep_convergence_threshold = ep_convergence_threshold;
+	};
 };
 
 /**

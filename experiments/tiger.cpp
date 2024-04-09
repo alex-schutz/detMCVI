@@ -69,9 +69,7 @@ int main() {
   const int64_t nb_sim = 20;
   const double decay_Q_learning = 0.01;
   const double epsilon_Q_learning = 0.01;
-  const auto q_policy = QLearningPolicy(
-      learning_rate, decay_Q_learning, max_sim_depth, nb_max_episode,
-      nb_episode_size, nb_sim, epsilon_Q_learning);
+  const auto q_policy = QLearningPolicy(learning_rate, decay_Q_learning, max_sim_depth, nb_max_episode, nb_episode_size, nb_sim, epsilon_Q_learning);
 
   // Initialise the FSC
   const auto init_fsc = AlphaVectorFSC(max_node_size, {0, 1, 2}, {0, 1});
