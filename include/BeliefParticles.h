@@ -41,6 +41,18 @@ class BeliefParticles {
 
   double operator[](int64_t i) { return _particles[i]; }
   bool operator==(BeliefParticles& o) { return _particles == o._particles; }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const BeliefParticles& obj) {
+    std::map<int64_t, int> countMap;
+    for (const auto& particle : obj._particles) {
+      countMap[particle]++;
+    }
+    os << "Belief: ";
+    for (const auto& pair : countMap)
+      os << pair.first << ": " << pair.second << " ";
+    return os;
+  }
 };
 
 }  // namespace MCVI

@@ -39,6 +39,7 @@ double MCVIPlanner::SimulateTrajectory(int64_t nI, int64_t state,
 std::pair<double, int64_t> MCVIPlanner::FindMaxValueNode(
     const AlphaVectorNode& node, int64_t a, int64_t o) const {
   const auto& v = node.GetActionObservationValues(a, o);
+  if (v.empty()) throw std::logic_error("No values!");
   const auto it = std::max_element(std::begin(v), std::end(v), CmpPair);
   return {it->second, it->first};
 }
