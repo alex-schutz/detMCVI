@@ -39,7 +39,7 @@ double MCVIPlanner::SimulateTrajectory(int64_t nI, int64_t state,
 std::pair<double, int64_t> MCVIPlanner::FindMaxValueNode(
     const AlphaVectorNode& node, int64_t a, int64_t o) const {
   const auto& v = node.GetActionObservationValues(a, o);
-  if (v.empty()) throw std::logic_error("No values!");
+  if (v.empty()) return {0.0, -1};
   const auto it = std::max_element(std::begin(v), std::end(v), CmpPair);
   return {it->second, it->first};
 }
@@ -96,6 +96,7 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
 
     for (const auto& obs : observation_space) {
       const auto [V_a_o, nI_a_o] = FindMaxValueNode(node_new, action, obs);
+      if (nI_a_o == -1) continue;
       node_edges[{action, obs}] = nI_a_o;
       node_new.AddQ(action, gamma * V_a_o);
     }
