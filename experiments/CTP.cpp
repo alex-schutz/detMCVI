@@ -38,7 +38,7 @@ void visualiseGraph(
     auto stochEdge = stoch_edges.find(edge);
     if (stochEdge != stoch_edges.end()) {
       os << "  " << edge.first << " -- " << edge.second << " [label=\""
-         << weight << " : " << stochEdge->second << "\", style=dashed];"
+         << stochEdge->second << " : " << weight << "\", style=dashed];"
          << std::endl;
     } else {
       os << "  " << edge.first << " -- " << edge.second << " [label=\""
@@ -141,8 +141,8 @@ class CTP : public MCVI::SimInterface {
     std::vector<Point> points;
     std::uniform_real_distribution<> d(0, 10);
     for (int i = 0; i < n_nodes; ++i) {
-      int x = d(rng);
-      int y = d(rng);
+      const double x = d(rng);
+      const double y = d(rng);
       nodes.push_back(i);
       points.push_back(Point(x, y));
     }
@@ -263,7 +263,7 @@ class CTP : public MCVI::SimInterface {
 
 int main() {
   // Initialise the POMDP
-  auto pomdp = CTP(5, 3, true, 0);
+  auto pomdp = CTP(6, 6, true, 124543);
 
   const int64_t nb_particles_b0 = 10000;
   const int64_t max_node_size = 10000;
@@ -275,13 +275,13 @@ int main() {
   const auto init_belief = BeliefParticles(particles);
 
   // Set the Q-learning policy
-  const int64_t max_sim_depth = 40;
+  const int64_t max_sim_depth = 15;
   const double learning_rate = 0.9;
-  const int64_t nb_episode_size = 10;
+  const int64_t nb_episode_size = 30;
   const int64_t nb_max_episode = 10;
-  const int64_t nb_sim = 20;
+  const int64_t nb_sim = 40;
   const double decay_Q_learning = 0.01;
-  const double epsilon_Q_learning = 0.01;
+  const double epsilon_Q_learning = 0.001;
   const auto q_policy = QLearningPolicy(
       learning_rate, decay_Q_learning, max_sim_depth, nb_max_episode,
       nb_episode_size, nb_sim, epsilon_Q_learning);
