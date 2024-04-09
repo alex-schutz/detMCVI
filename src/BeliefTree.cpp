@@ -92,7 +92,7 @@ std::pair<int64_t, std::unordered_map<int64_t, BeliefParticles>> BeliefUpdate(
     const int64_t state = node->GetParticles().SampleOneState();
     auto [sNext, obs, reward, done] = pomdp->Step(state, action);
     sum_r += reward;
-    next_beliefs[obs].push_back(state);
+    next_beliefs[obs].push_back(sNext);
   }
 
   node->SetReward(action, sum_r / nb_sim);
