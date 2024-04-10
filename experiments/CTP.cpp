@@ -1,53 +1,12 @@
 #include <iostream>
 #include <random>
 
+#include "CTP_graph.h"
 #include "MCVI.h"
 #include "SimInterface.h"
-#include "delaunay.h"
 #include "statespace.h"
 
 using namespace MCVI;
-
-struct pairhash {
- public:
-  template <typename T, typename U>
-  std::size_t operator()(const std::pair<T, U>& x) const {
-    return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
-  }
-};
-
-void visualiseGraph(
-    const std::vector<Point>& points,
-    const std::unordered_map<std::pair<int, int>, double, pairhash>& edges,
-    const std::unordered_map<std::pair<int, int>, double, pairhash>&
-        stoch_edges,
-    int origin, int goal, std::ostream& os) {
-  if (!os) throw std::logic_error("Unable to write graph to file");
-
-  os << "graph G {" << std::endl;
-
-  for (size_t i = 0; i < points.size(); ++i) {
-    os << "  " << i << " [pos=\"" << points[i].x << "," << points[i].y
-       << "!\", label=\"" << i << "\"";
-    if (i == (size_t)origin) os << ", fillcolor=\"#ff7f0e\", style=filled";
-    if (i == (size_t)goal) os << ", fillcolor=\"#2ca02c\", style=filled";
-    os << "];" << std::endl;
-  }
-
-  for (const auto& [edge, weight] : edges) {
-    auto stochEdge = stoch_edges.find(edge);
-    if (stochEdge != stoch_edges.end()) {
-      os << "  " << edge.first << " -- " << edge.second << " [label=\""
-         << stochEdge->second << " : " << weight << "\", style=dashed];"
-         << std::endl;
-    } else {
-      os << "  " << edge.first << " -- " << edge.second << " [label=\""
-         << weight << "\"];" << std::endl;
-    }
-  }
-
-  os << "}" << std::endl;
-}
 
 class CTP : public MCVI::SimInterface {
  private:
@@ -59,26 +18,26 @@ class CTP : public MCVI::SimInterface {
       stoch_edges;  // probability of being blocked
   int goal;
   int origin;
+  StateSpace stateSpace;
+  StateSpace observationSpace;
   std::vector<std::string> actions;
   std::vector<std::string> observations;
   double _move_reward = -1;
   double _idle_reward = -1;
   double _bad_action_reward = -50;
 
-  StateSpace stateSpace;
-  StateSpace observationSpace;
-
  public:
-  CTP(int nodes, int stoch_edge_count, bool use_edge_weights = false,
-      uint64_t seed = std::random_device{}())
+  CTP(uint64_t seed = std::random_device{}())
       : rng(seed),
-        actions(initActions(nodes)),
-        stateSpace({}),
-        observationSpace({}) {
-    generateGraph(nodes, stoch_edge_count, use_edge_weights);
-    initStateSpace();
-    initObsSpace();
-  }
+        nodes(CTPNodes),
+        edges(CTPEdges),
+        stoch_edges(CTPStochEdges),
+        goal(CTPGoal),
+        origin(CTPOrigin),
+        stateSpace(initStateSpace()),
+        observationSpace(initObsSpace()),
+        actions(initActions()),
+        observations(initObs()) {}
 
   int GetSizeOfObs() const override { return observationSpace.size(); }
   int GetSizeOfA() const override { return actions.size(); }
@@ -108,69 +67,9 @@ class CTP : public MCVI::SimInterface {
   }
 
  private:
-  double nodeDistance(Point p1, Point p2) const {
-    return std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2));
-  }
-
-  void addEdge(int n1, int n2, bool use_edge_weights,
-               const std::vector<Point>& points) {
-    const int p1 = (n1 < n2) ? n1 : n2;
-    const int p2 = (n1 < n2) ? n2 : n1;
-    double w =
-        use_edge_weights ? nodeDistance(points[p1], points[p2]) : -_move_reward;
-    edges[{p1, p2}] = w;
-  }
-
-  std::unordered_map<std::pair<int, int>, double, pairhash> chooseStochEdges(
-      int k) const {
-    std::vector<std::pair<int, int>> edge_keys;
-    edge_keys.reserve(edges.size());
-    for (const auto& elem : edges) edge_keys.push_back(elem.first);
-    std::shuffle(edge_keys.begin(), edge_keys.end(), rng);
-    if (edge_keys.size() > (size_t)k) edge_keys.resize(k);
-
-    std::unordered_map<std::pair<int, int>, double, pairhash> stochastic_edges;
-    std::uniform_real_distribution<> p(0, 1);
-    for (const auto& key : edge_keys) stochastic_edges[key] = p(rng);
-
-    return stochastic_edges;
-  }
-
-  void generateGraph(int n_nodes, int k, bool use_edge_weights) {
-    // use 10 x 10 grid to generate points
-    std::vector<Point> points;
-    std::uniform_real_distribution<> d(0, 10);
-    for (int i = 0; i < n_nodes; ++i) {
-      const double x = d(rng);
-      const double y = d(rng);
-      nodes.push_back(i);
-      points.push_back(Point(x, y));
-    }
-    std::cerr << "size " << points.size() << std::endl;
-
-    for (const Triangle& tri : delaunayTriangulation(points)) {
-      addEdge(tri.p1, tri.p2, use_edge_weights, points);
-      addEdge(tri.p2, tri.p3, use_edge_weights, points);
-      addEdge(tri.p3, tri.p1, use_edge_weights, points);
-    }
-
-    // Choose origin and goal at opposite sides of the map
-    const auto extrema = std::minmax_element(
-        points.cbegin(), points.cend(),
-        [](const Point& a, const Point& b) { return a.y < b.y; });
-    origin = (extrema.first - points.cbegin());  //  southernmost point
-    goal = (extrema.second - points.cbegin());   //  northernmost point
-    std::cerr << "size " << points.size() << " origin: " << origin
-              << " goal: " << goal << std::endl;
-
-    stoch_edges = chooseStochEdges(k);
-
-    visualiseGraph(points, edges, stoch_edges, origin, goal, std::cout);
-  }
-
-  std::vector<std::string> initActions(int N) const {
+  std::vector<std::string> initActions() const {
     std::vector<std::string> acts;
-    for (int n = 0; n < N; ++n) acts.push_back(std::to_string(n));
+    for (const auto& n : nodes) acts.push_back(std::to_string(n));
     return acts;
   }
 
@@ -178,18 +77,18 @@ class CTP : public MCVI::SimInterface {
     return "e" + std::to_string(e.first) + "_" + std::to_string(e.second);
   }
 
-  void initStateSpace() {
+  StateSpace initStateSpace() const {
     std::map<std::string, std::vector<int>> state_factors;
     // agent location
     state_factors["loc"] = nodes;
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
       state_factors[edge2str(edge)] = {0, 1};  // 0 = blocked, 1 = unblocked
-    stateSpace = StateSpace(state_factors);
+    return StateSpace(state_factors);
   }
 
   // agent can observe any element from state space or -1 (unknown)
-  void initObsSpace() {
+  StateSpace initObsSpace() const {
     std::map<std::string, std::vector<int>> observation_factors;
     // agent location
     std::vector<int> agent_locs = nodes;
@@ -198,8 +97,7 @@ class CTP : public MCVI::SimInterface {
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
       observation_factors[edge2str(edge)] = {0, 1, -1};
-    observationSpace = StateSpace(observation_factors);
-    initObs();
+    return StateSpace(observation_factors);
   }
 
   std::string map2string(const std::map<std::string, int>& map) const {
@@ -213,9 +111,11 @@ class CTP : public MCVI::SimInterface {
     return ss.str();
   }
 
-  void initObs() {
-    for (size_t o = 0; o < observationSpace.size(); ++o)
-      observations.push_back(map2string(observationSpace.at(o)));
+  std::vector<std::string> initObs() const {
+    std::vector<std::string> obs;  // Observation space can be very large!
+    // for (size_t o = 0; o < observationSpace.size(); ++o)
+    //   obs.push_back(map2string(observationSpace.at(o)));
+    return obs;
   }
 
   bool nodesAdjacent(int a, int b, int state) const {
@@ -263,12 +163,14 @@ class CTP : public MCVI::SimInterface {
 
 int main() {
   // Initialise the POMDP
-  auto pomdp = CTP(6, 6, true, 124543);
+  std::cout << "Initialising CTP" << std::endl;
+  auto pomdp = CTP();
 
   const int64_t nb_particles_b0 = 10000;
   const int64_t max_node_size = 10000;
 
   // Sample the initial belief
+  std::cout << "Sampling initial belief" << std::endl;
   std::vector<int64_t> particles;
   for (int i = 0; i < nb_particles_b0; ++i)
     particles.push_back(pomdp.SampleStartState());
@@ -282,6 +184,7 @@ int main() {
   const int64_t nb_sim = 40;
   const double decay_Q_learning = 0.01;
   const double epsilon_Q_learning = 0.001;
+  std::cout << "Learning bounds" << std::endl;
   const auto q_policy = QLearningPolicy(
       learning_rate, decay_Q_learning, max_sim_depth, nb_max_episode,
       nb_episode_size, nb_sim, epsilon_Q_learning);
@@ -289,12 +192,14 @@ int main() {
   // Initialise the FSC
   std::vector<int64_t> action_space;
   std::vector<int64_t> observation_space;
+  std::cout << "Initialising FSC" << std::endl;
   for (int i = 0; i < pomdp.GetSizeOfA(); ++i) action_space.push_back(i);
   for (int i = 0; i < pomdp.GetSizeOfObs(); ++i) observation_space.push_back(i);
   const auto init_fsc =
       AlphaVectorFSC(max_node_size, action_space, observation_space);
 
   // Run MCVI
+  std::cout << "Running MCVI" << std::endl;
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, q_policy);
   const int64_t nb_sample = 1000;
   const double converge_thresh = 0.1;
@@ -302,7 +207,7 @@ int main() {
   const auto fsc =
       planner.Plan(max_sim_depth, nb_sample, converge_thresh, max_iter);
 
-  fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
+  //   fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
   // Simulate the resultant FSC
   planner.SimulationWithFSC(20);
