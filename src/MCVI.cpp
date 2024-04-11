@@ -60,7 +60,7 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   auto node_new = AlphaVectorNode(RandomAction());
 
   std::unordered_map<int64_t, int64_t> node_edges;
-  double best_V = std::numeric_limits<double>::min();
+  double best_V = -std::numeric_limits<double>::infinity();
   int64_t best_a = -1;
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
     for (const auto& [state, prob] : belief) {

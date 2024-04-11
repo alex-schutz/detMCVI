@@ -93,6 +93,7 @@ std::tuple<int64_t, double> PathToTerminal::path(int64_t source,
   double sum_reward = 0.0;
   double discount = 1.0;
   for (const auto& [state, action] : path->second) {
+    if (action == -1) break;
     const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
     sum_reward += discount * reward;
     discount *= gamma;
