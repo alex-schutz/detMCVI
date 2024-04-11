@@ -25,8 +25,8 @@ Current MCVI C++ Implementation Progress
         - [x] Basic implementation
         - [ ] Testing
     - Testing with POMDP and CTP benchmarks
-        - [ ] POMDP benchmarks (not really necessary in C++)    
-        - [ ] Alex's CTP problems
+        - [x] POMDP benchmarks (not really necessary in C++)    
+        - [x] Alex's CTP problems
 
 Current MCVI Julia Implementation Progress 
 - Basic Interfaces
