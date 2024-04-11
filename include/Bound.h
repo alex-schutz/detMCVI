@@ -22,13 +22,12 @@ namespace MCVI {
  * state's MDP value
  *
  * @param belief A set of belief particles
- * @param action_space The set of accessible actions
  * @param heuristic Pre-trained Q-learning heuristic to use for the evaluation
  * @return tuple<int64_t, double> best action, upper bound
  */
-std::tuple<int64_t, double> UpperBoundEvaluation(
-    const BeliefParticles& belief, const std::vector<int64_t>& action_space,
-    const QLearning& heuristic);
+std::tuple<int64_t, double> UpperBoundEvaluation(const BeliefParticles& belief,
+                                                 int64_t num_actions,
+                                                 const QLearning& heuristic);
 
 /**
  * @brief Determine the lower bound reward of the belief, by choosing an action
@@ -36,14 +35,13 @@ std::tuple<int64_t, double> UpperBoundEvaluation(
  *
  * @param belief A set of belief particles
  * @param sim A POMDP simulator object
- * @param action_space The set of accessible actions
  * @param max_restarts Number of simulations to run
  * @param epsilon Threshold for maximum decay
  * @param max_depth Maximum depth of a simulation run
  * @return double
  */
 double FindRLower(SimInterface* pomdp, const BeliefParticles& b0,
-                  const std::vector<int64_t>& action_space,
-                  int64_t max_restarts, double epsilon, int64_t max_depth);
+                  int64_t num_actions, int64_t max_restarts, double epsilon,
+                  int64_t max_depth);
 
 }  // namespace MCVI

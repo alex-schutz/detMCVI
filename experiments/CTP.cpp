@@ -190,13 +190,8 @@ int main() {
       nb_episode_size, nb_sim, epsilon_Q_learning);
 
   // Initialise the FSC
-  std::vector<int64_t> action_space;
-  std::vector<int64_t> observation_space;
   std::cout << "Initialising FSC" << std::endl;
-  for (int i = 0; i < pomdp.GetSizeOfA(); ++i) action_space.push_back(i);
-  for (int i = 0; i < pomdp.GetSizeOfObs(); ++i) observation_space.push_back(i);
-  const auto init_fsc =
-      AlphaVectorFSC(max_node_size, action_space, observation_space);
+  const auto init_fsc = AlphaVectorFSC(max_node_size);
 
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;

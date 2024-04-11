@@ -75,19 +75,18 @@ class BeliefTreeNode {
 /// @brief Add a child belief to the parent given an action and observation edge
 void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
                           int64_t action, int64_t observation,
-                          const BeliefParticles& belief,
-                          const std::vector<int64_t>& action_space,
+                          const BeliefParticles& belief, int64_t num_actions,
                           const QLearning& heuristic, SimInterface* sim);
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
-    const BeliefParticles& belief, const std::vector<int64_t>& action_space,
+    const BeliefParticles& belief, int64_t num_actions,
     const QLearning& heuristic, SimInterface* sim);
 
 /// @brief Sample beliefs from a belief tree with heuristics
 void SampleBeliefs(
     std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
-    int64_t max_depth, int64_t nb_sim, const std::vector<int64_t>& action_space,
-    SimInterface* pomdp, const QLearning& heuristic,
+    int64_t max_depth, int64_t nb_sim, SimInterface* pomdp,
+    const QLearning& heuristic,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list);
 
 /// @brief Generate a set of next beliefs mapped by observation, obtained by

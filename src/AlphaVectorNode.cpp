@@ -5,31 +5,10 @@
 
 namespace MCVI {
 
-std::unordered_map<int64_t, double> AlphaVectorNode::InitDoubleKeys(
-    const std::vector<int64_t>& action_space) const {
-  std::unordered_map<int64_t, double> v;
-  for (const auto& a : action_space) v[a] = 0.0;
-  return v;
-}
-
-AlphaVectorNode::ValueMap AlphaVectorNode::InitValueMap(
-    const std::vector<int64_t>& action_space,
-    const std::vector<int64_t>& observation_space) const {
-  ValueMap v;
-  for (const auto& a : action_space) {
-    std::unordered_map<int64_t, std::unordered_map<int64_t, double>> v_a;
-    for (const auto& o : observation_space) v_a[o] = {};
-    v[a] = v_a;
-  }
-  return v;
-}
-
-AlphaVectorNode::AlphaVectorNode(const std::vector<int64_t>& action_space,
-                                 const std::vector<int64_t>& observation_space,
-                                 int64_t init_best_action)
-    : _Q_action(InitDoubleKeys(action_space)),
-      _R_action(InitDoubleKeys(action_space)),
-      _V_a_o_n(InitValueMap(action_space, observation_space)),
+AlphaVectorNode::AlphaVectorNode(int64_t init_best_action)
+    : _Q_action(),
+      _R_action(),
+      _V_a_o_n(),
       _V_node(0.0),
       _best_action(init_best_action) {}
 
@@ -51,12 +30,15 @@ void AlphaVectorNode::UpdateBestValue(std::shared_ptr<BeliefTreeNode> tr) {
 
 const std::unordered_map<int64_t, double>&
 AlphaVectorNode::GetActionObservationValues(int64_t a, int64_t o) const {
-  return _V_a_o_n.at(a).at(o);
+  auto& o_n = _V_a_o_n[a];
+  return o_n[o];
 }
 
 void AlphaVectorNode::AddValue(int64_t action, int64_t observation, int64_t nI,
                                double val) {
-  _V_a_o_n[action][observation][nI] += val;
+  auto& o_n = _V_a_o_n[action];
+  auto& _n = o_n[observation];
+  _n[nI] += val;
 }
 
 }  // namespace MCVI

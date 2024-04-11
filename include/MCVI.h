@@ -50,9 +50,7 @@ class MCVIPlanner {
  private:
   /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
-              int64_t max_depth_sim, int64_t nb_sample,
-              const std::vector<int64_t>& action_space,
-              const std::vector<int64_t>& observation_space);
+              int64_t max_depth_sim, int64_t nb_sample);
 
   /// @brief Simulate a trajectory using the policy graph beginning at node nI
   /// and the given state, returning the discounted reward of the simulation
@@ -66,14 +64,13 @@ class MCVIPlanner {
   /// @brief Find a node matching the given node and edges, or insert it if it
   /// does not exist
   int64_t FindOrInsertNode(const AlphaVectorNode& node,
-                           const AlphaVectorFSC::EdgeMap& edges,
-                           const std::vector<int64_t>& observation_space);
+                           const AlphaVectorFSC::EdgeMap& edges);
 
   /// @brief Insert the given node into the fsc
   int64_t InsertNode(const AlphaVectorNode& node,
                      const AlphaVectorFSC::EdgeMap& edges);
 
-  int64_t RandomAction(const std::vector<int64_t>& action_space) const;
+  int64_t RandomAction() const;
 };
 
 }  // namespace MCVI

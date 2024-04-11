@@ -29,19 +29,11 @@ class AlphaVectorFSC {
  private:
   std::vector<EdgeMap> _edges;
   std::vector<AlphaVectorNode> _nodes;
-  std::vector<int64_t> _action_space;
-  std::vector<int64_t> _observation_space;
   int64_t _start_node_index;
 
  public:
-  AlphaVectorFSC(int64_t max_node_size,
-                 const std::vector<int64_t>& action_space,
-                 const std::vector<int64_t>& observation_space)
-      : _edges(max_node_size, EdgeMap()),
-        _nodes(),
-        _action_space(action_space),
-        _observation_space(observation_space),
-        _start_node_index(-1) {}
+  AlphaVectorFSC(int64_t max_node_size)
+      : _edges(max_node_size, EdgeMap()), _nodes(), _start_node_index(-1) {}
 
   /// @brief Return a reference to node number nI
   const AlphaVectorNode& GetNode(int64_t nI) const { return _nodes.at(nI); }
@@ -61,9 +53,6 @@ class AlphaVectorFSC {
   /// observation o to nI_new.
   void UpdateEdge(int64_t nI, int64_t a, int64_t o, int64_t nI_new);
   void UpdateEdge(int64_t nI, const AlphaVectorFSC::EdgeMap& edges);
-
-  const std::vector<int64_t>& GetActionSpace() { return _action_space; }
-  const std::vector<int64_t>& GetObsSpace() { return _observation_space; }
 
   int64_t GetStartNodeIndex() const { return _start_node_index; }
   void SetStartNodeIndex(int64_t idx) { _start_node_index = idx; }
