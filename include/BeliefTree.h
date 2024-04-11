@@ -12,7 +12,6 @@
 
 #include "BeliefDistribution.h"
 #include "Bound.h"
-#include "QLearning.h"
 
 namespace MCVI {
 
@@ -76,16 +75,19 @@ class BeliefTreeNode {
 void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
                           int64_t action, int64_t observation,
                           const BeliefDistribution& belief, int64_t num_actions,
-                          const QLearning& heuristic, SimInterface* sim);
+                          const PathToTerminal& heuristic, int64_t eval_depth,
+                          double eval_epsilon, SimInterface* sim);
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
     const BeliefDistribution& belief, int64_t num_actions,
-    const QLearning& heuristic, SimInterface* sim);
+    const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
+    SimInterface* sim);
 
 /// @brief Sample beliefs from a belief tree with heuristics
 void SampleBeliefs(
     std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
-    int64_t max_depth, SimInterface* pomdp, const QLearning& heuristic,
+    int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
+    int64_t eval_depth, double eval_epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list);
 
 /// @brief Generate a set of next beliefs mapped by observation, obtained by

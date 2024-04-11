@@ -1,1 +1,1 @@
-add_library(mcvi_library QLearning.cpp BeliefParticles.cpp BeliefTree.cpp Bound.cpp AlphaVectorNode.cpp AlphaVectorFSC.cpp MCVI.cpp)
+add_library(mcvi_library ShortestPath.cpp Bound.cpp BeliefTree.cpp AlphaVectorNode.cpp AlphaVectorFSC.cpp MCVI.cpp)

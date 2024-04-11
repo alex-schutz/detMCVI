@@ -102,15 +102,14 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 }
 
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
-                                 double epsilon, int64_t max_nb_iter) {
+                                 double epsilon, int64_t max_nb_iter,
+                                 int64_t eval_depth, double eval_epsilon) {
   // Calculate the lower bound
   const double R_lower =
-      FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(),
-                 _heuristic.GetPolicy().ep_convergence_threshold,
-                 _heuristic.GetPolicy().sim_depth);
+      FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
 
-  std::shared_ptr<BeliefTreeNode> Tr_root =
-      CreateBeliefRootNode(_b0, _pomdp->GetSizeOfA(), _heuristic, _pomdp);
+  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefRootNode(
+      _b0, _pomdp->GetSizeOfA(), _heuristic, eval_depth, eval_epsilon, _pomdp);
   const auto node = AlphaVectorNode(RandomAction());
   _fsc.AddNode(node);
   Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);
@@ -134,7 +133,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
         std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
     SampleBeliefs(Tr_root, SampleOneState(_b0), 0, max_depth_sim, _pomdp,
-                  _heuristic, traversal_list);
+                  _heuristic, eval_depth, eval_epsilon, traversal_list);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;

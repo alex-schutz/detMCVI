@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "BeliefParticles.h"
 #include "BeliefTree.h"
 
 namespace MCVI {

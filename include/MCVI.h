@@ -11,7 +11,6 @@
 
 #include "AlphaVectorFSC.h"
 #include "BeliefDistribution.h"
-#include "BeliefParticles.h"
 #include "SimInterface.h"
 
 namespace MCVI {
@@ -21,20 +20,17 @@ class MCVIPlanner {
   SimInterface* _pomdp;
   AlphaVectorFSC _fsc;
   BeliefDistribution _b0;
-  QLearning _heuristic;
+  PathToTerminal _heuristic;
   mutable std::mt19937_64 _rng;
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
-              const BeliefDistribution& init_belief,
-              const QLearningPolicy& q_policy)
+              const BeliefDistribution& init_belief)
       : _pomdp(pomdp),
         _fsc(init_fsc),
         _b0(init_belief),
-        _heuristic(_pomdp, q_policy),
-        _rng(std::random_device{}()) {
-    _heuristic.Train(_b0);
-  }
+        _heuristic(_pomdp),
+        _rng(std::random_device{}()) {}
 
   /// @brief Run the MCVI planner
   /// @param max_depth_sim Maximum depth to simulate
@@ -43,7 +39,8 @@ class MCVIPlanner {
   /// @param max_nb_iter Maximum number of tree traversals
   /// @return The FSC for the pomdp
   AlphaVectorFSC Plan(int64_t max_depth_sim, int64_t nb_sample, double epsilon,
-                      int64_t max_nb_iter);
+                      int64_t max_nb_iter, int64_t eval_depth,
+                      double eval_epsilon);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
