@@ -71,11 +71,6 @@ void SampleBeliefs(
                 heuristic, eval_depth, eval_epsilon, traversal_list);
 }
 
-static bool CmpPairSize(const std::pair<int64_t, std::vector<int64_t>>& p1,
-                        const std::pair<int64_t, std::vector<int64_t>>& p2) {
-  return p1.second.size() < p2.second.size();
-}
-
 std::pair<int64_t, std::unordered_map<int64_t, BeliefDistribution>>
 BeliefUpdate(std::shared_ptr<BeliefTreeNode> node, int64_t action,
              SimInterface* pomdp) {

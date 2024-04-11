@@ -171,23 +171,12 @@ int main() {
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
-  std::vector<int64_t> particles;
+  std::unordered_map<int64_t, int64_t> state_counts;
   for (int i = 0; i < nb_particles_b0; ++i)
-    particles.push_back(pomdp.SampleStartState());
-  const auto init_belief = BeliefParticles(particles);
-
-  // Set the Q-learning policy
-  const int64_t max_sim_depth = 15;
-  const double learning_rate = 0.9;
-  const int64_t nb_episode_size = 30;
-  const int64_t nb_max_episode = 10;
-  const int64_t nb_sim = 40;
-  const double decay_Q_learning = 0.01;
-  const double epsilon_Q_learning = 0.001;
-  std::cout << "Learning bounds" << std::endl;
-  const auto q_policy = QLearningPolicy(
-      learning_rate, decay_Q_learning, max_sim_depth, nb_max_episode,
-      nb_episode_size, nb_sim, epsilon_Q_learning);
+    state_counts[pomdp.SampleStartState()] += 1;
+  auto init_belief = BeliefDistribution();
+  for (const auto& [state, count] : state_counts)
+    init_belief[state] = (double)count / nb_particles_b0;
 
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
@@ -195,14 +184,16 @@ int main() {
 
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
-  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, q_policy);
-  const int64_t nb_sample = 1000;
+  const int64_t max_sim_depth = 15;
+  const int64_t eval_depth = 40;
+  const int64_t eval_epsilon = 0.01;
+  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief);
   const double converge_thresh = 0.1;
   const int64_t max_iter = 30;
-  const auto fsc =
-      planner.Plan(max_sim_depth, nb_sample, converge_thresh, max_iter);
+  const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
+                                eval_depth, eval_epsilon);
 
-  //   fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
+  fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
   // Simulate the resultant FSC
   planner.SimulationWithFSC(20);

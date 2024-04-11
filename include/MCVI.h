@@ -34,11 +34,10 @@ class MCVIPlanner {
 
   /// @brief Run the MCVI planner
   /// @param max_depth_sim Maximum depth to simulate
-  /// @param nb_sample Number of samples in belief expansion
   /// @param epsilon Threshold for difference between upper and lower bounds
   /// @param max_nb_iter Maximum number of tree traversals
   /// @return The FSC for the pomdp
-  AlphaVectorFSC Plan(int64_t max_depth_sim, int64_t nb_sample, double epsilon,
+  AlphaVectorFSC Plan(int64_t max_depth_sim, double epsilon,
                       int64_t max_nb_iter, int64_t eval_depth,
                       double eval_epsilon);
 

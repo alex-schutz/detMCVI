@@ -133,7 +133,7 @@ PathToTerminal::buildPathTree() const {
 
 std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::createPathNode(
     int64_t action, const std::unordered_set<int64_t>& states) const {
-  return std::make_shared<PathNode>(PathNode{action, states});
+  return std::make_shared<PathNode>(PathNode{action, states, nullptr, {}});
 }
 
 std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::findActionChild(

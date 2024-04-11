@@ -77,7 +77,7 @@ class ShortestPathFasterAlgorithm {
   /// @brief Reconstruct path of <node, next_edge> to target
   std::vector<std::pair<int64_t, int64_t>> reconstructPath(
       int64_t target,
-      const std::unordered_map<int64_t, std::pair<int64_t, int64_t>>& paths)
+      const std::unordered_map<int64_t, std::pair<int64_t, int64_t>>& pred)
       const;
 };
 

@@ -101,9 +101,9 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
          1000.0;
 }
 
-AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, int64_t nb_sample,
-                                 double epsilon, int64_t max_nb_iter,
-                                 int64_t eval_depth, double eval_epsilon) {
+AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
+                                 int64_t max_nb_iter, int64_t eval_depth,
+                                 double eval_epsilon) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);

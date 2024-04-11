@@ -62,11 +62,16 @@ class TestPOMDP : public SimInterface {
 TEST(MCVITest, FindRLower) {
   TestPOMDP sim;
 
-  const auto belief = BeliefParticles({0, 1, 2, 3, 4, 5});
+  const auto belief = BeliefDistribution({{0, 0.166666},
+                                          {1, 0.166666},
+                                          {2, 0.166666},
+                                          {3, 0.166667},
+                                          {4, 0.166667},
+                                          {5, 0.166667}});
 
-  const double R_lower_all = FindRLower(&sim, belief, 9, 20, 0.0001, 100);
+  const double R_lower_all = FindRLower(&sim, belief, 9, 0.0001, 100);
   EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
 
-  const double R_lower_9 = FindRLower(&sim, belief, 10, 20, 0.0001, 100);
+  const double R_lower_9 = FindRLower(&sim, belief, 10, 0.0001, 100);
   EXPECT_NEAR(R_lower_9, -13 / 0.01, 1e-9);
 }

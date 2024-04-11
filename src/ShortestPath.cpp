@@ -10,14 +10,14 @@ namespace MCVI {
 std::vector<std::pair<int64_t, int64_t>>
 ShortestPathFasterAlgorithm::reconstructPath(
     int64_t target,
-    const std::unordered_map<int64_t, std::pair<int64_t, int64_t>>& paths)
+    const std::unordered_map<int64_t, std::pair<int64_t, int64_t>>& pred)
     const {
   std::vector<std::pair<int64_t, int64_t>> path;
   std::pair<int64_t, int64_t> current = {target, -1};
   while (true) {
     path.push_back(current);
-    const auto currentPtr = predecessor.find(current.first);
-    if (currentPtr == predecessor.cend()) break;
+    const auto currentPtr = pred.find(current.first);
+    if (currentPtr == pred.cend()) break;
     current = currentPtr->second;
   }
 
