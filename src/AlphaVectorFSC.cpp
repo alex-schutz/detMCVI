@@ -2,12 +2,16 @@
 
 namespace MCVI {
 
-int64_t AlphaVectorFSC::GetEdgeValue(int64_t nI, int64_t action,
-                                     int64_t observation) const {
-  const EdgeMap& m = _edges[nI];
-  const auto it = m.find({action, observation});
+int64_t AlphaVectorFSC::GetEdgeValue(int64_t nI, int64_t observation) const {
+  const std::unordered_map<int64_t, int64_t>& m = _edges[nI];
+  const auto it = m.find(observation);
   if (it != m.cend()) return it->second;
   return -1;
+}
+
+const std::unordered_map<int64_t, int64_t>& AlphaVectorFSC::GetEdges(
+    int64_t nI) const {
+  return _edges[nI];
 }
 
 int64_t AlphaVectorFSC::AddNode(const AlphaVectorNode& node) {
@@ -15,13 +19,12 @@ int64_t AlphaVectorFSC::AddNode(const AlphaVectorNode& node) {
   return _nodes.size() - 1;
 }
 
-void AlphaVectorFSC::UpdateEdge(int64_t nI, int64_t a, int64_t o,
-                                int64_t nI_new) {
-  _edges[nI][{a, o}] = nI_new;
+void AlphaVectorFSC::UpdateEdge(int64_t nI, int64_t o, int64_t nI_new) {
+  _edges[nI][o] = nI_new;
 }
 
-void AlphaVectorFSC::UpdateEdge(int64_t nI,
-                                const AlphaVectorFSC::EdgeMap& edges) {
+void AlphaVectorFSC::UpdateEdge(
+    int64_t nI, const std::unordered_map<int64_t, int64_t>& edges) {
   _edges[nI] = edges;
 }
 
@@ -49,10 +52,9 @@ void AlphaVectorFSC::GenerateGraphviz(
 
     // Loop through edges from this node
     for (const auto& edge : _edges[i]) {
-      if (edge.first.first != node.GetBestAction()) continue;
       std::string observation = observations.empty()
-                                    ? std::to_string(edge.first.second)
-                                    : observations[edge.first.second];
+                                    ? std::to_string(edge.first)
+                                    : observations[edge.first];
       int64_t target_node = edge.second;
       ofs << "  " << i << " -> " << target_node << " [label=\"" << observation
           << "\"];";

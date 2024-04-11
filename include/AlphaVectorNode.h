@@ -36,10 +36,6 @@ class AlphaVectorNode {
   /// @brief Return the best action
   int64_t GetBestAction() const { return _best_action; }
 
-  /// @brief Return the stored value associated with action a and observation o
-  const std::unordered_map<int64_t, double>& GetActionObservationValues(
-      int64_t a, int64_t o) const;
-
   /// @brief Return the best value for this node
   double V_node() const { return _V_node; }
 
@@ -55,19 +51,17 @@ class AlphaVectorNode {
   /// @brief Add `q` to the Q value associated with `action`
   void AddQ(int64_t action, double q) { _Q_action[action] += q; }
 
-  /// @brief Divide the Q value at `action` by `N`
-  void NormaliseQ(int64_t action, int64_t N) { _Q_action[action] /= N; }
-
   /// @brief Add `val` to the value associated with `action`, `observation` and
   /// node `nI`
   void AddValue(int64_t action, int64_t observation, int64_t nI, double val);
 
-  /// @brief Recalculate _V_node by finding the best action
-  void UpdateBestValue(std::shared_ptr<BeliefTreeNode> tr);
+  /// @brief Update the best action
+  void UpdateBestValue(int64_t action, std::shared_ptr<BeliefTreeNode> tr);
 
- private:
-  /// @brief Calculate the best action according to the current Q values
-  int64_t CalculateBestAction() const;
+  // Return a map of <observation, best node> for the given action, and the sum
+  // of the values over all observations
+  std::tuple<std::unordered_map<int64_t, int64_t>, double> BestNodePerObs(
+      int64_t action);
 };
 
 }  // namespace MCVI

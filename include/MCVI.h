@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include "AlphaVectorFSC.h"
+#include "BeliefDistribution.h"
 #include "BeliefParticles.h"
 #include "SimInterface.h"
 
@@ -19,13 +20,13 @@ class MCVIPlanner {
  private:
   SimInterface* _pomdp;
   AlphaVectorFSC _fsc;
-  BeliefParticles _b0;
+  BeliefDistribution _b0;
   QLearning _heuristic;
   mutable std::mt19937_64 _rng;
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
-              const BeliefParticles& init_belief,
+              const BeliefDistribution& init_belief,
               const QLearningPolicy& q_policy)
       : _pomdp(pomdp),
         _fsc(init_fsc),
@@ -48,27 +49,23 @@ class MCVIPlanner {
   void SimulationWithFSC(int64_t steps) const;
 
  private:
-  /// @brief Perform a monte-carlo backup on the fsc node given by `nI_new`.
+  /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
-              int64_t max_depth_sim, int64_t nb_sample);
+              int64_t max_depth_sim);
 
   /// @brief Simulate a trajectory using the policy graph beginning at node nI
   /// and the given state, returning the discounted reward of the simulation
   double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth,
                             double R_lower) const;
 
-  /// @brief Find the node in the V_a_o_n set of the node with the highest value
-  std::pair<double, int64_t> FindMaxValueNode(const AlphaVectorNode& node,
-                                              int64_t a, int64_t o) const;
-
   /// @brief Find a node matching the given node and edges, or insert it if it
   /// does not exist
   int64_t FindOrInsertNode(const AlphaVectorNode& node,
-                           const AlphaVectorFSC::EdgeMap& edges);
+                           const std::unordered_map<int64_t, int64_t>& edges);
 
   /// @brief Insert the given node into the fsc
   int64_t InsertNode(const AlphaVectorNode& node,
-                     const AlphaVectorFSC::EdgeMap& edges);
+                     const std::unordered_map<int64_t, int64_t>& edges);
 
   int64_t RandomAction() const;
 };
