@@ -22,8 +22,7 @@ class CTP : public MCVI::SimInterface {
   StateSpace observationSpace;
   std::vector<std::string> actions;
   std::vector<std::string> observations;
-  double _move_reward = -1;
-  double _idle_reward = -1;
+  double _idle_reward = -5;
   double _bad_action_reward = -50;
 
  public:
@@ -84,7 +83,9 @@ class CTP : public MCVI::SimInterface {
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
       state_factors[edge2str(edge)] = {0, 1};  // 0 = blocked, 1 = unblocked
-    return StateSpace(state_factors);
+    StateSpace ss(state_factors);
+    std::cout << "State space size: " << ss.size() << std::endl;
+    return ss;
   }
 
   // agent can observe any element from state space or -1 (unknown)
@@ -97,7 +98,9 @@ class CTP : public MCVI::SimInterface {
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
       observation_factors[edge2str(edge)] = {0, 1, -1};
-    return StateSpace(observation_factors);
+    StateSpace os(observation_factors);
+    std::cout << "Observation space size: " << os.size() << std::endl;
+    return os;
   }
 
   std::string map2string(const std::map<std::string, int>& map) const {
@@ -166,7 +169,7 @@ int main() {
   std::cout << "Initialising CTP" << std::endl;
   auto pomdp = CTP();
 
-  const int64_t nb_particles_b0 = 10000;
+  const int64_t nb_particles_b0 = 100000;
   const int64_t max_node_size = 10000;
 
   // Sample the initial belief
@@ -188,7 +191,7 @@ int main() {
   const int64_t eval_depth = 40;
   const int64_t eval_epsilon = 0.01;
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief);
-  const double converge_thresh = 0.1;
+  const double converge_thresh = 0.01;
   const int64_t max_iter = 30;
   const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
                                 eval_depth, eval_epsilon);

@@ -47,12 +47,14 @@ def distance(e, nodes):
 # Define world parameters
 xmax = 10  # max x-grid coordinate
 ymax = 10  # max y-grid coordinate
-V = 8  # number of nodes
-prop_stoch = 0.5  # proportion of stochastic edges in the graph
-use_edge_weights = True
+V = 15  # number of nodes
+prop_stoch = 0.4  # proportion of stochastic edges in the graph
+use_edge_weights = False
 
 # Fix seed for graph generation
-np.random.seed(42)
+s = np.random.randint(0, 9999999)
+print("seed: ", s)
+np.random.seed(5969915)
 
 # Generate random points in a grid
 node_pos = np.random.choice(xmax * ymax, V, replace=False)
@@ -85,9 +87,6 @@ for i, e in enumerate(G.edges):
     if i in stoch_edge_idx:
         edge_probs[e] = round(np.random.uniform(), 2)
 nx.set_edge_attributes(G, edge_probs, "blocked_prob")
-
-# Add deterministic high cost edge from origin to goal
-G.add_edge(origin, goal, weight=1000)
 
 
 print(
