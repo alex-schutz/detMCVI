@@ -132,7 +132,8 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
         std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
     SampleBeliefs(Tr_root, SampleOneState(_b0), 0, max_depth_sim, _pomdp,
-                  _heuristic, eval_depth, eval_epsilon, traversal_list);
+                  _heuristic, eval_depth, eval_epsilon, traversal_list,
+                  precision);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;

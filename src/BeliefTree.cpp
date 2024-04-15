@@ -21,6 +21,13 @@ std::shared_ptr<BeliefTreeNode> BeliefTreeNode::GetChild(int64_t action,
   return it->second;
 }
 
+std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>
+BeliefTreeNode::GetChildren(int64_t action) const {
+  auto it = _child_nodes.find(action);
+  if (it == _child_nodes.end()) return {};
+  return it->second;
+}
+
 void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
                           int64_t action, int64_t observation,
                           const BeliefDistribution& belief, int64_t num_actions,
@@ -45,30 +52,52 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
   return root;
 }
 
-void SampleBeliefs(
-    std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
-    int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
-    int64_t eval_depth, double eval_epsilon,
-    std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list) {
+void SampleBeliefs(std::shared_ptr<BeliefTreeNode> node, int64_t state,
+                   int64_t depth, int64_t max_depth, SimInterface* pomdp,
+                   const PathToTerminal& heuristic, int64_t eval_depth,
+                   double eval_epsilon,
+                   std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
+                   double target) {
   if (depth >= max_depth) return;
   if (node == nullptr) throw std::logic_error("Invalid node");
 
-  const int64_t action = node->GetBestAction();
-  // TODO: should choose an observation that maximises root's (U-L)
-  auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+  traversal_list.push_back(node);
 
-  auto child = node->GetChild(action, obs);
-  if (child == nullptr) {
+  const int64_t action = node->GetBestAction();
+  auto children = node->GetChildren(action);
+  if (children.size() == 0) {
     const auto [o, next_beliefs] = BeliefUpdate(node, action, pomdp);
-    obs = o;
     for (const auto& [ob, b_next] : next_beliefs)
       CreateBeliefTreeNode(node, action, ob, b_next, pomdp->GetSizeOfA(),
                            heuristic, eval_depth, eval_epsilon, pomdp);
+    children = node->GetChildren(action);
+    if (children.size() == 0) throw std::logic_error("Still no children!");
   }
 
-  traversal_list.push_back(node);
-  SampleBeliefs(node->GetChild(action, obs), state, depth + 1, max_depth, pomdp,
-                heuristic, eval_depth, eval_epsilon, traversal_list);
+  const int64_t obs =
+      ChooseObservation(children, node->GetWeights(action), target);
+
+  SampleBeliefs(children.at(obs), state, depth + 1, max_depth, pomdp, heuristic,
+                eval_depth, eval_epsilon, traversal_list, target);
+}
+
+int64_t ChooseObservation(
+    const std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>&
+        children,
+    const std::unordered_map<int64_t, double>& weights, double target) {
+  double best_gap = -std::numeric_limits<double>::infinity();
+  int64_t best_obs = -1;
+  for (const auto& [obs, belief_node] : children) {
+    const double diff =
+        (belief_node->GetUpper() - belief_node->GetLower()) - target;
+    const double gap = diff * weights.at(obs);
+    if (gap > best_gap) {
+      best_gap = gap;
+      best_obs = obs;
+    }
+  }
+  if (best_obs == -1) throw std::logic_error("Failed to find best observation");
+  return best_obs;
 }
 
 std::pair<int64_t, std::unordered_map<int64_t, BeliefDistribution>>

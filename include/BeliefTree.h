@@ -69,6 +69,8 @@ class BeliefTreeNode {
   }
 
   std::shared_ptr<BeliefTreeNode> GetChild(int64_t action, int64_t observation);
+  std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>> GetChildren(
+      int64_t action) const;
 };
 
 /// @brief Add a child belief to the parent given an action and observation edge
@@ -84,11 +86,17 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
     SimInterface* sim);
 
 /// @brief Sample beliefs from a belief tree with heuristics
-void SampleBeliefs(
-    std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
-    int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
-    int64_t eval_depth, double eval_epsilon,
-    std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list);
+void SampleBeliefs(std::shared_ptr<BeliefTreeNode> node, int64_t state,
+                   int64_t depth, int64_t max_depth, SimInterface* pomdp,
+                   const PathToTerminal& heuristic, int64_t eval_depth,
+                   double eval_epsilon,
+                   std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
+                   double target);
+
+int64_t ChooseObservation(
+    const std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>&
+        children,
+    const std::unordered_map<int64_t, double>& weights, double target);
 
 /// @brief Generate a set of next beliefs mapped by observation, obtained by
 /// taking `action` in belief node `node`. Return the most probable observation
