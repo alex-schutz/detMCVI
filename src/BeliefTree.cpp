@@ -52,35 +52,6 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
   return root;
 }
 
-void SampleBeliefs(std::shared_ptr<BeliefTreeNode> node, int64_t state,
-                   int64_t depth, int64_t max_depth, SimInterface* pomdp,
-                   const PathToTerminal& heuristic, int64_t eval_depth,
-                   double eval_epsilon,
-                   std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-                   double target) {
-  if (depth >= max_depth) return;
-  if (node == nullptr) throw std::logic_error("Invalid node");
-
-  traversal_list.push_back(node);
-
-  const int64_t action = node->GetBestAction();
-  auto children = node->GetChildren(action);
-  if (children.size() == 0) {
-    const auto [o, next_beliefs] = BeliefUpdate(node, action, pomdp);
-    for (const auto& [ob, b_next] : next_beliefs)
-      CreateBeliefTreeNode(node, action, ob, b_next, pomdp->GetSizeOfA(),
-                           heuristic, eval_depth, eval_epsilon, pomdp);
-    children = node->GetChildren(action);
-    if (children.size() == 0) throw std::logic_error("Still no children!");
-  }
-
-  const int64_t obs =
-      ChooseObservation(children, node->GetWeights(action), target);
-
-  SampleBeliefs(children.at(obs), state, depth + 1, max_depth, pomdp, heuristic,
-                eval_depth, eval_epsilon, traversal_list, target);
-}
-
 int64_t ChooseObservation(
     const std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>&
         children,
@@ -132,24 +103,6 @@ BeliefUpdate(std::shared_ptr<BeliefTreeNode> node, int64_t action,
   }
 
   return std::make_pair(most_prob_obs, belief_map);
-}
-
-double UpdateUpperBound(std::shared_ptr<BeliefTreeNode> node, double gamma,
-                        int64_t depth) {
-  if (!node) return 0.0;
-  const auto action = node->GetBestAction();
-  if (node->GetFSCNodeIndex() == -1 || !node->HasReward(action))
-    return std::pow(gamma, depth) * node->GetUpper();
-  const double R_a = node->GetReward(action);
-  double esti_U_future = 0.0;
-  for (const auto& [o, w] : node->GetWeights(action)) {
-    const double U_child =
-        UpdateUpperBound(node->GetChild(action, o), gamma, depth + 1);
-    esti_U_future += w * U_child;
-  }
-
-  node->SetUpper(R_a + gamma * esti_U_future);
-  return node->GetUpper();
 }
 
 }  // namespace MCVI

@@ -70,6 +70,13 @@ class MCVIPlanner {
 
   double UpperBoundUpdate(const BeliefDistribution& belief, double R_lower,
                           int64_t max_depth_sim);
+
+  void SampleBeliefs(
+      std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
+      int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
+      int64_t eval_depth, double eval_epsilon,
+      std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
+      double target, double R_lower, int64_t max_depth_sim);
 };
 
 }  // namespace MCVI

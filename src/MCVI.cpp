@@ -101,6 +101,37 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
          1000.0;
 }
 
+void MCVIPlanner::SampleBeliefs(
+    std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
+    int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
+    int64_t eval_depth, double eval_epsilon,
+    std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list, double target,
+    double R_lower, int64_t max_depth_sim) {
+  if (depth >= max_depth) return;
+  if (node == nullptr) throw std::logic_error("Invalid node");
+  node->SetUpper(UpperBoundUpdate(node->GetBelief(), R_lower, max_depth_sim));
+  BackUp(node, R_lower, max_depth_sim);
+  traversal_list.push_back(node);
+
+  const int64_t action = node->GetBestAction();
+  auto children = node->GetChildren(action);
+  if (children.size() == 0) {
+    const auto [o, next_beliefs] = BeliefUpdate(node, action, pomdp);
+    for (const auto& [ob, b_next] : next_beliefs)
+      CreateBeliefTreeNode(node, action, ob, b_next, pomdp->GetSizeOfA(),
+                           heuristic, eval_depth, eval_epsilon, pomdp);
+    children = node->GetChildren(action);
+    if (children.size() == 0) throw std::logic_error("Still no children!");
+  }
+
+  const int64_t obs =
+      ChooseObservation(children, node->GetWeights(action), target);
+
+  SampleBeliefs(children.at(obs), state, depth + 1, max_depth, pomdp, heuristic,
+                eval_depth, eval_epsilon, traversal_list, target, R_lower,
+                max_depth_sim);
+}
+
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
                                  int64_t max_nb_iter, int64_t eval_depth,
                                  double eval_epsilon) {
@@ -133,7 +164,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
     SampleBeliefs(Tr_root, SampleOneState(_b0), 0, max_depth_sim, _pomdp,
                   _heuristic, eval_depth, eval_epsilon, traversal_list,
-                  precision);
+                  precision, R_lower, max_depth_sim);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;

@@ -85,14 +85,6 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
     const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
     SimInterface* sim);
 
-/// @brief Sample beliefs from a belief tree with heuristics
-void SampleBeliefs(std::shared_ptr<BeliefTreeNode> node, int64_t state,
-                   int64_t depth, int64_t max_depth, SimInterface* pomdp,
-                   const PathToTerminal& heuristic, int64_t eval_depth,
-                   double eval_epsilon,
-                   std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-                   double target);
-
 int64_t ChooseObservation(
     const std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>&
         children,
@@ -104,9 +96,5 @@ int64_t ChooseObservation(
 std::pair<int64_t, std::unordered_map<int64_t, BeliefDistribution>>
 BeliefUpdate(std::shared_ptr<BeliefTreeNode> node, int64_t action,
              SimInterface* pomdp);
-
-// Update the upper bound of the given node based on its children
-double UpdateUpperBound(std::shared_ptr<BeliefTreeNode> node, double gamma,
-                        int64_t depth);
 
 }  // namespace MCVI
