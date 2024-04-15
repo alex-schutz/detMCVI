@@ -8,6 +8,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <random>
 #include <unordered_map>
 #include <vector>
@@ -28,6 +29,9 @@ class AlphaVectorNode {
   mutable ValueMap _V_a_o_n;
   double _V_node;  // a lower bound value
   int64_t _best_action;
+  std::unordered_map<int64_t, double>
+      _alpha;  // expected total reward of executing policy from this node with
+               // initial state
 
  public:
   AlphaVectorNode(int64_t init_best_action);
@@ -49,6 +53,9 @@ class AlphaVectorNode {
 
   /// @brief Add `q` to the Q value associated with `action`
   void AddQ(int64_t action, double q) { _Q_action[action] += q; }
+
+  void SetAlpha(int64_t state, double value) { _alpha[state] = value; }
+  std::optional<double> GetAlpha(int64_t state) const;
 
   /// @brief Add `val` to the value associated with `action`, `observation` and
   /// node `nI`

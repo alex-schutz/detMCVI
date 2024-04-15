@@ -64,6 +64,12 @@ class MCVIPlanner {
                      const std::unordered_map<int64_t, int64_t>& edges);
 
   int64_t RandomAction() const;
+
+  double GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
+                      int64_t max_depth_sim);
+
+  double UpperBoundUpdate(const BeliefDistribution& belief, double R_lower,
+                          int64_t max_depth_sim);
 };
 
 }  // namespace MCVI

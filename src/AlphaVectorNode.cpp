@@ -15,7 +15,8 @@ AlphaVectorNode::AlphaVectorNode(int64_t init_best_action)
       _R_action(),
       _V_a_o_n(),
       _V_node(0.0),
-      _best_action(init_best_action) {}
+      _best_action(init_best_action),
+      _alpha() {}
 
 void AlphaVectorNode::UpdateBestValue(int64_t action,
                                       std::shared_ptr<BeliefTreeNode> tr) {
@@ -44,6 +45,12 @@ AlphaVectorNode::BestNodePerObs(int64_t action) {
     sum_v += V;
   }
   return {edges, sum_v};
+}
+
+std::optional<double> AlphaVectorNode::GetAlpha(int64_t state) const {
+  const auto it = _alpha.find(state);
+  if (it == _alpha.cend()) return std::nullopt;
+  return it->second;
 }
 
 }  // namespace MCVI

@@ -69,7 +69,7 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
 
       for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
         const double V_nI_sNext =
-            SimulateTrajectory(nI, sNext, max_depth_sim, R_lower);
+            GetNodeAlpha(sNext, nI, max_depth_sim, R_lower);
         node_new.AddValue(action, obs, nI, V_nI_sNext * prob);
       }
     }
@@ -117,7 +117,6 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
   int64_t i = 0;
   while (i < max_nb_iter) {
     std::cout << "--- Iter " << i << " ---" << std::endl;
-    UpdateUpperBound(Tr_root, _pomdp->GetDiscount(), 0);
     std::cout << "Tr_root upper bound: " << Tr_root->GetUpper() << std::endl;
     std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
     const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
@@ -143,6 +142,8 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     while (!traversal_list.empty()) {
       auto tr_node = traversal_list.back();
       traversal_list.pop_back();
+      tr_node->SetUpper(
+          UpperBoundUpdate(tr_node->GetBelief(), R_lower, max_depth_sim));
       BackUp(tr_node, R_lower, max_depth_sim);
     }
     end = std::chrono::steady_clock::now();
@@ -181,6 +182,36 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
     state = sNext;
   }
   std::cout << "sum reward: " << sum_r << std::endl;
+}
+
+double MCVIPlanner::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
+                                 int64_t max_depth_sim) {
+  const std::optional<double> val = _fsc.GetNode(nI).GetAlpha(state);
+  if (val.has_value()) return val.value();
+  const double V = SimulateTrajectory(nI, state, max_depth_sim, R_lower);
+  _fsc.GetNode(nI).SetAlpha(state, V);
+  return V;
+}
+
+double MCVIPlanner::UpperBoundUpdate(const BeliefDistribution& belief,
+                                     double R_lower, int64_t max_depth_sim) {
+  double V_upper_bound = 0.0;
+  for (const auto& [state, prob] : belief) {
+    double best_val = -std::numeric_limits<double>::infinity();
+    for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
+      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
+      double best_alpha = -std::numeric_limits<double>::infinity();
+      for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
+        const double V_nI_sNext =
+            GetNodeAlpha(sNext, nI, R_lower, max_depth_sim);
+        if (V_nI_sNext > best_alpha) best_alpha = V_nI_sNext;
+      }
+      double val = reward + _pomdp->GetDiscount() * best_alpha;
+      if (val > best_val) best_val = val;
+    }
+    V_upper_bound += prob * best_val;
+  }
+  return V_upper_bound;
 }
 
 }  // namespace MCVI
