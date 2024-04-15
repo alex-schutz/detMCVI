@@ -1,50 +1,24 @@
-Goals 
-- MC-JESP for solving MA-CTPs
-    - [ ] Improve MC-JESP by using MCVI in each MC-JESP's iteration for solving the best-response POMDP
-    - [ ] Further improvements considering (MA-)CTP problems' features about deterministic dynamics (Contributions specialized for solving MACTPs & deterministic Dec-POMDPs - Alex)
-        - [ ] Better heuristics (faster and tighter bound estimations than previous methods for general POMDPs)
-        - [ ] Smarter belief expansion (prune some branches based on certain bound estimations?)
-        - [ ] Improve Monte-Carlo BackUP for deterministic POMDPs
-            - In deterministic POMDPs, some observations are strictly linked to certain beliefs/states
-            - Restrict Backup for beliefs (fsc nodes) to only relevant observations and relvant child nodes
+# detMCVI, A Version of MCVI for Deterministic POMDPs
 
+## Compilation
+```sh
+mkdir build && cd build
+cmake ..
+make
+```
 
-Current MCVI C++ Implementation Progress
-- Basic Interfaces
-    - [x] POMDP Interface
-    - [x] Simulator Interface
-    - [x] Finite State Controller 
-    - [x] Belief Expansion Tree
+To run the Canadian Traveller Problem example, run `build/experiments/CTP_experiment`.
+The file `experiments/CTP_generator.py` is provided to generate graphs for the CTP experiment, but manual graphs can also be specified.
+Modify `experiments/CTP_graph.h` to update the problem instance.
 
-- Main Components
-    - [x] Upper Bound Evaluation
-        - [x] Q-learning implementation
-    - [x] Lower Bound Evaluation (Simulation with the FSC built)
-    - [x] Belief Expand Method
-    - [x] Monte-Carlo BackUp
-        - [x] Basic implementation
-        - [ ] Testing
-    - Testing with POMDP and CTP benchmarks
-        - [x] POMDP benchmarks (not really necessary in C++)    
-        - [x] Alex's CTP problems
+## Issues
+- Upper/lower bound updates should be done by averaging child bounds, not recalculating
+- For large belief spaces, the pdf should be sampled instead of explicitly iterated through
+- Simulation depth paramater might not need to exist, see how this was done originally
 
-Current MCVI Julia Implementation Progress 
-- Basic Interfaces
-    - [x] POMDP Interface
-    - [x] Simulator Interface
-    - [x] Finite State Controller 
-    - [x] Belief Expansion Tree
-
-- Main Components
-    - [x] Upper Bound Evaluation
-        - [x] Q-learning implementation
-    - [x] Lower Bound Evaluation (Simulation with the FSC built)
-    - [x] Belief Expand Method
-    - [x] Monte-Carlo BackUp
-        - [x] Basic implementation
-        - [x] Testing
-
-- Testing with POMDP and CTP benchmarks
-    - [x] Tiger
-    - [x] Rock Sample
-    - [ ] Alex's CTP problems
+## Optimisations
+- Initialise FSCs using shortest paths
+- Add multi-threading
+- Add pruning based on reachability
+- Add `AvailableActions` functionality
+- Optimise path storage in shortest path calculator (only need to store action + next node instead of entire path)
