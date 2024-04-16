@@ -44,6 +44,10 @@ class MCVIPlanner {
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
 
+  /// @brief Evaluate the FSC bounds through multiple simulations
+  void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
+                                   int64_t default_action) const;
+
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,

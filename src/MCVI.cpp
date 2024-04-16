@@ -200,6 +200,10 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   double sum_r = 0.0;
   int64_t nI = _fsc.GetStartNodeIndex();
   for (int64_t i = 0; i < steps; ++i) {
+    if (nI == -1) {
+      std::cout << "Reached end of policy." << std::endl;
+      break;
+    }
     const int64_t action = _fsc.GetNode(nI).GetBestAction();
     std::cout << "---------" << std::endl;
     std::cout << "step: " << i << std::endl;
@@ -219,6 +223,36 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
     state = sNext;
   }
   std::cout << "sum reward: " << sum_r << std::endl;
+}
+
+void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
+                                              int64_t num_sims,
+                                              int64_t default_action) const {
+  const double gamma = _pomdp->GetDiscount();
+  double total_reward = 0;
+  double max_reward = -std::numeric_limits<double>::infinity();
+  double min_reward = std::numeric_limits<double>::infinity();
+  for (int64_t sim = 0; sim < num_sims; ++sim) {
+    int64_t state = SampleOneState(_b0);
+    double sum_r = 0.0;
+    int64_t nI = _fsc.GetStartNodeIndex();
+    for (int64_t i = 0; i < max_steps; ++i) {
+      const int64_t action =
+          (nI != -1) ? _fsc.GetNode(nI).GetBestAction() : default_action;
+      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
+      sum_r += std::pow(gamma, i) * reward;
+      nI = _fsc.GetEdgeValue(nI, obs);
+
+      if (done) break;
+      state = sNext;
+    }
+    total_reward += sum_r;
+    if (max_reward < sum_r) max_reward = sum_r;
+    if (min_reward > sum_r) min_reward = sum_r;
+  }
+  std::cout << "Average reward: " << total_reward / num_sims << std::endl;
+  std::cout << "Highest reward: " << max_reward << std::endl;
+  std::cout << "Lowest reward: " << max_reward << std::endl;
 }
 
 double MCVIPlanner::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,

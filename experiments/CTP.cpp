@@ -44,6 +44,7 @@ class CTP : public MCVI::SimInterface {
   int GetNbAgent() const override { return 1; }
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
+  int getGoal() const { return goal; }
 
   std::tuple<int, int, double, bool> Step(int sI, int aI) override {
     int sNext;
@@ -202,6 +203,8 @@ int main() {
 
   // Simulate the resultant FSC
   planner.SimulationWithFSC(20);
+
+  planner.EvaluationWithSimulationFSC(20, 1000, pomdp.getGoal());
 
   return 0;
 }
