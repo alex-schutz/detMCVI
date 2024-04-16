@@ -241,7 +241,7 @@ void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
           (nI != -1) ? _fsc.GetNode(nI).GetBestAction() : default_action;
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
-      nI = _fsc.GetEdgeValue(nI, obs);
+      if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
 
       if (done) break;
       state = sNext;
@@ -252,7 +252,7 @@ void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
   }
   std::cout << "Average reward: " << total_reward / num_sims << std::endl;
   std::cout << "Highest reward: " << max_reward << std::endl;
-  std::cout << "Lowest reward: " << max_reward << std::endl;
+  std::cout << "Lowest reward: " << min_reward << std::endl;
 }
 
 double MCVIPlanner::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
