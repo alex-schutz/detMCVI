@@ -36,9 +36,11 @@ size_t SampleCDF(const std::vector<std::pair<int64_t, double>>& cdf) {
 
 std::pair<int64_t, double> SampleCDFDestructive(
     std::vector<std::pair<int64_t, double>>& cdf) {
+  if (cdf.size() <= 1) return {-1, 0.0};
   const size_t idx = SampleCDF(cdf);
   const int64_t s = cdf[idx].first;
   const double prob = cdf[idx].second - cdf[idx - 1].second;
+  for (size_t i = idx; i < cdf.size(); ++i) cdf[i].second -= prob;
   cdf.erase(cdf.begin() + idx);
   return {s, prob};
 }

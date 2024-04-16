@@ -54,7 +54,8 @@ int64_t MCVIPlanner::FindOrInsertNode(
 }
 
 void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
-                         double R_lower, int64_t max_depth_sim) {
+                         double R_lower, int64_t max_depth_sim,
+                         int64_t max_samples) {
   const double gamma = _pomdp->GetDiscount();
   const BeliefDistribution& belief = Tr_node->GetBelief();
   auto node_new = AlphaVectorNode(RandomAction());
@@ -63,7 +64,10 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   double best_V = -std::numeric_limits<double>::infinity();
   int64_t best_a = -1;
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
-    for (const auto& [state, prob] : belief) {
+    auto belief_cdf = CreateCDF(belief);
+    for (int64_t sample = 0; sample < max_samples; ++sample) {
+      const auto [state, prob] = SampleCDFDestructive(belief_cdf);
+      if (state == -1) break;  // Sampled all states in belief
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       node_new.AddR(action, reward * prob);
 
@@ -106,11 +110,12 @@ void MCVIPlanner::SampleBeliefs(
     int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
     int64_t eval_depth, double eval_epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list, double target,
-    double R_lower, int64_t max_depth_sim) {
+    double R_lower, int64_t max_depth_sim, int64_t max_samples) {
   if (depth >= max_depth) return;
   if (node == nullptr) throw std::logic_error("Invalid node");
-  node->SetUpper(UpperBoundUpdate(node->GetBelief(), R_lower, max_depth_sim));
-  BackUp(node, R_lower, max_depth_sim);
+  node->SetUpper(
+      UpperBoundUpdate(node->GetBelief(), R_lower, max_depth_sim, max_samples));
+  BackUp(node, R_lower, max_depth_sim, max_samples);
   traversal_list.push_back(node);
 
   const int64_t action = node->GetBestAction();
@@ -129,12 +134,12 @@ void MCVIPlanner::SampleBeliefs(
 
   SampleBeliefs(children.at(obs), state, depth + 1, max_depth, pomdp, heuristic,
                 eval_depth, eval_epsilon, traversal_list, target, R_lower,
-                max_depth_sim);
+                max_depth_sim, max_samples);
 }
 
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
                                  int64_t max_nb_iter, int64_t eval_depth,
-                                 double eval_epsilon) {
+                                 double eval_epsilon, int64_t max_samples) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
@@ -164,7 +169,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
     SampleBeliefs(Tr_root, SampleOneState(_b0), 0, max_depth_sim, _pomdp,
                   _heuristic, eval_depth, eval_epsilon, traversal_list,
-                  precision, R_lower, max_depth_sim);
+                  precision, R_lower, max_depth_sim, max_samples);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
@@ -174,9 +179,9 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     while (!traversal_list.empty()) {
       auto tr_node = traversal_list.back();
       traversal_list.pop_back();
-      tr_node->SetUpper(
-          UpperBoundUpdate(tr_node->GetBelief(), R_lower, max_depth_sim));
-      BackUp(tr_node, R_lower, max_depth_sim);
+      tr_node->SetUpper(UpperBoundUpdate(tr_node->GetBelief(), R_lower,
+                                         max_depth_sim, max_samples));
+      BackUp(tr_node, R_lower, max_depth_sim, max_samples);
     }
     end = std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
@@ -226,9 +231,13 @@ double MCVIPlanner::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
 }
 
 double MCVIPlanner::UpperBoundUpdate(const BeliefDistribution& belief,
-                                     double R_lower, int64_t max_depth_sim) {
+                                     double R_lower, int64_t max_depth_sim,
+                                     int64_t max_belief_samples) {
   double V_upper_bound = 0.0;
-  for (const auto& [state, prob] : belief) {
+  auto belief_cdf = CreateCDF(belief);
+  for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
+    const auto [state, prob] = SampleCDFDestructive(belief_cdf);
+    if (state == -1) break;  // Sampled all states in belief
     double best_val = -std::numeric_limits<double>::infinity();
     for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);

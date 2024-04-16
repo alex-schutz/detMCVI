@@ -180,6 +180,7 @@ int main() {
   auto init_belief = BeliefDistribution();
   for (const auto& [state, count] : state_counts)
     init_belief[state] = (double)count / nb_particles_b0;
+  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
 
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
@@ -193,8 +194,9 @@ int main() {
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief);
   const double converge_thresh = 0.01;
   const int64_t max_iter = 30;
+  const int64_t max_belief_samples = 10000;
   const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
-                                eval_depth, eval_epsilon);
+                                eval_depth, eval_epsilon, max_belief_samples);
 
   fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
