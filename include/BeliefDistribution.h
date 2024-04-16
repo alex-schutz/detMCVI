@@ -1,7 +1,5 @@
 #pragma once
-#include <cstdint>
-#include <random>
-#include <unordered_map>
+#include <Sample.h>
 
 namespace MCVI {
 
