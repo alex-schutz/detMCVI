@@ -73,7 +73,7 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
 
       for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
         const double V_nI_sNext =
-            GetNodeAlpha(sNext, nI, max_depth_sim, R_lower);
+            GetNodeAlpha(sNext, nI, R_lower, max_depth_sim);
         node_new.AddValue(action, obs, nI, V_nI_sNext * prob);
       }
     }
