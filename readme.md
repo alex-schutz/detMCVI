@@ -13,7 +13,6 @@ Modify `experiments/CTP_graph.h` to update the problem instance.
 
 ## Issues
 - Upper/lower bound updates should be done by averaging child bounds, not recalculating
-- For large belief spaces, the pdf should be sampled instead of explicitly iterated through
 - Simulation depth paramater might not need to exist, see how this was done originally
 
 ## Optimisations
