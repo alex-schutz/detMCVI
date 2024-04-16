@@ -66,6 +66,33 @@ class CTP : public MCVI::SimInterface {
     return stateSpace.stateIndex(state);
   }
 
+  void visualiseGraph(std::ostream& os) {
+    if (!os) throw std::logic_error("Unable to write graph to file");
+
+    os << "graph G {" << std::endl;
+
+    for (const auto& i : nodes) {
+      os << "  " << i << " [label=\"" << i << "\"";
+      if (i == origin) os << ", fillcolor=\"#ff7f0e\", style=filled";
+      if (i == goal) os << ", fillcolor=\"#2ca02c\", style=filled";
+      os << "];" << std::endl;
+    }
+
+    for (const auto& [edge, weight] : edges) {
+      auto stochEdge = stoch_edges.find(edge);
+      if (stochEdge != stoch_edges.end()) {
+        os << "  " << edge.first << " -- " << edge.second << " [label=\""
+           << stochEdge->second << " : " << weight << "\", style=dashed];"
+           << std::endl;
+      } else {
+        os << "  " << edge.first << " -- " << edge.second << " [label=\""
+           << weight << "\"];" << std::endl;
+      }
+    }
+
+    os << "}" << std::endl;
+  }
+
  private:
   std::vector<std::string> initActions() const {
     std::vector<std::string> acts;
@@ -169,6 +196,8 @@ int main() {
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;
   auto pomdp = CTP();
+
+  pomdp.visualiseGraph(std::cerr);
 
   const int64_t nb_particles_b0 = 100000;
   const int64_t max_node_size = 10000;
