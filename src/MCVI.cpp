@@ -64,9 +64,9 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   double best_V = -std::numeric_limits<double>::infinity();
   int64_t best_a = -1;
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
-    auto belief_cdf = CreateCDF(belief);
+    auto belief_pdf = belief;
     for (int64_t sample = 0; sample < max_samples; ++sample) {
-      const auto [state, prob] = SampleCDFDestructive(belief_cdf);
+      const auto [state, prob] = SamplePDFDestructive(belief_pdf);
       if (state == -1) break;  // Sampled all states in belief
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       node_new.AddR(action, reward * prob);
@@ -268,9 +268,9 @@ double MCVIPlanner::UpperBoundUpdate(const BeliefDistribution& belief,
                                      double R_lower, int64_t max_depth_sim,
                                      int64_t max_belief_samples) {
   double V_upper_bound = 0.0;
-  auto belief_cdf = CreateCDF(belief);
+  auto belief_pdf = belief;
   for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
-    const auto [state, prob] = SampleCDFDestructive(belief_cdf);
+    const auto [state, prob] = SamplePDFDestructive(belief_pdf);
     if (state == -1) break;  // Sampled all states in belief
     double best_val = -std::numeric_limits<double>::infinity();
     for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
