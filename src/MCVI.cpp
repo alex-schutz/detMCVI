@@ -65,9 +65,11 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   int64_t best_a = -1;
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
     auto belief_pdf = belief;
+    double prob_sum = 0.0;
     for (int64_t sample = 0; sample < max_samples; ++sample) {
       const auto [state, prob] = SamplePDFDestructive(belief_pdf);
       if (state == -1) break;  // Sampled all states in belief
+      prob_sum += prob;
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       node_new.AddR(action, reward * prob);
 
@@ -79,7 +81,7 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
     }
 
     const auto& [edges, sum_v] = node_new.BestNodePerObs(action);
-    node_new.AddQ(action, gamma * sum_v + node_new.GetR(action));
+    node_new.AddQ(action, (gamma * sum_v + node_new.GetR(action)) / prob_sum);
     const double Q = node_new.GetQ(action);
     if (Q > best_V) {
       best_a = action;
@@ -269,9 +271,11 @@ double MCVIPlanner::UpperBoundUpdate(const BeliefDistribution& belief,
                                      int64_t max_belief_samples) {
   double V_upper_bound = 0.0;
   auto belief_pdf = belief;
+  double prob_sum = 0.0;
   for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
     const auto [state, prob] = SamplePDFDestructive(belief_pdf);
     if (state == -1) break;  // Sampled all states in belief
+    prob_sum += prob;
     double best_val = -std::numeric_limits<double>::infinity();
     for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
@@ -286,7 +290,7 @@ double MCVIPlanner::UpperBoundUpdate(const BeliefDistribution& belief,
     }
     V_upper_bound += prob * best_val;
   }
-  return V_upper_bound;
+  return V_upper_bound / prob_sum;
 }
 
 }  // namespace MCVI
