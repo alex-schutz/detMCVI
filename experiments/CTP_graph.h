@@ -143,3 +143,18 @@ const std::unordered_map<std::pair<int, int>, double, pairhash> CTPStochEdges =
 const int CTPOrigin = 0;
 const int CTPGoal = 15;
 */
+
+/*
+// ========= Small observation space example ===================================
+const std::vector<int> CTPNodes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+const std::unordered_map<std::pair<int, int>, double, pairhash> CTPEdges = {
+    {{0, 1}, 1}, {{1, 2}, 1}, {{1, 3}, 1},  {{1, 5}, 1},
+    {{2, 6}, 1}, {{3, 4}, 1}, {{3, 5}, 1},  {{4, 9}, 1},
+    {{5, 6}, 1}, {{5, 8}, 1}, {{5, 9}, 1},  {{5, 10}, 1},
+    {{6, 7}, 1}, {{7, 8}, 1}, {{8, 10}, 1}, {{9, 10}, 1},
+};
+const std::unordered_map<std::pair<int, int>, double, pairhash> CTPStochEdges =
+    {{{1, 5}, 0.5}, {{5, 10}, 0.5}};
+const int CTPOrigin = 0;
+const int CTPGoal = 10;
+*/
