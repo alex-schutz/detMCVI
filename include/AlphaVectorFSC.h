@@ -8,6 +8,7 @@
 #pragma once
 
 #include "AlphaVectorNode.h"
+#include "SimInterface.h"
 
 namespace MCVI {
 
@@ -52,6 +53,12 @@ class AlphaVectorFSC {
   void GenerateGraphviz(
       std::ostream& ofs, const std::vector<std::string>& actions = {},
       const std::vector<std::string>& observations = {}) const;
+
+  double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth,
+                            double R_lower, SimInterface* pomdp);
+
+  double GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
+                      int64_t max_depth_sim, SimInterface* pomdp);
 };
 
 }  // namespace MCVI

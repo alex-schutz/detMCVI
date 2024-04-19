@@ -11,6 +11,8 @@
 
 #include "AlphaVectorFSC.h"
 #include "BeliefDistribution.h"
+#include "BeliefTree.h"
+#include "Bound.h"
 #include "SimInterface.h"
 
 namespace MCVI {
@@ -51,7 +53,8 @@ class MCVIPlanner {
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
-              int64_t max_depth_sim, int64_t max_belief_samples);
+              int64_t max_depth_sim, int64_t max_belief_samples,
+              int64_t eval_depth, double eval_epsilon);
 
   /// @brief Simulate a trajectory using the policy graph beginning at node nI
   /// and the given state, returning the discounted reward of the simulation
@@ -68,12 +71,6 @@ class MCVIPlanner {
                      const std::unordered_map<int64_t, int64_t>& edges);
 
   int64_t RandomAction() const;
-
-  double GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
-                      int64_t max_depth_sim);
-
-  double UpperBoundUpdate(const BeliefDistribution& belief, double R_lower,
-                          int64_t max_depth_sim, int64_t max_belief_samples);
 
   void SampleBeliefs(
       std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
