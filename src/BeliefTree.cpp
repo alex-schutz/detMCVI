@@ -13,8 +13,8 @@ void ObservationNode::BackUp(AlphaVectorFSC& fsc, int64_t max_belief_samples,
 }
 
 void ObservationNode::BackUpFromNextBelief() {
-  double nextLower = _next_belief->GetUpper() * _weight + _sum_reward;
-  double nextUpper = _next_belief->GetLower() * _weight + _sum_reward;
+  double nextLower = _next_belief->GetLower() * _weight + _sum_reward;
+  double nextUpper = _next_belief->GetUpper() * _weight + _sum_reward;
 
   if (nextLower > _lower_bound) {
     _lower_bound = nextLower;
@@ -68,7 +68,7 @@ void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
         CreateBeliefTreeNode(belief, belief_depth + 1, heuristic, eval_depth,
                              eval_epsilon, max_belief_samples, pomdp);
     _observation_edges.insert(
-        {o, ObservationNode(w, reward_map[o], belief_node,
+        {o, ObservationNode(w, reward_map[o] / prob_sum, belief_node,
                             belief_node->GetUpper(), belief_node->GetLower())});
   }
 }
@@ -83,6 +83,9 @@ void ActionNode::CalculateBounds() {
   }
   _avgLower = lower;
   _avgUpper = upper;
+
+  std::cerr << "action " << _action << " lower bound " << lower
+            << " upper bound " << upper << std::endl;
 }
 
 std::shared_ptr<BeliefTreeNode> ActionNode::GetChild(
@@ -123,6 +126,7 @@ void BeliefTreeNode::AddChild(int64_t action, int64_t max_belief_samples,
   _action_edges.insert({action, ActionNode(action, GetBelief(), _belief_depth,
                                            max_belief_samples, heuristic,
                                            eval_depth, eval_epsilon, pomdp)});
+  std::cerr << "Num action edges: " << _action_edges.size() << std::endl;
 }
 
 void BeliefTreeNode::SetBestActionLBound(int64_t action, double lower_bound) {
@@ -228,6 +232,8 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
                            eval_depth, max_belief_samples);
   const auto L =
       FindRLower(sim, belief, sim->GetSizeOfA(), eval_epsilon, eval_depth);
+  std::cerr << "belief depth " << belief_depth << " U " << U << " L " << L
+            << std::endl;
   const auto node =
       std::make_shared<BeliefTreeNode>(belief, belief_depth, U, L);
   return node;

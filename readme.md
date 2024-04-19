@@ -14,9 +14,20 @@ Modify `experiments/CTP_graph.h` to update the problem instance.
 ## Issues
 - Upper/lower bound updates should be done by averaging child bounds, not recalculating
 	- This is not working. Need to do the following:
-		- Add observation child nodes which track upper/lower bounds and values instead of in belief. Can still point to child belief. That way when backing up we include the immediate reward.
 		- Check the belief expansion procedure
-	- Actually I think the main problem might have been that we weren't discounting the initial upper bound estimate. Could we integrate this into the previous (pre-branch) version?
+
+		- Upper bound update not quite right
+
+		Num action edges: 13
+belief depth 1 U 0 L -100
+belief depth 1 U -3.38937 L -100
+belief depth 1 U -3.39531 L -100
+belief depth 1 U -3.39518 L -100
+belief depth 1 U -3.3944 L -100
+action 13 lower bound -101.503 upper bound -4.86286
+
+bounds should be -1 + bound, why is it more like -1.5?
+
 - Simulation depth paramater might not need to exist, see how this was done originally
 	- That's the excess uncertainty parameter in the belief expansion
 
