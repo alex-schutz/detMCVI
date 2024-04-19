@@ -41,42 +41,11 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   Tr_node->BackUpActions(_fsc, max_samples, R_lower, max_depth_sim, _pomdp);
   Tr_node->UpdateBestAction();
 
-  //   const double gamma = _pomdp->GetDiscount();
-  //
-  //   double best_V = -std::numeric_limits<double>::infinity();
-  //   int64_t best_a = -1;
-  //   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
-  //     const auto action_child = Tr_node->GetOrAddChildren(
-  //         action, max_samples, _heuristic, eval_depth, eval_epsilon, _pomdp);
-  //     node_new.AddR(action, action_child.GetImmediateReward());
-  //     for (const auto& [obs, next_belief] : action_child.GetChildren()) {
-  //       for (const auto& [sNext, prob_within_obs] : next_belief->GetBelief())
-  //       {
-  //         for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
-  //           const double V_nI_sNext =
-  //               GetNodeAlpha(sNext, nI, R_lower, max_depth_sim);
-  //           node_new.AddValue(
-  //               action, obs, nI,
-  //               V_nI_sNext * prob_within_obs * action_child.GetWeight(obs));
-  //         }
-  //       }
-  //     }
-
-  //     const auto& [edges, sum_v] = node_new.BestNodePerObs(action);
-  //     node_new.AddQ(action, gamma * sum_v + node_new.GetR(action));
-  //     const double Q = node_new.GetQ(action);
-  //     if (Q > best_V) {
-  //       best_a = action;
-  //       best_V = Q;
-  //       node_edges = edges;
-  //     }
-  //   }
-
   const int64_t best_act = Tr_node->GetBestActLBound();
   auto node_new = AlphaVectorNode(best_act);
   std::unordered_map<int64_t, int64_t> node_edges;
   for (const auto& [obs, next_belief] : Tr_node->GetChildren(best_act))
-    node_edges[obs] = next_belief->GetBestPolicyNode();
+    node_edges[obs] = next_belief.GetBestPolicyNode();
 
   const int64_t nI = FindOrInsertNode(node_new, node_edges);
   Tr_node->SetFSCNodeIndex(nI);
@@ -121,8 +90,8 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
 
-  std::shared_ptr<BeliefTreeNode> Tr_root =
-      CreateBeliefTreeNode(_b0, _heuristic, eval_depth, eval_epsilon, _pomdp);
+  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
+      _b0, 0, _heuristic, eval_depth, eval_epsilon, max_samples, _pomdp);
   const auto node = AlphaVectorNode(RandomAction());
   _fsc.AddNode(node);
   Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);

@@ -18,33 +18,64 @@ namespace MCVI {
 
 class BeliefTreeNode;
 
+class ObservationNode {
+ private:
+  double _weight;
+  double _sum_reward;
+  double _upper_bound;
+  double _lower_bound;
+  int64_t _best_policy_node;
+  double _best_policy_val;
+  std::shared_ptr<BeliefTreeNode> _next_belief;
+
+ public:
+  ObservationNode(double weight, double sum_reward,
+                  std::shared_ptr<BeliefTreeNode> next_belief,
+                  double next_upper, double next_lower)
+      : _weight(weight),
+        _sum_reward(sum_reward),
+        _upper_bound(sum_reward + weight * next_upper),
+        _lower_bound(sum_reward + weight * next_lower),
+        _best_policy_node(-1),
+        _best_policy_val(-std::numeric_limits<double>::infinity()),
+        _next_belief(next_belief) {}
+
+  int64_t GetBestPolicyNode() const { return _best_policy_node; }
+
+  void BackUp(AlphaVectorFSC& fsc, int64_t max_belief_samples, double R_lower,
+              int64_t max_depth_sim, SimInterface* pomdp);
+
+  void BackUpFromNextBelief();
+
+  void BackUpFromPolicyGraph(AlphaVectorFSC& fsc, int64_t max_belief_samples,
+                             double R_lower, int64_t max_depth_sim,
+                             SimInterface* pomdp);
+
+  double GetUpper() const { return _upper_bound; }
+  double GetLower() const { return _lower_bound; }
+
+  std::shared_ptr<BeliefTreeNode> GetBelief() const { return _next_belief; }
+};
+
 class ActionNode {
  private:
   int64_t _action;              // Action of this node
   double _avgUpper, _avgLower;  // Bounds based on observation children
-  std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>
-      _observation_edges;
-  std::unordered_map<int64_t, double>
-      _o_weights;  // store the weights of different observations
-  double _immediate_reward;
+  std::unordered_map<int64_t, ObservationNode> _observation_edges;
 
  public:
   ActionNode(int64_t action, const BeliefDistribution& belief,
-             int64_t max_belief_samples, const PathToTerminal& heuristic,
-             int64_t eval_depth, double eval_epsilon, SimInterface* pomdp);
+             int64_t belief_depth, int64_t max_belief_samples,
+             const PathToTerminal& heuristic, int64_t eval_depth,
+             double eval_epsilon, SimInterface* pomdp);
 
   int64_t GetAction() const { return _action; }
 
   double GetAvgUpper() const { return _avgUpper; }
   double GetAvgLower() const { return _avgLower; }
 
-  double GetImmediateReward() const { return _immediate_reward; }
-
-  double GetWeight(int64_t obs) const { return _o_weights.at(obs); }
-
   std::shared_ptr<BeliefTreeNode> GetChild(int64_t observation) const;
-  std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>> GetChildren()
-      const {
+  const std::unordered_map<int64_t, ObservationNode>& GetChildren() const {
     return _observation_edges;
   }
 
@@ -56,7 +87,7 @@ class ActionNode {
  private:
   /// @brief Generate a set of next beliefs mapped by observation,
   /// obtained by taking `action` in belief.
-  void BeliefUpdate(const BeliefDistribution& belief,
+  void BeliefUpdate(const BeliefDistribution& belief, int64_t belief_depth,
                     int64_t max_belief_samples, const PathToTerminal& heuristic,
                     int64_t eval_depth, double eval_epsilon,
                     SimInterface* pomdp);
@@ -68,19 +99,20 @@ class BeliefTreeNode {
  private:
   BeliefDistribution _belief;
   std::unordered_map<int64_t, ActionNode> _action_edges;
+  int64_t _belief_depth;
+
   int64_t _bestActUBound, _bestActLBound;
+  int64_t _best_policy_node;
 
   double _upper_bound;
   double _lower_bound;
   int64_t _fsc_node_index;
 
-  int64_t _best_policy_node;
-  double _best_policy_val;
-
  public:
-  BeliefTreeNode(const BeliefDistribution& belief, double upper_bound,
-                 double lower_bound)
+  BeliefTreeNode(const BeliefDistribution& belief, double belief_depth,
+                 double upper_bound, double lower_bound)
       : _belief(belief),
+        _belief_depth(belief_depth),
         _bestActUBound(-1),
         _bestActLBound(-1),
         _upper_bound(upper_bound),
@@ -109,12 +141,11 @@ class BeliefTreeNode {
   int64_t GetBestActUBound() const { return _bestActUBound; }
 
   double GetUpper() const { return _upper_bound; }
-  void SetUpper(double upper_bound) { _upper_bound = upper_bound; }
   double GetLower() const { return _lower_bound; }
 
   std::shared_ptr<BeliefTreeNode> GetChild(int64_t action,
                                            int64_t observation) const;
-  std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>> GetChildren(
+  const std::unordered_map<int64_t, ObservationNode>& GetChildren(
       int64_t action) const;
 
   std::shared_ptr<BeliefTreeNode> ChooseObservation(double target);
@@ -122,14 +153,11 @@ class BeliefTreeNode {
   void BackUpActions(AlphaVectorFSC& fsc, int64_t max_belief_samples,
                      double R_lower, int64_t max_depth_sim,
                      SimInterface* pomdp);
-
-  void BackUpFromPolicyGraph(AlphaVectorFSC& fsc, int64_t max_belief_samples,
-                             double R_lower, int64_t max_depth_sim,
-                             SimInterface* pomdp);
 };
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
-    const BeliefDistribution& belief, const PathToTerminal& heuristic,
-    int64_t eval_depth, double eval_epsilon, SimInterface* sim);
+    const BeliefDistribution& belief, int64_t belief_depth,
+    const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
+    int64_t max_belief_samples, SimInterface* sim);
 
 }  // namespace MCVI

@@ -11,21 +11,22 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
   return p1.second < p2.second;
 }
 
-std::tuple<int64_t, double> UpperBoundEvaluation(
-    const BeliefDistribution& belief, const PathToTerminal& solver,
-    int64_t max_depth) {
+double UpperBoundEvaluation(const BeliefDistribution& belief,
+                            const PathToTerminal& solver, double gamma,
+                            int64_t belief_depth, int64_t max_depth,
+                            int64_t max_belief_samples) {
   double V_upper_bound = 0.0;
-  std::unordered_map<int64_t, double> action_vals;
-  for (const auto& [state, prob] : belief) {
+  auto belief_pdf = belief;
+  double prob_sum = 0.0;
+  for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
+    const auto [state, prob] = SamplePDFDestructive(belief_pdf);
+    if (state == -1) break;  // Sampled all states in belief
+    prob_sum += prob;
     const auto [action, reward] = solver.path(state, max_depth);
-    V_upper_bound += prob * reward;
-    action_vals[action] += prob * reward;
+    V_upper_bound += std::pow(gamma, belief_depth) * reward * prob;
   }
-  const int64_t best_action =
-      std::max_element(std::begin(action_vals), std::end(action_vals), CmpPair)
-          ->first;
 
-  return {best_action, V_upper_bound};
+  return V_upper_bound / prob_sum;
 }
 
 double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,

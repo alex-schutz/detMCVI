@@ -4,53 +4,72 @@
 
 namespace MCVI {
 
+void ObservationNode::BackUp(AlphaVectorFSC& fsc, int64_t max_belief_samples,
+                             double R_lower, int64_t max_depth_sim,
+                             SimInterface* pomdp) {
+  BackUpFromNextBelief();
+
+  BackUpFromPolicyGraph(fsc, max_belief_samples, R_lower, max_depth_sim, pomdp);
+}
+
+void ObservationNode::BackUpFromNextBelief() {
+  double nextLower = _next_belief->GetUpper() * _weight + _sum_reward;
+  double nextUpper = _next_belief->GetLower() * _weight + _sum_reward;
+
+  if (nextLower > _lower_bound) {
+    _lower_bound = nextLower;
+    _best_policy_val = nextLower;
+    _best_policy_node = _next_belief->GetBestPolicyNode();
+  }
+
+  if (nextUpper < _upper_bound) _upper_bound = nextUpper;
+}
+
 ActionNode::ActionNode(int64_t action, const BeliefDistribution& belief,
-                       int64_t max_belief_samples,
+                       int64_t belief_depth, int64_t max_belief_samples,
                        const PathToTerminal& heuristic, int64_t eval_depth,
                        double eval_epsilon, SimInterface* pomdp)
     : _action(action) {
-  BeliefUpdate(belief, max_belief_samples, heuristic, eval_depth, eval_epsilon,
-               pomdp);
+  BeliefUpdate(belief, belief_depth, max_belief_samples, heuristic, eval_depth,
+               eval_epsilon, pomdp);
   CalculateBounds();
 }
 
 void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
-                              int64_t max_belief_samples,
+                              int64_t belief_depth, int64_t max_belief_samples,
                               const PathToTerminal& heuristic,
                               int64_t eval_depth, double eval_epsilon,
                               SimInterface* pomdp) {
   std::unordered_map<int64_t, BeliefDistribution> next_beliefs;
+  std::unordered_map<int64_t, double> reward_map;
 
   auto belief_pdf = belief;
   double prob_sum = 0.0;
-  double sum_r = 0.0;
   for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
     const auto [state, prob] = SamplePDFDestructive(belief_pdf);
     if (state == -1) break;  // Sampled all states in belief
     prob_sum += prob;
     auto [sNext, obs, reward, done] = pomdp->Step(state, GetAction());
-    sum_r += reward * prob;
+    reward_map[obs] += reward * prob;
     auto& obs_belief = next_beliefs[obs];
     obs_belief[sNext] += prob;
   }
 
-  _immediate_reward = sum_r / prob_sum;
-
   // Set weight based on likelihood of observations
-  std::unordered_map<int64_t, BeliefDistribution> belief_map;
   for (const auto& [o, b] : next_beliefs) {
     double w = 0.0;
     for (const auto& [s, p] : b) w += p;
     w /= prob_sum;
-    _o_weights[o] = w;
     // Renormalise next probabilities
-    auto& belief = belief_map[o];
+    auto belief = BeliefDistribution();
     for (const auto& [s, p] : b) belief[s] = p / w;
-  }
 
-  for (const auto& [o, b] : belief_map) {
-    _observation_edges[o] =
-        CreateBeliefTreeNode(b, heuristic, eval_depth, eval_epsilon, pomdp);
+    const auto belief_node =
+        CreateBeliefTreeNode(belief, belief_depth + 1, heuristic, eval_depth,
+                             eval_epsilon, max_belief_samples, pomdp);
+    _observation_edges.insert(
+        {o, ObservationNode(w, reward_map[o], belief_node,
+                            belief_node->GetUpper(), belief_node->GetLower())});
   }
 }
 
@@ -59,8 +78,8 @@ void ActionNode::CalculateBounds() {
   double upper = 0;
 
   for (const auto& [obs, child] : _observation_edges) {
-    lower += child->GetLower() * _o_weights.at(obs);
-    upper += child->GetUpper() * _o_weights.at(obs);
+    lower += child.GetLower();
+    upper += child.GetUpper();
   }
   _avgLower = lower;
   _avgUpper = upper;
@@ -70,32 +89,29 @@ std::shared_ptr<BeliefTreeNode> ActionNode::GetChild(
     int64_t observation) const {
   auto it = _observation_edges.find(observation);
   if (it == _observation_edges.end()) return nullptr;
-  return it->second;
+  return it->second.GetBelief();
 }
 
 std::shared_ptr<BeliefTreeNode> ActionNode::ChooseObservation(
     double target) const {
   double best_gap = -std::numeric_limits<double>::infinity();
   int64_t best_obs = -1;
-  for (const auto& [obs, belief_node] : _observation_edges) {
-    const double diff =
-        (belief_node->GetUpper() - belief_node->GetLower()) - target;
-    const double gap = diff * _o_weights.at(obs);
+  for (const auto& [obs, obs_node] : _observation_edges) {
+    const double gap = (obs_node.GetUpper() - obs_node.GetLower()) - target;
     if (gap > best_gap) {
       best_gap = gap;
       best_obs = obs;
     }
   }
   if (best_obs == -1) throw std::logic_error("Failed to find best observation");
-  return _observation_edges.at(best_obs);
+  return _observation_edges.at(best_obs).GetBelief();
 }
 
 void ActionNode::BackUp(AlphaVectorFSC& fsc, int64_t max_belief_samples,
                         double R_lower, int64_t max_depth_sim,
                         SimInterface* pomdp) {
-  for (const auto& [obs, next_belief] : _observation_edges)
-    next_belief->BackUpFromPolicyGraph(fsc, max_belief_samples, R_lower,
-                                       max_depth_sim, pomdp);
+  for (auto& [obs, obs_node] : _observation_edges)
+    obs_node.BackUp(fsc, max_belief_samples, R_lower, max_depth_sim, pomdp);
 
   CalculateBounds();
 }
@@ -104,9 +120,9 @@ void BeliefTreeNode::AddChild(int64_t action, int64_t max_belief_samples,
                               const PathToTerminal& heuristic,
                               int64_t eval_depth, double eval_epsilon,
                               SimInterface* pomdp) {
-  _action_edges.insert(
-      {action, ActionNode(action, GetBelief(), max_belief_samples, heuristic,
-                          eval_depth, eval_epsilon, pomdp)});
+  _action_edges.insert({action, ActionNode(action, GetBelief(), _belief_depth,
+                                           max_belief_samples, heuristic,
+                                           eval_depth, eval_epsilon, pomdp)});
 }
 
 void BeliefTreeNode::SetBestActionLBound(int64_t action, double lower_bound) {
@@ -140,10 +156,11 @@ std::shared_ptr<BeliefTreeNode> BeliefTreeNode::GetChild(
   return it->second.GetChild(observation);
 }
 
-std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>
-BeliefTreeNode::GetChildren(int64_t action) const {
+const std::unordered_map<int64_t, ObservationNode>& BeliefTreeNode::GetChildren(
+    int64_t action) const {
   auto it = _action_edges.find(action);
-  if (it == _action_edges.cend()) return {};
+  if (it == _action_edges.cend())
+    throw std::logic_error("No observation nodes");
   return it->second.GetChildren();
 }
 
@@ -175,14 +192,14 @@ void BeliefTreeNode::BackUpActions(AlphaVectorFSC& fsc,
     actionNode.BackUp(fsc, max_belief_samples, R_lower, max_depth_sim, pomdp);
 }
 
-void BeliefTreeNode::BackUpFromPolicyGraph(AlphaVectorFSC& fsc,
-                                           int64_t max_belief_samples,
-                                           double R_lower,
-                                           int64_t max_depth_sim,
-                                           SimInterface* pomdp) {
+void ObservationNode::BackUpFromPolicyGraph(AlphaVectorFSC& fsc,
+                                            int64_t max_belief_samples,
+                                            double R_lower,
+                                            int64_t max_depth_sim,
+                                            SimInterface* pomdp) {
   for (int64_t nI = 0; nI < fsc.NumNodes(); ++nI) {
     double node_policy_value_sum = 0.0;
-    auto belief_pdf = GetBelief();
+    auto belief_pdf = _next_belief->GetBelief();
     double prob_sum = 0.0;
     for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
       const auto [sNext, prob] = SamplePDFDestructive(belief_pdf);
@@ -203,13 +220,17 @@ void BeliefTreeNode::BackUpFromPolicyGraph(AlphaVectorFSC& fsc,
 }
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
-    const BeliefDistribution& belief, const PathToTerminal& heuristic,
-    int64_t eval_depth, double eval_epsilon, SimInterface* sim) {
-  const auto [a_best, U] = UpperBoundEvaluation(belief, heuristic, eval_depth);
-  const auto root = std::make_shared<BeliefTreeNode>(
-      belief, U,
-      FindRLower(sim, belief, sim->GetSizeOfA(), eval_epsilon, eval_depth));
-  return root;
+    const BeliefDistribution& belief, int64_t belief_depth,
+    const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
+    int64_t max_belief_samples, SimInterface* sim) {
+  const auto U =
+      UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(), belief_depth,
+                           eval_depth, max_belief_samples);
+  const auto L =
+      FindRLower(sim, belief, sim->GetSizeOfA(), eval_epsilon, eval_depth);
+  const auto node =
+      std::make_shared<BeliefTreeNode>(belief, belief_depth, U, L);
+  return node;
 }
 
 }  // namespace MCVI
