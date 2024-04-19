@@ -120,21 +120,10 @@ void MCVIPlanner::SampleBeliefs(
   BackUp(node, R_lower, max_depth_sim, max_samples);
   traversal_list.push_back(node);
 
-  const int64_t action = node->GetBestAction();
-  auto children = node->GetChildren(action);
-  if (children.size() == 0) {
-    const auto [o, next_beliefs] = BeliefUpdate(node, action, pomdp);
-    for (const auto& [ob, b_next] : next_beliefs)
-      CreateBeliefTreeNode(node, action, ob, b_next, pomdp->GetSizeOfA(),
-                           heuristic, eval_depth, eval_epsilon, pomdp);
-    children = node->GetChildren(action);
-    if (children.size() == 0) throw std::logic_error("Still no children!");
-  }
+  const auto next_node = node->ChooseObservation(
+      target, max_samples, heuristic, eval_depth, eval_epsilon, pomdp);
 
-  const int64_t obs =
-      ChooseObservation(children, node->GetWeights(action), target);
-
-  SampleBeliefs(children.at(obs), state, depth + 1, max_depth, pomdp, heuristic,
+  SampleBeliefs(next_node, state, depth + 1, max_depth, pomdp, heuristic,
                 eval_depth, eval_epsilon, traversal_list, target, R_lower,
                 max_depth_sim, max_samples);
 }
@@ -146,8 +135,8 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
 
-  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefRootNode(
-      _b0, _pomdp->GetSizeOfA(), _heuristic, eval_depth, eval_epsilon, _pomdp);
+  std::shared_ptr<BeliefTreeNode> Tr_root =
+      CreateBeliefTreeNode(_b0, _heuristic, eval_depth, eval_epsilon, _pomdp);
   const auto node = AlphaVectorNode(RandomAction());
   _fsc.AddNode(node);
   Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);

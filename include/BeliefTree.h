@@ -15,19 +15,52 @@
 
 namespace MCVI {
 
+class BeliefTreeNode;
+
+class ActionNode {
+ private:
+  int64_t _action;              // Action of this node
+  double _avgUpper, _avgLower;  // Bounds based on observation children
+  std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>
+      _observation_edges;
+  std::unordered_map<int64_t, double>
+      _o_weights;  // store the weights of different observations
+
+ public:
+  ActionNode(int64_t action, const BeliefDistribution& belief,
+             int64_t max_belief_samples, const PathToTerminal& heuristic,
+             int64_t eval_depth, double eval_epsilon, SimInterface* pomdp);
+
+  int64_t GetAction() const { return _action; }
+
+  double GetAvgUpper() const { return _avgUpper; }
+  double GetAvgLower() const { return _avgLower; }
+
+  std::shared_ptr<BeliefTreeNode> GetChild(int64_t observation) const;
+  std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>> GetChildren()
+      const {
+    return _observation_edges;
+  }
+
+  std::shared_ptr<BeliefTreeNode> ChooseObservation(double target) const;
+
+ private:
+  /// @brief Generate a set of next beliefs mapped by observation,
+  /// obtained by taking `action` in belief.
+  void BeliefUpdate(const BeliefDistribution& belief,
+                    int64_t max_belief_samples, const PathToTerminal& heuristic,
+                    int64_t eval_depth, double eval_epsilon,
+                    SimInterface* pomdp);
+
+  void CalculateBounds();
+};
+
 class BeliefTreeNode {
  private:
-  using BeliefEdgeMap = std::unordered_map<
-      int64_t, std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>>;
-
   BeliefDistribution _belief;
-  BeliefEdgeMap _child_nodes;
+  std::unordered_map<int64_t, ActionNode> _action_edges;
   int64_t _best_action;
-  std::unordered_map<int64_t, double>
-      _R_a;  // a map from actions to expected instant reward
-  std::unordered_map<int64_t, std::unordered_map<int64_t, double>>
-      _a_o_weights;  // a map that stores the weights of different observations
-                     // for a given action
+
   double _upper_bound;
   double _lower_bound;
   int64_t _fsc_node_index;
@@ -41,8 +74,9 @@ class BeliefTreeNode {
         _lower_bound(lower_bound),
         _fsc_node_index(-1) {}
 
-  void AddChild(int64_t action, int64_t observation,
-                std::shared_ptr<BeliefTreeNode> child);
+  void AddChild(int64_t action, int64_t max_belief_samples,
+                const PathToTerminal& heuristic, int64_t eval_depth,
+                double eval_epsilon, SimInterface* pomdp);
 
   const BeliefDistribution& GetBelief() const { return _belief; }
 
@@ -56,45 +90,19 @@ class BeliefTreeNode {
   void SetUpper(double upper_bound) { _upper_bound = upper_bound; }
   double GetLower() const { return _lower_bound; }
 
-  bool HasReward(int64_t action) const { return _R_a.contains(action); }
-  double GetReward(int64_t action) const { return _R_a.at(action); }
-  void SetReward(int64_t action, double reward) { _R_a[action] = reward; }
-
-  const std::unordered_map<int64_t, double>& GetWeights(int64_t action) const {
-    return _a_o_weights.at(action);
-  }
-  void SetWeight(int64_t action, int64_t observation, double weight) {
-    auto& aw = _a_o_weights[action];
-    aw[observation] = weight;
-  }
-
-  std::shared_ptr<BeliefTreeNode> GetChild(int64_t action, int64_t observation);
+  std::shared_ptr<BeliefTreeNode> GetChild(int64_t action,
+                                           int64_t observation) const;
   std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>> GetChildren(
       int64_t action) const;
+
+  std::shared_ptr<BeliefTreeNode> ChooseObservation(
+      double target, int64_t max_belief_samples,
+      const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
+      SimInterface* pomdp);
 };
 
-/// @brief Add a child belief to the parent given an action and observation edge
-void CreateBeliefTreeNode(std::shared_ptr<BeliefTreeNode> parent,
-                          int64_t action, int64_t observation,
-                          const BeliefDistribution& belief, int64_t num_actions,
-                          const PathToTerminal& heuristic, int64_t eval_depth,
-                          double eval_epsilon, SimInterface* sim);
-
-std::shared_ptr<BeliefTreeNode> CreateBeliefRootNode(
-    const BeliefDistribution& belief, int64_t num_actions,
-    const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
-    SimInterface* sim);
-
-int64_t ChooseObservation(
-    const std::unordered_map<int64_t, std::shared_ptr<BeliefTreeNode>>&
-        children,
-    const std::unordered_map<int64_t, double>& weights, double target);
-
-/// @brief Generate a set of next beliefs mapped by observation, obtained by
-/// taking `action` in belief node `node`. Return the most probable observation
-/// and the next beliefs
-std::pair<int64_t, std::unordered_map<int64_t, BeliefDistribution>>
-BeliefUpdate(std::shared_ptr<BeliefTreeNode> node, int64_t action,
-             SimInterface* pomdp);
+std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
+    const BeliefDistribution& belief, const PathToTerminal& heuristic,
+    int64_t eval_depth, double eval_epsilon, SimInterface* sim);
 
 }  // namespace MCVI
