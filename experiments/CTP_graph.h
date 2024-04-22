@@ -15,6 +15,7 @@ struct pairhash {
   }
 };
 
+/*
 // ========= Randomly generated graph ========================================
 const std::vector<int> CTPNodes = {0, 1, 2,  3,  4,  5,  6, 7,
                                    8, 9, 10, 11, 12, 13, 14};
@@ -33,8 +34,8 @@ const std::unordered_map<std::pair<int, int>, double, pairhash> CTPStochEdges =
      {{9, 14}, 0.96}};
 const int CTPOrigin = 1;
 const int CTPGoal = 12;
+*/
 
-/*
 // ========= Trivial example ==================================================
 // Change probability of stochastic edge to influence the direction of the
 // policy. Higher -> policy always chooses 0->1->3, lower -> policy prefers
@@ -46,7 +47,6 @@ const std::unordered_map<std::pair<int, int>, double, pairhash> CTPStochEdges =
     {{{2, 3}, 0.5}};
 const int CTPOrigin = 0;
 const int CTPGoal = 3;
-*/
 
 /*
 // ========= Many edge example ================================================

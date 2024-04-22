@@ -169,7 +169,10 @@ class CTP : public MCVI::SimInterface {
     if (!nodesAdjacent(loc, action, state)) return _bad_action_reward;
 
     sNext = stateSpace.updateStateFactor(state, "loc", action);
-    if (loc == action) return _idle_reward;
+    if (loc == action) {
+      if (loc == goal) return 0;
+      return _idle_reward;
+    }
     return action < loc ? -edges.at({action, loc}) : -edges.at({loc, action});
   }
 

@@ -34,11 +34,16 @@ class ObservationNode {
                   double next_upper, double next_lower)
       : _weight(weight),
         _sum_reward(sum_reward),
-        _upper_bound(sum_reward + weight * next_upper),
-        _lower_bound(sum_reward + weight * next_lower),
+        _upper_bound(sum_reward + next_upper),
+        _lower_bound(sum_reward + next_lower),
         _best_policy_node(-1),
         _best_policy_val(-std::numeric_limits<double>::infinity()),
-        _next_belief(next_belief) {}
+        _next_belief(next_belief) {
+    std::cerr << "Create Observation node: weight " << weight << " sum_reward "
+              << sum_reward << " next upper " << next_upper << " upper "
+              << _upper_bound << " next lower " << next_lower << " lower "
+              << _lower_bound << std::endl;
+  }
 
   int64_t GetBestPolicyNode() const { return _best_policy_node; }
 
@@ -51,6 +56,7 @@ class ObservationNode {
                              double R_lower, int64_t max_depth_sim,
                              SimInterface* pomdp);
 
+  double GetWeight() const { return _weight; }
   double GetUpper() const { return _upper_bound; }
   double GetLower() const { return _lower_bound; }
 
@@ -142,6 +148,7 @@ class BeliefTreeNode {
 
   double GetUpper() const { return _upper_bound; }
   double GetLower() const { return _lower_bound; }
+  int64_t GetDepth() const { return _belief_depth; }
 
   std::shared_ptr<BeliefTreeNode> GetChild(int64_t action,
                                            int64_t observation) const;

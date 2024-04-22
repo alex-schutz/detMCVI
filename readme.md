@@ -17,19 +17,13 @@ Modify `experiments/CTP_graph.h` to update the problem instance.
 		- Check the belief expansion procedure
 
 		- Upper bound update not quite right
-
-		Num action edges: 13
-belief depth 1 U 0 L -100
-belief depth 1 U -3.38937 L -100
-belief depth 1 U -3.39531 L -100
-belief depth 1 U -3.39518 L -100
-belief depth 1 U -3.3944 L -100
-action 13 lower bound -101.503 upper bound -4.86286
+		- Lower bound initialisation does not match policy terminal lower bound
 
 bounds should be -1 + bound, why is it more like -1.5?
 
 - Simulation depth paramater might not need to exist, see how this was done originally
 	- That's the excess uncertainty parameter in the belief expansion
+- Terminal states are still expanded during belief tree traversal
 
 ## Optimisations
 - Initialise FSCs using shortest paths

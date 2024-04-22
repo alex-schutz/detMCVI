@@ -76,6 +76,8 @@ void MCVIPlanner::SampleBeliefs(
   BackUp(node, R_lower, max_depth_sim, max_samples, eval_depth, eval_epsilon);
   traversal_list.push_back(node);
 
+  // TODO: identify and skip terminal states
+
   const auto next_node = node->ChooseObservation(target);
 
   SampleBeliefs(next_node, state, depth + 1, max_depth, pomdp, heuristic,
