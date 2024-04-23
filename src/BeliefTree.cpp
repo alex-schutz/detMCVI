@@ -287,32 +287,31 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
 }
 
 void BeliefTreeNode::GenerateGraphviz(std::ostream& out) const {
-  out << GetId() << " [label=\"" << _belief << "\\n"
-      << "BestPolicyNode: " << GetBestPolicyNode() << "\\n"
-      << "BestActLBound: " << GetBestActLBound() << "\\n"
-      << "BestActUBound: " << GetBestActUBound() << "\\n"
-      << "UpperBound: " << GetUpper() << "\\n"
-      << "LowerBound: " << GetLower() << "\"];" << std::endl;
+  out << "tr" << GetId() << " [label=<<B>" << _belief << "</B><BR/>"
+      << "BestPolicyNode: " << GetBestPolicyNode() << "<BR/>"
+      << "BestActLBound: " << GetBestActLBound() << "<BR/>"
+      << "BestActUBound: " << GetBestActUBound() << "<BR/>"
+      << "UpperBound: " << GetUpper() << "<BR/>" << "LowerBound: " << GetLower()
+      << ">];" << std::endl;
 
   for (const auto& [act, actNode] : _action_edges) {
-    out << GetId() << "." << act
-        << " [shape=square, style=filled, width=0.1, height=0.1, "
-           "fillcolor=black];"
-        << std::endl;
-    out << GetId() << " -> " << GetId() << "." << act << " [label=\"a: " << act
-        << "\"];" << std::endl;
+    out << "tr" << GetId() << "_" << act
+        << " [shape=point, style=filled, fillcolor=black];" << std::endl;
+    out << "tr" << GetId() << " -> " << "tr" << GetId() << "_" << act
+        << " [label=<a: " << act << ">];" << std::endl;
     for (const auto& [obs, obsChild] : actNode.GetChildren()) {
-      out << GetId() << "." << act << " -> " << obsChild.GetBelief()->GetId()
-          << " [label=\"o: " << obs << "\"];" << std::endl;
+      out << "tr" << GetId() << "_" << act << " -> " << "tr"
+          << obsChild.GetBelief()->GetId() << " [label=<o: " << obs << ">];"
+          << std::endl;
       obsChild.GetBelief()->GenerateGraphviz(out);
     }
   }
 }
 
 void BeliefTreeNode::DrawBeliefTree(std::ostream& ofs) const {
-  ofs << "digraph BeliefTree {\n";
+  ofs << "digraph BeliefTree {" << std::endl;
   GenerateGraphviz(ofs);
-  ofs << "}\n";
+  ofs << "}" << std::endl;
 }
 
 }  // namespace MCVI
