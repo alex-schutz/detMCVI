@@ -50,9 +50,6 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
 
   const int64_t nI = FindOrInsertNode(node_new, node_edges);
   Tr_node->SetBestPolicyNode(nI);
-  std::cerr << "inserting node with action " << node_new.GetBestAction()
-            << " for belief depth " << Tr_node->GetDepth() << " num edges "
-            << node_edges.size() << std::endl;
 }
 
 int64_t MCVIPlanner::RandomAction() const {
@@ -115,7 +112,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     if (std::abs(precision) < epsilon) {
       std::cout << "MCVI planning complete, reached the target precision."
                 << std::endl;
-      Tr_root->DrawBeliefTree(std::cout);
+      Tr_root->DrawBeliefTree(std::cerr);
       return _fsc;
     }
 
@@ -146,7 +143,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
   std::cout << "MCVI planning complete, reached the max iterations."
             << std::endl;
 
-  Tr_root->DrawBeliefTree(std::cout);
+  Tr_root->DrawBeliefTree(std::cerr);
 
   return _fsc;
 }

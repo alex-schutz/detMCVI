@@ -38,12 +38,7 @@ class ObservationNode {
         _lower_bound(sum_reward + next_lower),
         _best_policy_node(-1),
         _best_policy_val(-std::numeric_limits<double>::infinity()),
-        _next_belief(next_belief) {
-    std::cerr << "Create Observation node: weight " << weight << " sum_reward "
-              << sum_reward << " next upper " << next_upper << " upper "
-              << _upper_bound << " next lower " << next_lower << " lower "
-              << _lower_bound << std::endl;
-  }
+        _next_belief(next_belief) {}
 
   int64_t GetBestPolicyNode() const { return _best_policy_node; }
 

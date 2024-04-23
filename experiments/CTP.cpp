@@ -245,7 +245,7 @@ int main() {
   const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
                                 eval_depth, eval_epsilon);
 
-  fsc.GenerateGraphviz(std::cout, pomdp.getActions(), pomdp.getObs());
+  fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
   // Simulate the resultant FSC
   planner.SimulationWithFSC(15);

@@ -12,13 +12,13 @@ The file `experiments/CTP_generator.py` is provided to generate graphs for the C
 Modify `experiments/CTP_graph.h` to update the problem instance.
 
 ## Issues
+- Path finding for bounds crashes if there are no terminal states
 - Simulation depth paramater might not need to exist, see how this was done originally
 	- That's the excess uncertainty parameter in the belief expansion
-- Path finding for bounds crashes if there are no terminal states
 
 ## Optimisations
 - Initialise FSCs using shortest paths
+- Optimise path storage in shortest path calculator (only need to store action + next node instead of entire path)
 - Add multi-threading
 - Add pruning based on reachability
 - Add `AvailableActions` functionality
-- Optimise path storage in shortest path calculator (only need to store action + next node instead of entire path)
