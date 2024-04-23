@@ -13,20 +13,14 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
 
 double UpperBoundEvaluation(const BeliefDistribution& belief,
                             const PathToTerminal& solver, double gamma,
-                            int64_t belief_depth, int64_t max_depth,
-                            int64_t max_belief_samples) {
+                            int64_t belief_depth, int64_t max_depth) {
   double V_upper_bound = 0.0;
-  auto belief_pdf = belief;
-  double prob_sum = 0.0;
-  for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
-    const auto [state, prob] = SamplePDFDestructive(belief_pdf);
-    if (state == -1) break;  // Sampled all states in belief
-    prob_sum += prob;
+  for (const auto& [state, prob] : belief) {
     const auto [action, reward] = solver.path(state, max_depth);
     V_upper_bound += std::pow(gamma, belief_depth) * reward * prob;
   }
 
-  return V_upper_bound / prob_sum;
+  return V_upper_bound;
 }
 
 double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,

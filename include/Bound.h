@@ -70,8 +70,7 @@ class PathToTerminal : public ShortestPathFasterAlgorithm {
  */
 double UpperBoundEvaluation(const BeliefDistribution& belief,
                             const PathToTerminal& solver, double gamma,
-                            int64_t belief_depth, int64_t max_depth,
-                            int64_t max_belief_samples);
+                            int64_t belief_depth, int64_t max_depth);
 
 /**
  * @brief Determine the lower bound reward of the belief, by choosing an action

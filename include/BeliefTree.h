@@ -47,14 +47,13 @@ class ObservationNode {
 
   int64_t GetBestPolicyNode() const { return _best_policy_node; }
 
-  void BackUp(AlphaVectorFSC& fsc, int64_t max_belief_samples, double R_lower,
-              int64_t max_depth_sim, SimInterface* pomdp);
+  void BackUp(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
+              SimInterface* pomdp);
 
   void BackUpFromNextBelief();
 
-  void BackUpFromPolicyGraph(AlphaVectorFSC& fsc, int64_t max_belief_samples,
-                             double R_lower, int64_t max_depth_sim,
-                             SimInterface* pomdp);
+  void BackUpFromPolicyGraph(AlphaVectorFSC& fsc, double R_lower,
+                             int64_t max_depth_sim, SimInterface* pomdp);
 
   double GetWeight() const { return _weight; }
   double GetUpper() const { return _upper_bound; }
@@ -71,9 +70,8 @@ class ActionNode {
 
  public:
   ActionNode(int64_t action, const BeliefDistribution& belief,
-             int64_t belief_depth, int64_t max_belief_samples,
-             const PathToTerminal& heuristic, int64_t eval_depth,
-             double eval_epsilon, SimInterface* pomdp);
+             int64_t belief_depth, const PathToTerminal& heuristic,
+             int64_t eval_depth, double eval_epsilon, SimInterface* pomdp);
 
   int64_t GetAction() const { return _action; }
 
@@ -87,16 +85,15 @@ class ActionNode {
 
   std::shared_ptr<BeliefTreeNode> ChooseObservation(double target) const;
 
-  void BackUp(AlphaVectorFSC& fsc, int64_t max_belief_samples, double R_lower,
-              int64_t max_depth_sim, SimInterface* pomdp);
+  void BackUp(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
+              SimInterface* pomdp);
 
  private:
   /// @brief Generate a set of next beliefs mapped by observation,
   /// obtained by taking `action` in belief.
   void BeliefUpdate(const BeliefDistribution& belief, int64_t belief_depth,
-                    int64_t max_belief_samples, const PathToTerminal& heuristic,
-                    int64_t eval_depth, double eval_epsilon,
-                    SimInterface* pomdp);
+                    const PathToTerminal& heuristic, int64_t eval_depth,
+                    double eval_epsilon, SimInterface* pomdp);
 
   void CalculateBounds();
 };
@@ -128,10 +125,9 @@ class BeliefTreeNode {
         _lower_bound(lower_bound),
         _index(belief_tree_count++) {}
 
-  void AddChild(int64_t action, int64_t max_belief_samples,
-                const PathToTerminal& heuristic, int64_t eval_depth,
-                double eval_epsilon, SimInterface* pomdp);
-  const ActionNode& GetOrAddChildren(int64_t action, int64_t max_belief_samples,
+  void AddChild(int64_t action, const PathToTerminal& heuristic,
+                int64_t eval_depth, double eval_epsilon, SimInterface* pomdp);
+  const ActionNode& GetOrAddChildren(int64_t action,
                                      const PathToTerminal& heuristic,
                                      int64_t eval_depth, double eval_epsilon,
                                      SimInterface* pomdp);
@@ -156,8 +152,7 @@ class BeliefTreeNode {
 
   std::shared_ptr<BeliefTreeNode> ChooseObservation(double target);
 
-  void BackUpActions(AlphaVectorFSC& fsc, int64_t max_belief_samples,
-                     double R_lower, int64_t max_depth_sim,
+  void BackUpActions(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
                      SimInterface* pomdp);
 
   int64_t GetId() const { return _index; }
@@ -171,6 +166,6 @@ class BeliefTreeNode {
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
     const BeliefDistribution& belief, int64_t belief_depth,
     const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
-    int64_t max_belief_samples, SimInterface* sim);
+    SimInterface* sim);
 
 }  // namespace MCVI
