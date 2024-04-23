@@ -24,6 +24,8 @@ bounds should be -1 + bound, why is it more like -1.5?
 - Simulation depth paramater might not need to exist, see how this was done originally
 	- That's the excess uncertainty parameter in the belief expansion
 - Terminal states are still expanded during belief tree traversal
+	- Even if terminal states are not expanded (or we give a 0 reward for terminal states) the graph is terrible
+- Path finding for bounds crashes if there are no terminal states
 
 ## Optimisations
 - Initialise FSCs using shortest paths
