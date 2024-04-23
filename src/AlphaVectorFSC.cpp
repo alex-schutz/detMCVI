@@ -43,7 +43,8 @@ void AlphaVectorFSC::GenerateGraphviz(
 
     std::string action = actions.empty() ? std::to_string(node.GetBestAction())
                                          : actions[node.GetBestAction()];
-    ofs << "  " << i << " [label=\"" << i << ",\\n" << action;
+    ofs << " n" << i << " [label=\"" << i << ": " << action << "\\n"
+        << node.V_node();
     if (i == GetStartNodeIndex()) {  // highlight start node with double outline
       ofs << "\", penwidth=2];" << std::endl;
     } else {
@@ -56,7 +57,7 @@ void AlphaVectorFSC::GenerateGraphviz(
                                     ? std::to_string(edge.first)
                                     : observations[edge.first];
       int64_t target_node = edge.second;
-      ofs << "  " << i << " -> " << target_node << " [label=\"" << observation
+      ofs << " n" << i << " -> n" << target_node << " [label=\"" << observation
           << "\"];";
     }
     ofs << std::endl;

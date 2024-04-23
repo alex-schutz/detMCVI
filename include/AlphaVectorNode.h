@@ -34,7 +34,7 @@ class AlphaVectorNode {
   int64_t GetBestAction() const { return _best_action; }
 
   /// @brief Return the best value for this node
-  double V_node() const { return _V_node; }
+  double V_node() const;
 
   void SetAlpha(int64_t state, double value) { _alpha[state] = value; }
   std::optional<double> GetAlpha(int64_t state) const;

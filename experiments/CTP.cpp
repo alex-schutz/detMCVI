@@ -45,6 +45,9 @@ class CTP : public MCVI::SimInterface {
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
   int getGoal() const { return goal; }
+  bool IsTerminal(int sI) const override {
+    return stateSpace.getStateFactorElem(sI, "loc") == goal;
+  }
 
   std::tuple<int, int, double, bool> Step(int sI, int aI) override {
     int sNext;
@@ -222,7 +225,7 @@ int main() {
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
   const int64_t max_sim_depth = 15;
-  const int64_t eval_depth = 40;
+  const int64_t eval_depth = 20;
   const int64_t eval_epsilon = 0.01;
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief);
   const double converge_thresh = 0.01;
@@ -231,12 +234,12 @@ int main() {
   const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
                                 eval_depth, eval_epsilon, max_belief_samples);
 
-  fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
+  fsc.GenerateGraphviz(std::cout, pomdp.getActions(), pomdp.getObs());
 
   // Simulate the resultant FSC
-  planner.SimulationWithFSC(20);
+  planner.SimulationWithFSC(15);
 
-  planner.EvaluationWithSimulationFSC(20, 1000, pomdp.getGoal());
+  planner.EvaluationWithSimulationFSC(15, 1000);
 
   return 0;
 }

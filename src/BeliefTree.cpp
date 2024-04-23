@@ -66,6 +66,7 @@ void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
     const auto [state, prob] = SamplePDFDestructive(belief_pdf);
     if (state == -1) break;  // Sampled all states in belief
     prob_sum += prob;
+    if (pomdp->IsTerminal(state)) continue;
     auto [sNext, obs, reward, done] = pomdp->Step(state, GetAction());
     std::cerr << "state " << state << " action " << GetAction()
               << " next state " << sNext << " received obs " << obs
@@ -283,6 +284,35 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
   const auto node =
       std::make_shared<BeliefTreeNode>(belief, belief_depth, U, L);
   return node;
+}
+
+void BeliefTreeNode::GenerateGraphviz(std::ostream& out) const {
+  out << GetId() << " [label=\"" << _belief << "\\n"
+      << "BestPolicyNode: " << GetBestPolicyNode() << "\\n"
+      << "BestActLBound: " << GetBestActLBound() << "\\n"
+      << "BestActUBound: " << GetBestActUBound() << "\\n"
+      << "UpperBound: " << GetUpper() << "\\n"
+      << "LowerBound: " << GetLower() << "\"];" << std::endl;
+
+  for (const auto& [act, actNode] : _action_edges) {
+    out << GetId() << "." << act
+        << " [shape=square, style=filled, width=0.1, height=0.1, "
+           "fillcolor=black];"
+        << std::endl;
+    out << GetId() << " -> " << GetId() << "." << act << " [label=\"a: " << act
+        << "\"];" << std::endl;
+    for (const auto& [obs, obsChild] : actNode.GetChildren()) {
+      out << GetId() << "." << act << " -> " << obsChild.GetBelief()->GetId()
+          << " [label=\"o: " << obs << "\"];" << std::endl;
+      obsChild.GetBelief()->GenerateGraphviz(out);
+    }
+  }
+}
+
+void BeliefTreeNode::DrawBeliefTree(std::ostream& ofs) const {
+  ofs << "digraph BeliefTree {\n";
+  GenerateGraphviz(ofs);
+  ofs << "}\n";
 }
 
 }  // namespace MCVI

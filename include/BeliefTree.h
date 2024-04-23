@@ -101,6 +101,8 @@ class ActionNode {
   void CalculateBounds();
 };
 
+static int64_t belief_tree_count = 0;
+
 class BeliefTreeNode {
  private:
   BeliefDistribution _belief;
@@ -112,7 +114,8 @@ class BeliefTreeNode {
 
   double _upper_bound;
   double _lower_bound;
-  int64_t _fsc_node_index;
+
+  int64_t _index;
 
  public:
   BeliefTreeNode(const BeliefDistribution& belief, double belief_depth,
@@ -123,7 +126,7 @@ class BeliefTreeNode {
         _bestActLBound(-1),
         _upper_bound(upper_bound),
         _lower_bound(lower_bound),
-        _fsc_node_index(-1) {}
+        _index(belief_tree_count++) {}
 
   void AddChild(int64_t action, int64_t max_belief_samples,
                 const PathToTerminal& heuristic, int64_t eval_depth,
@@ -135,11 +138,7 @@ class BeliefTreeNode {
 
   const BeliefDistribution& GetBelief() const { return _belief; }
 
-  int64_t GetFSCNodeIndex() const { return _fsc_node_index; }
-  void SetFSCNodeIndex(int64_t idx) { _fsc_node_index = idx; }
-
-  void SetBestActionLBound(int64_t action, double lower_bound);
-
+  void SetBestPolicyNode(int64_t idx) { _best_policy_node = idx; }
   int64_t GetBestPolicyNode() const { return _best_policy_node; }
 
   void UpdateBestAction();
@@ -160,6 +159,13 @@ class BeliefTreeNode {
   void BackUpActions(AlphaVectorFSC& fsc, int64_t max_belief_samples,
                      double R_lower, int64_t max_depth_sim,
                      SimInterface* pomdp);
+
+  int64_t GetId() const { return _index; }
+
+  void DrawBeliefTree(std::ostream& ofs) const;
+
+ private:
+  void GenerateGraphviz(std::ostream& out) const;
 };
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
