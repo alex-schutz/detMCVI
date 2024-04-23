@@ -33,6 +33,8 @@ class SimInterface {
   virtual int GetSizeOfA() const = 0;
   virtual double GetDiscount() const = 0;
   virtual int GetNbAgent() const = 0;
+  virtual bool IsTerminal(int sI) const = 0;
+
   // --------------------------------------------------------
 
   /// @brief Return an action chosen randomly

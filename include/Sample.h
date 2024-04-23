@@ -7,12 +7,10 @@
 namespace MCVI {
 
 /// @brief Sample from a PDF
-int64_t SamplePDF(const std::unordered_map<int64_t, double>& pdf);
+int64_t SamplePDF(const std::unordered_map<int64_t, double>& pdf,
+                  std::mt19937_64& rng);
 
-/// @brief Sample a PDF and delete the sampled element from the pdf. Used for
-/// sampling without replacement.
-/// @return The sampled state and original probability of that state
-std::pair<int64_t, double> SamplePDFDestructive(
-    std::unordered_map<int64_t, double>& pdf);
-
+std::vector<std::pair<int64_t, double>> weightedShuffle(
+    const std::unordered_map<int64_t, double>& pdf, std::mt19937_64& rng,
+    size_t sample_cap = std::numeric_limits<size_t>::max());
 }  // namespace MCVI

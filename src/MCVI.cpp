@@ -8,30 +8,6 @@
 
 namespace MCVI {
 
-double MCVIPlanner::SimulateTrajectory(int64_t nI, int64_t state,
-                                       int64_t max_depth,
-                                       double R_lower) const {
-  const double gamma = _pomdp->GetDiscount();
-  double V_n_s = 0.0;
-  int64_t nI_current = nI;
-  for (int64_t step = 0; step < max_depth; ++step) {
-    if (nI_current == -1) {
-      const double reward = std::pow(gamma, max_depth) * R_lower;
-      V_n_s += std::pow(gamma, step) * reward;
-      break;
-    }
-
-    const int64_t action = _fsc.GetNode(nI_current).GetBestAction();
-    const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
-    nI_current = _fsc.GetEdgeValue(nI_current, obs);
-    V_n_s += std::pow(gamma, step) * reward;
-    if (done) break;
-    state = sNext;
-  }
-
-  return V_n_s;
-}
-
 int64_t MCVIPlanner::InsertNode(
     const AlphaVectorNode& node,
     const std::unordered_map<int64_t, int64_t>& edges) {
@@ -55,42 +31,25 @@ int64_t MCVIPlanner::FindOrInsertNode(
 
 void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
                          double R_lower, int64_t max_depth_sim,
-                         int64_t max_samples) {
-  const double gamma = _pomdp->GetDiscount();
-  const BeliefDistribution& belief = Tr_node->GetBelief();
-  auto node_new = AlphaVectorNode(RandomAction());
+                         int64_t eval_depth, double eval_epsilon) {
+  // Initialise node with all action children if not already done
+  for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action)
+    Tr_node->GetOrAddChildren(action, _heuristic, eval_depth, eval_epsilon,
+                              _pomdp);
 
+  Tr_node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
+  Tr_node->UpdateBestAction();
+
+  const int64_t best_act = Tr_node->GetBestActLBound();
+  auto node_new = AlphaVectorNode(best_act);
   std::unordered_map<int64_t, int64_t> node_edges;
-  double best_V = -std::numeric_limits<double>::infinity();
-  int64_t best_a = -1;
-  for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
-    auto belief_pdf = belief;
-    for (int64_t sample = 0; sample < max_samples; ++sample) {
-      const auto [state, prob] = SamplePDFDestructive(belief_pdf);
-      if (state == -1) break;  // Sampled all states in belief
-      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
-      node_new.AddR(action, reward * prob);
+  for (const auto& [obs, next_belief] : Tr_node->GetChildren(best_act))
+    node_edges[obs] = next_belief.GetBestPolicyNode();
 
-      for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
-        const double V_nI_sNext =
-            GetNodeAlpha(sNext, nI, R_lower, max_depth_sim);
-        node_new.AddValue(action, obs, nI, V_nI_sNext * prob);
-      }
-    }
+  if (node_edges.empty()) return;  // Terminal belief
 
-    const auto& [edges, sum_v] = node_new.BestNodePerObs(action);
-    node_new.AddQ(action, gamma * sum_v + node_new.GetR(action));
-    const double Q = node_new.GetQ(action);
-    if (Q > best_V) {
-      best_a = action;
-      best_V = Q;
-      node_edges = edges;
-    }
-  }
-
-  node_new.UpdateBestValue(best_a, Tr_node);
   const int64_t nI = FindOrInsertNode(node_new, node_edges);
-  Tr_node->SetFSCNodeIndex(nI);
+  Tr_node->SetBestPolicyNode(nI);
 }
 
 int64_t MCVIPlanner::RandomAction() const {
@@ -110,45 +69,38 @@ void MCVIPlanner::SampleBeliefs(
     int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
     int64_t eval_depth, double eval_epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list, double target,
-    double R_lower, int64_t max_depth_sim, int64_t max_samples) {
+    double R_lower, int64_t max_depth_sim) {
   if (depth >= max_depth) return;
   if (node == nullptr) throw std::logic_error("Invalid node");
-  node->SetUpper(
-      UpperBoundUpdate(node->GetBelief(), R_lower, max_depth_sim, max_samples));
-  BackUp(node, R_lower, max_depth_sim, max_samples);
+  node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
+  node->UpdateBestAction();
+  BackUp(node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
   traversal_list.push_back(node);
 
-  const int64_t action = node->GetBestAction();
-  auto children = node->GetChildren(action);
-  if (children.size() == 0) {
-    const auto [o, next_beliefs] = BeliefUpdate(node, action, pomdp);
-    for (const auto& [ob, b_next] : next_beliefs)
-      CreateBeliefTreeNode(node, action, ob, b_next, pomdp->GetSizeOfA(),
-                           heuristic, eval_depth, eval_epsilon, pomdp);
-    children = node->GetChildren(action);
-    if (children.size() == 0) throw std::logic_error("Still no children!");
+  // TODO: identify and skip terminal states
+
+  try {
+    const auto next_node = node->ChooseObservation(target);
+    SampleBeliefs(next_node, state, depth + 1, max_depth, pomdp, heuristic,
+                  eval_depth, eval_epsilon, traversal_list, target, R_lower,
+                  max_depth_sim);
+  } catch (std::logic_error& e) {
+    if (std::string(e.what()) == "Failed to find best observation") return;
+    throw(e);
   }
-
-  const int64_t obs =
-      ChooseObservation(children, node->GetWeights(action), target);
-
-  SampleBeliefs(children.at(obs), state, depth + 1, max_depth, pomdp, heuristic,
-                eval_depth, eval_epsilon, traversal_list, target, R_lower,
-                max_depth_sim, max_samples);
 }
 
 AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
                                  int64_t max_nb_iter, int64_t eval_depth,
-                                 double eval_epsilon, int64_t max_samples) {
+                                 double eval_epsilon) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
 
-  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefRootNode(
-      _b0, _pomdp->GetSizeOfA(), _heuristic, eval_depth, eval_epsilon, _pomdp);
+  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
+      _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
   const auto node = AlphaVectorNode(RandomAction());
   _fsc.AddNode(node);
-  Tr_root->SetFSCNodeIndex(_fsc.NumNodes() - 1);
 
   int64_t i = 0;
   while (i < max_nb_iter) {
@@ -160,6 +112,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     if (std::abs(precision) < epsilon) {
       std::cout << "MCVI planning complete, reached the target precision."
                 << std::endl;
+      Tr_root->DrawBeliefTree(std::cerr);
       return _fsc;
     }
 
@@ -167,9 +120,9 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     std::chrono::steady_clock::time_point begin =
         std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
-    SampleBeliefs(Tr_root, SampleOneState(_b0), 0, max_depth_sim, _pomdp,
+    SampleBeliefs(Tr_root, SampleOneState(_b0, _rng), 0, max_depth_sim, _pomdp,
                   _heuristic, eval_depth, eval_epsilon, traversal_list,
-                  precision, R_lower, max_depth_sim, max_samples);
+                  precision, R_lower, max_depth_sim);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
@@ -178,33 +131,49 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     begin = std::chrono::steady_clock::now();
     while (!traversal_list.empty()) {
       auto tr_node = traversal_list.back();
+      BackUp(tr_node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
       traversal_list.pop_back();
-      tr_node->SetUpper(UpperBoundUpdate(tr_node->GetBelief(), R_lower,
-                                         max_depth_sim, max_samples));
-      BackUp(tr_node, R_lower, max_depth_sim, max_samples);
     }
     end = std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
 
-    _fsc.SetStartNodeIndex(Tr_root->GetFSCNodeIndex());
+    _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
     ++i;
   }
   std::cout << "MCVI planning complete, reached the max iterations."
             << std::endl;
+
+  Tr_root->DrawBeliefTree(std::cerr);
+
   return _fsc;
+}
+
+static int64_t GreedyBestAction(int64_t state, SimInterface* pomdp) {
+  int64_t best_a = -1;
+  double best_r = -std::numeric_limits<double>::infinity();
+  for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
+    const auto [sNext, obs, reward, done] = pomdp->Step(state, a);
+    if (reward > best_r) {
+      best_r = reward;
+      best_a = a;
+    }
+  }
+  return best_a;
 }
 
 void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   const double gamma = _pomdp->GetDiscount();
-  int64_t state = SampleOneState(_b0);
+  int64_t state = SampleOneState(_b0, _rng);
   double sum_r = 0.0;
   int64_t nI = _fsc.GetStartNodeIndex();
+  bool end_reached = false;
   for (int64_t i = 0; i < steps; ++i) {
-    if (nI == -1) {
+    if (nI == -1 && !end_reached) {
       std::cout << "Reached end of policy." << std::endl;
-      break;
+      end_reached = true;
     }
-    const int64_t action = _fsc.GetNode(nI).GetBestAction();
+    const int64_t action = (nI == -1) ? GreedyBestAction(state, _pomdp)
+                                      : _fsc.GetNode(nI).GetBestAction();
     std::cout << "---------" << std::endl;
     std::cout << "step: " << i << std::endl;
     std::cout << "state: " << state << std::endl;
@@ -212,33 +181,37 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
     const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
 
     std::cout << "receive obs: " << obs << std::endl;
-    std::cout << "nI: " << nI << std::endl;
-    std::cout << "nI value: " << _fsc.GetNode(nI).V_node() << std::endl;
+    if (nI != -1) {
+      std::cout << "nI: " << nI << std::endl;
+      std::cout << "nI value: " << _fsc.GetNode(nI).V_node() << std::endl;
+    }
     std::cout << "reward: " << reward << std::endl;
 
     sum_r += std::pow(gamma, i) * reward;
-    nI = _fsc.GetEdgeValue(nI, obs);
+    if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
 
-    if (done) break;
+    if (done) {
+      std::cout << "Reached terminal state." << std::endl;
+      break;
+    }
     state = sNext;
   }
   std::cout << "sum reward: " << sum_r << std::endl;
 }
 
 void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
-                                              int64_t num_sims,
-                                              int64_t default_action) const {
+                                              int64_t num_sims) const {
   const double gamma = _pomdp->GetDiscount();
   double total_reward = 0;
   double max_reward = -std::numeric_limits<double>::infinity();
   double min_reward = std::numeric_limits<double>::infinity();
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    int64_t state = SampleOneState(_b0);
+    int64_t state = SampleOneState(_b0, _rng);
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
     for (int64_t i = 0; i < max_steps; ++i) {
-      const int64_t action =
-          (nI != -1) ? _fsc.GetNode(nI).GetBestAction() : default_action;
+      const int64_t action = (nI != -1) ? _fsc.GetNode(nI).GetBestAction()
+                                        : GreedyBestAction(state, _pomdp);
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
       if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
@@ -253,40 +226,6 @@ void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
   std::cout << "Average reward: " << total_reward / num_sims << std::endl;
   std::cout << "Highest reward: " << max_reward << std::endl;
   std::cout << "Lowest reward: " << min_reward << std::endl;
-}
-
-double MCVIPlanner::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
-                                 int64_t max_depth_sim) {
-  const std::optional<double> val = _fsc.GetNode(nI).GetAlpha(state);
-  if (val.has_value()) return val.value();
-  const double V = SimulateTrajectory(nI, state, max_depth_sim, R_lower);
-  _fsc.GetNode(nI).SetAlpha(state, V);
-  return V;
-}
-
-double MCVIPlanner::UpperBoundUpdate(const BeliefDistribution& belief,
-                                     double R_lower, int64_t max_depth_sim,
-                                     int64_t max_belief_samples) {
-  double V_upper_bound = 0.0;
-  auto belief_pdf = belief;
-  for (int64_t sample = 0; sample < max_belief_samples; ++sample) {
-    const auto [state, prob] = SamplePDFDestructive(belief_pdf);
-    if (state == -1) break;  // Sampled all states in belief
-    double best_val = -std::numeric_limits<double>::infinity();
-    for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action) {
-      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
-      double best_alpha = -std::numeric_limits<double>::infinity();
-      for (int64_t nI = 0; nI < _fsc.NumNodes(); ++nI) {
-        const double V_nI_sNext =
-            GetNodeAlpha(sNext, nI, R_lower, max_depth_sim);
-        if (V_nI_sNext > best_alpha) best_alpha = V_nI_sNext;
-      }
-      double val = reward + _pomdp->GetDiscount() * best_alpha;
-      if (val > best_val) best_val = val;
-    }
-    V_upper_bound += prob * best_val;
-  }
-  return V_upper_bound;
 }
 
 }  // namespace MCVI

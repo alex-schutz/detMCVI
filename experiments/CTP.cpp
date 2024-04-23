@@ -10,7 +10,7 @@ using namespace MCVI;
 
 class CTP : public MCVI::SimInterface {
  private:
-  mutable std::mt19937_64 rng;
+  std::mt19937_64& rng;
   std::vector<int> nodes;
   std::unordered_map<std::pair<int, int>, double, pairhash>
       edges;  // bidirectional, smallest node is first, double is weight
@@ -26,8 +26,8 @@ class CTP : public MCVI::SimInterface {
   double _bad_action_reward = -50;
 
  public:
-  CTP(uint64_t seed = std::random_device{}())
-      : rng(seed),
+  CTP(std::mt19937_64& rng)
+      : rng(rng),
         nodes(CTPNodes),
         edges(CTPEdges),
         stoch_edges(CTPStochEdges),
@@ -45,6 +45,9 @@ class CTP : public MCVI::SimInterface {
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
   int getGoal() const { return goal; }
+  bool IsTerminal(int sI) const override {
+    return stateSpace.getStateFactorElem(sI, "loc") == goal;
+  }
 
   std::tuple<int, int, double, bool> Step(int sI, int aI) override {
     int sNext;
@@ -169,7 +172,10 @@ class CTP : public MCVI::SimInterface {
     if (!nodesAdjacent(loc, action, state)) return _bad_action_reward;
 
     sNext = stateSpace.updateStateFactor(state, "loc", action);
-    if (loc == action) return _idle_reward;
+    if (loc == action) {
+      if (loc == goal) return 0;
+      return _idle_reward;
+    }
     return action < loc ? -edges.at({action, loc}) : -edges.at({loc, action});
   }
 
@@ -193,9 +199,11 @@ class CTP : public MCVI::SimInterface {
 };
 
 int main() {
+  std::mt19937_64 rng(std::random_device{}());
+
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;
-  auto pomdp = CTP();
+  auto pomdp = CTP(rng);
 
   pomdp.visualiseGraph(std::cerr);
 
@@ -211,7 +219,17 @@ int main() {
   for (const auto& [state, count] : state_counts)
     init_belief[state] = (double)count / nb_particles_b0;
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
-
+  const int64_t max_belief_samples = 10000;
+  if (max_belief_samples < init_belief.size()) {
+    std::cout << "Downsampling belief" << std::endl;
+    const auto shuffled_init =
+        weightedShuffle(init_belief, rng, max_belief_samples);
+    double prob_sum = 0.0;
+    for (const auto& [state, prob] : shuffled_init) prob_sum += prob;
+    init_belief.clear();
+    for (const auto& [state, prob] : shuffled_init)
+      init_belief[state] = prob / prob_sum;
+  }
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
   const auto init_fsc = AlphaVectorFSC(max_node_size);
@@ -219,21 +237,20 @@ int main() {
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
   const int64_t max_sim_depth = 15;
-  const int64_t eval_depth = 40;
+  const int64_t eval_depth = 20;
   const int64_t eval_epsilon = 0.01;
-  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief);
+  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, rng);
   const double converge_thresh = 0.01;
   const int64_t max_iter = 30;
-  const int64_t max_belief_samples = 10000;
   const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
-                                eval_depth, eval_epsilon, max_belief_samples);
+                                eval_depth, eval_epsilon);
 
   fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
   // Simulate the resultant FSC
-  planner.SimulationWithFSC(20);
+  planner.SimulationWithFSC(15);
 
-  planner.EvaluationWithSimulationFSC(20, 1000, pomdp.getGoal());
+  planner.EvaluationWithSimulationFSC(15, 1000);
 
   return 0;
 }

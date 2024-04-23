@@ -11,6 +11,8 @@
 
 #include "AlphaVectorFSC.h"
 #include "BeliefDistribution.h"
+#include "BeliefTree.h"
+#include "Bound.h"
 #include "SimInterface.h"
 
 namespace MCVI {
@@ -21,16 +23,16 @@ class MCVIPlanner {
   AlphaVectorFSC _fsc;
   BeliefDistribution _b0;
   PathToTerminal _heuristic;
-  mutable std::mt19937_64 _rng;
+  std::mt19937_64& _rng;
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
-              const BeliefDistribution& init_belief)
+              const BeliefDistribution& init_belief, std::mt19937_64& rng)
       : _pomdp(pomdp),
         _fsc(init_fsc),
         _b0(init_belief),
         _heuristic(_pomdp),
-        _rng(std::random_device{}()) {}
+        _rng(rng) {}
 
   /// @brief Run the MCVI planner
   /// @param max_depth_sim Maximum depth to simulate
@@ -39,24 +41,19 @@ class MCVIPlanner {
   /// @return The FSC for the pomdp
   AlphaVectorFSC Plan(int64_t max_depth_sim, double epsilon,
                       int64_t max_nb_iter, int64_t eval_depth,
-                      double eval_epsilon, int64_t max_belief_samples);
+                      double eval_epsilon);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
 
-  /// @brief Evaluate the FSC bounds through multiple simulations
-  void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
-                                   int64_t default_action) const;
+  /// @brief Evaluate the FSC bounds through multiple simulations. Reverts to
+  /// greedy policy when policy runs out
+  void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims) const;
 
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
-              int64_t max_depth_sim, int64_t max_belief_samples);
-
-  /// @brief Simulate a trajectory using the policy graph beginning at node nI
-  /// and the given state, returning the discounted reward of the simulation
-  double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth,
-                            double R_lower) const;
+              int64_t max_depth_sim, int64_t eval_depth, double eval_epsilon);
 
   /// @brief Find a node matching the given node and edges, or insert it if it
   /// does not exist
@@ -69,19 +66,12 @@ class MCVIPlanner {
 
   int64_t RandomAction() const;
 
-  double GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
-                      int64_t max_depth_sim);
-
-  double UpperBoundUpdate(const BeliefDistribution& belief, double R_lower,
-                          int64_t max_depth_sim, int64_t max_belief_samples);
-
   void SampleBeliefs(
       std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
       int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
       int64_t eval_depth, double eval_epsilon,
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-      double target, double R_lower, int64_t max_depth_sim,
-      int64_t max_belief_samples);
+      double target, double R_lower, int64_t max_depth_sim);
 };
 
 }  // namespace MCVI

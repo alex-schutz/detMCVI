@@ -11,46 +11,18 @@ static bool CmpPair(const std::pair<int64_t, double>& p1,
 }
 
 AlphaVectorNode::AlphaVectorNode(int64_t init_best_action)
-    : _Q_action(),
-      _R_action(),
-      _V_a_o_n(),
-      _V_node(0.0),
-      _best_action(init_best_action),
-      _alpha() {}
-
-void AlphaVectorNode::UpdateBestValue(int64_t action,
-                                      std::shared_ptr<BeliefTreeNode> tr) {
-  _best_action = action;
-  _V_node = _Q_action.at(_best_action);
-  tr->SetBestAction(_best_action, _V_node);
-}
-
-void AlphaVectorNode::AddValue(int64_t action, int64_t observation, int64_t nI,
-                               double val) {
-  auto& o_n = _V_a_o_n[action];
-  auto& _n = o_n[observation];
-  _n[nI] += val;
-}
-
-std::tuple<std::unordered_map<int64_t, int64_t>, double>
-AlphaVectorNode::BestNodePerObs(int64_t action) {
-  double sum_v = 0.0;
-  std::unordered_map<int64_t, int64_t> edges;
-  auto& o_n = _V_a_o_n[action];
-  for (const auto& [obs, n_v] : o_n) {
-    const auto it = std::max_element(std::begin(n_v), std::end(n_v), CmpPair);
-    const int64_t nI = it->first;
-    const double V = it->second;
-    edges[obs] = nI;
-    sum_v += V;
-  }
-  return {edges, sum_v};
-}
+    : _V_node(0.0), _best_action(init_best_action), _alpha() {}
 
 std::optional<double> AlphaVectorNode::GetAlpha(int64_t state) const {
   const auto it = _alpha.find(state);
   if (it == _alpha.cend()) return std::nullopt;
   return it->second;
+}
+
+double AlphaVectorNode::V_node() const {
+  auto v = std::max_element(_alpha.begin(), _alpha.end(), CmpPair);
+  if (v == _alpha.cend()) return 0;
+  return v->second;
 }
 
 }  // namespace MCVI

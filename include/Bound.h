@@ -67,15 +67,10 @@ class PathToTerminal : public ShortestPathFasterAlgorithm {
  *
  * The upper bound value of the belief is the expected sum of each possible
  * state's MDP value
- *
- * @param belief A belief distribution
- * @param solver A shortest path solver for the det-POMDP
- * @param max_depth Max depth of a simulation run
- * @return tuple<int64_t, double> best action, upper bound
  */
-std::tuple<int64_t, double> UpperBoundEvaluation(
-    const BeliefDistribution& belief, const PathToTerminal& solver,
-    int64_t max_depth);
+double UpperBoundEvaluation(const BeliefDistribution& belief,
+                            const PathToTerminal& solver, double gamma,
+                            int64_t belief_depth, int64_t max_depth);
 
 /**
  * @brief Determine the lower bound reward of the belief, by choosing an action
