@@ -8,6 +8,7 @@
 #pragma once
 
 #include "AlphaVectorNode.h"
+#include "Bound.h"
 #include "SimInterface.h"
 
 namespace MCVI {
@@ -60,5 +61,10 @@ class AlphaVectorFSC {
   double GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
                       int64_t max_depth_sim, SimInterface* pomdp);
 };
+
+AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
+                             const BeliefDistribution& initial_belief,
+                             int64_t max_depth, int64_t max_node_size,
+                             SimInterface* pomdp);
 
 }  // namespace MCVI

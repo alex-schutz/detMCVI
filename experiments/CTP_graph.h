@@ -14,7 +14,6 @@ struct pairhash {
     return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
   }
 };
-
 /*
 // ========= Randomly generated graph ========================================
 const std::vector<int> CTPNodes = {0, 1, 2,  3,  4,  5,  6, 7,

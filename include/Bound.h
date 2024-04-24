@@ -34,6 +34,7 @@ class PathToTerminal : public ShortestPathFasterAlgorithm {
       int64_t state) const override;
 
   struct PathNode {
+    int64_t id;
     int64_t action;
     std::unordered_set<int64_t> states;
     std::shared_ptr<PathNode> nextNode;
@@ -52,13 +53,14 @@ class PathToTerminal : public ShortestPathFasterAlgorithm {
       paths;
 
   std::shared_ptr<PathNode> createPathNode(
-      int64_t action, const std::unordered_set<int64_t>& states) const;
+      int64_t& id, int64_t action,
+      const std::unordered_set<int64_t>& states) const;
 
   std::shared_ptr<PathNode> findActionChild(std::shared_ptr<PathNode> node,
                                             int64_t action) const;
 
   std::shared_ptr<PathNode> findOrCreateNode(std::shared_ptr<PathNode> nextNode,
-                                             int64_t action) const;
+                                             int64_t& id, int64_t action) const;
 };
 
 /**

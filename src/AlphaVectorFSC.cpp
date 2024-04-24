@@ -68,7 +68,6 @@ void AlphaVectorFSC::GenerateGraphviz(
 double AlphaVectorFSC::SimulateTrajectory(int64_t nI, int64_t state,
                                           int64_t max_depth, double R_lower,
                                           SimInterface* pomdp) {
-  const int64_t inState = state;
   const double gamma = pomdp->GetDiscount();
   double V_n_s = 0.0;
   int64_t nI_current = nI;
@@ -98,6 +97,42 @@ double AlphaVectorFSC::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
   const double V = SimulateTrajectory(nI, state, max_depth_sim, R_lower, pomdp);
   GetNode(nI).SetAlpha(state, V);
   return V;
+}
+
+AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
+                             const BeliefDistribution& initial_belief,
+                             int64_t max_depth, int64_t max_node_size,
+                             SimInterface* pomdp) {
+  for (const auto& [s, p] : initial_belief) (void)ptt.path(s, max_depth);
+
+  const auto path_tree = ptt.buildPathTree();
+
+  AlphaVectorFSC fsc(max_node_size);
+  std::vector<std::shared_ptr<PathToTerminal::PathNode>> path_nodes;
+  std::unordered_map<int64_t, int64_t> node_map;
+  for (const auto& [s, node] : path_tree) {
+    auto curr_node = node;
+    while (curr_node != nullptr && curr_node->action != -1) {
+      if (!node_map.contains(curr_node->id)) {
+        path_nodes.push_back(curr_node);
+        node_map[curr_node->id] =
+            fsc.AddNode(AlphaVectorNode(curr_node->action));
+        curr_node = curr_node->nextNode;
+      } else {
+        break;
+      }
+    }
+  }
+  std::unordered_map<int64_t, int64_t> edges;
+  for (const auto& node : path_nodes) {
+    if (node->nextNode == nullptr) continue;
+    for (const auto& s : node->states) {
+      const auto [sNext, obs, reward, done] = pomdp->Step(s, node->action);
+      edges[obs] = node_map[node->nextNode->id];
+    }
+    fsc.UpdateEdge(node_map[node->id], edges);
+  }
+  return fsc;
 }
 
 }  // namespace MCVI

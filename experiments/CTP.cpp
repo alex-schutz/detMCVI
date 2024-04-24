@@ -209,6 +209,7 @@ int main() {
 
   const int64_t nb_particles_b0 = 100000;
   const int64_t max_node_size = 10000;
+  const int64_t max_sim_depth = 15;
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
@@ -232,14 +233,16 @@ int main() {
   }
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
-  const auto init_fsc = AlphaVectorFSC(max_node_size);
+  PathToTerminal ptt(&pomdp);
+  const auto init_fsc =
+      InitialiseFSC(ptt, init_belief, max_sim_depth, max_node_size, &pomdp);
+  init_fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
-  const int64_t max_sim_depth = 15;
   const int64_t eval_depth = 20;
   const int64_t eval_epsilon = 0.01;
-  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, rng);
+  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, ptt, rng);
   const double converge_thresh = 0.01;
   const int64_t max_iter = 30;
   const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,

@@ -98,7 +98,9 @@ std::tuple<int64_t, double> PathToTerminal::path(int64_t source,
 
 std::unordered_map<int64_t, std::shared_ptr<PathToTerminal::PathNode>>
 PathToTerminal::buildPathTree() const {
-  std::shared_ptr<PathNode> rootNode = createPathNode(-1, {});  // dummy root
+  int64_t id = -1;
+  std::shared_ptr<PathNode> rootNode =
+      createPathNode(id, -1, {});  // dummy root
   std::unordered_map<int64_t, std::shared_ptr<PathNode>> startNodes;
 
   for (const auto& [source, path] : paths) {
@@ -114,7 +116,7 @@ PathToTerminal::buildPathTree() const {
       }
 
       std::shared_ptr<PathNode> currentNode =
-          findOrCreateNode(nextNode, action);
+          findOrCreateNode(nextNode, id, action);
       currentNode->states.insert(state);
       nextNode = currentNode;
     }
@@ -128,8 +130,10 @@ PathToTerminal::buildPathTree() const {
 }
 
 std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::createPathNode(
-    int64_t action, const std::unordered_set<int64_t>& states) const {
-  return std::make_shared<PathNode>(PathNode{action, states, nullptr, {}});
+    int64_t& id, int64_t action,
+    const std::unordered_set<int64_t>& states) const {
+  return std::make_shared<PathNode>(
+      PathNode{id++, action, states, nullptr, {}});
 }
 
 std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::findActionChild(
@@ -140,10 +144,10 @@ std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::findActionChild(
 }
 
 std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::findOrCreateNode(
-    std::shared_ptr<PathNode> nextNode, int64_t action) const {
+    std::shared_ptr<PathNode> nextNode, int64_t& id, int64_t action) const {
   const auto node = findActionChild(nextNode, action);
   if (!node) {
-    std::shared_ptr<PathNode> newNode = createPathNode(action, {});
+    std::shared_ptr<PathNode> newNode = createPathNode(id, action, {});
     newNode->nextNode = nextNode;
     nextNode->prevNodes.push_back(newNode);
     return newNode;

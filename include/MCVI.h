@@ -27,11 +27,12 @@ class MCVIPlanner {
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
-              const BeliefDistribution& init_belief, std::mt19937_64& rng)
+              const BeliefDistribution& init_belief,
+              const PathToTerminal& heuristic, std::mt19937_64& rng)
       : _pomdp(pomdp),
         _fsc(init_fsc),
         _b0(init_belief),
-        _heuristic(_pomdp),
+        _heuristic(heuristic),
         _rng(rng) {}
 
   /// @brief Run the MCVI planner
