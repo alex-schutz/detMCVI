@@ -108,13 +108,11 @@ AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
   const auto path_tree = ptt.buildPathTree();
 
   AlphaVectorFSC fsc(max_node_size);
-  std::vector<std::shared_ptr<PathToTerminal::PathNode>> path_nodes;
   std::unordered_map<int64_t, int64_t> node_map;
   for (const auto& [s, node] : path_tree) {
     auto curr_node = node;
     while (curr_node != nullptr && curr_node->action != -1) {
       if (!node_map.contains(curr_node->id)) {
-        path_nodes.push_back(curr_node);
         node_map[curr_node->id] =
             fsc.AddNode(AlphaVectorNode(curr_node->action));
         curr_node = curr_node->nextNode;
@@ -123,15 +121,20 @@ AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
       }
     }
   }
-  std::unordered_map<int64_t, int64_t> edges;
-  for (const auto& node : path_nodes) {
-    if (node->nextNode == nullptr) continue;
-    for (const auto& s : node->states) {
-      const auto [sNext, obs, reward, done] = pomdp->Step(s, node->action);
-      edges[obs] = node_map[node->nextNode->id];
+
+  std::unordered_map<int64_t, std::unordered_map<int64_t, int64_t>> edge_map;
+  for (const auto& [s, node] : path_tree) {
+    auto state = s;
+    auto curr_node = node;
+    while (curr_node != nullptr && curr_node->action != -1) {
+      const auto [sNext, obs, reward, done] = pomdp->Step(state, node->action);
+      edge_map[node_map[curr_node->id]][obs] = node_map[node->nextNode->id];
+      curr_node = curr_node->nextNode;
+      state = sNext;
     }
-    fsc.UpdateEdge(node_map[node->id], edges);
   }
+  for (const auto& [nI, edges] : edge_map) fsc.UpdateEdge(nI, edges);
+
   return fsc;
 }
 
