@@ -39,7 +39,7 @@ class IndexMap {
 
 class StateSpace {
  public:
-  StateSpace(const std::map<std::string, std::vector<int>> &factors)
+  StateSpace(const std::map<std::string, std::vector<int64_t>> &factors)
       : _sf_map(mapStateFactors(factors)),
         _size(calcSize()),
         prodSF(calculateProdSF()) {}
@@ -47,16 +47,16 @@ class StateSpace {
   size_t size() const { return _size; }
 
   /// @brief Retrieve the state number given a state
-  int stateIndex(const std::map<std::string, int> &state) const {
-    int s = 0;
+  int64_t stateIndex(const std::map<std::string, int64_t> &state) const {
+    int64_t s = 0;
     for (const auto &[name, sf] : _sf_map)
       s += sf.getIndex(state.at(name)) * prodSF.at(name);
     return s;
   }
 
   /// @brief Retrieve the state given a state number
-  std::map<std::string, int> at(int sI) const {
-    std::map<std::string, int> s;
+  std::map<std::string, int64_t> at(int64_t sI) const {
+    std::map<std::string, int64_t> s;
     for (const auto &[name, sf] : _sf_map)
       s[name] = getStateFactorElem(sI, name);
     return s;
@@ -75,12 +75,12 @@ class StateSpace {
    * so getStateFactorIndex(3, "loc_name") returns 1
    * and getStateFactorIndex(3, "height") returns 0
    */
-  int getStateFactorIndex(int sI, std::string sf_name) const {
+  int64_t getStateFactorIndex(int64_t sI, std::string sf_name) const {
     return (sI / prodSF.at(sf_name)) % _sf_map.at(sf_name).size();
   }
 
   /// @brief Return the element of the given state factor for state number sI
-  int getStateFactorElem(int sI, std::string sf_name) const {
+  int64_t getStateFactorElem(int64_t sI, std::string sf_name) const {
     return _sf_map.at(sf_name).at(getStateFactorIndex(sI, sf_name));
   }
 
@@ -99,43 +99,44 @@ class StateSpace {
    * So we call `updateStateFactorIndex(3, "height", 2)`
    * and get a returned state index of 5.
    */
-  int updateStateFactorIndex(int sI, std::string sf_name,
-                             int new_sf_elem_idx) const {
-    const int curr_idx = getStateFactorIndex(sI, sf_name);
-    const int delta = new_sf_elem_idx - curr_idx;
+  int64_t updateStateFactorIndex(int64_t sI, std::string sf_name,
+                                 int64_t new_sf_elem_idx) const {
+    const int64_t curr_idx = getStateFactorIndex(sI, sf_name);
+    const int64_t delta = new_sf_elem_idx - curr_idx;
     return sI + delta * prodSF.at(sf_name);
   }
 
   /// @brief Given state number sI, return the number of the state where the
   /// element of the given state factor is set to `new_elem`
-  int updateStateFactor(int sI, std::string sf_name, int new_elem) const {
+  int64_t updateStateFactor(int64_t sI, std::string sf_name,
+                            int64_t new_elem) const {
     return updateStateFactorIndex(sI, sf_name,
                                   _sf_map.at(sf_name).getIndex(new_elem));
   }
 
  private:
-  std::map<std::string, IndexMap<int>> _sf_map;  // ordered by name
+  std::map<std::string, IndexMap<int64_t>> _sf_map;  // ordered by name
   size_t _size;
-  std::map<std::string, int> prodSF;  // cumulative product of sf lengths
+  std::map<std::string, int64_t> prodSF;  // cumulative product of sf lengths
 
   /// @brief create a map of state factor names to index maps
-  std::map<std::string, IndexMap<int>> mapStateFactors(
-      const std::map<std::string, std::vector<int>> &factors) const {
-    std::map<std::string, IndexMap<int>> map;
+  std::map<std::string, IndexMap<int64_t>> mapStateFactors(
+      const std::map<std::string, std::vector<int64_t>> &factors) const {
+    std::map<std::string, IndexMap<int64_t>> map;
     for (const auto &[name, vals] : factors)
-      map.emplace(name, IndexMap<int>(vals));
+      map.emplace(name, IndexMap<int64_t>(vals));
     return map;
   }
 
   /// @brief calculate a cumulative product of state factor lengths
-  std::map<std::string, int> calculateProdSF() const {
-    std::vector<int> _prodSF_vec = {1};
+  std::map<std::string, int64_t> calculateProdSF() const {
+    std::vector<int64_t> _prodSF_vec = {1};
     for (auto sf = _sf_map.crbegin(); sf != _sf_map.crend(); ++sf)
       _prodSF_vec.insert(_prodSF_vec.begin(),
                          _prodSF_vec[0] * sf->second.size());
 
-    std::map<std::string, int> _prodSF;
-    int i = 1;
+    std::map<std::string, int64_t> _prodSF;
+    int64_t i = 1;
     for (const auto &[name, sf] : _sf_map) {
       _prodSF[name] = _prodSF_vec[i++];
     }

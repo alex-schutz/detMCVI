@@ -25,7 +25,7 @@ ParsedPOMDPSparse::ParsedPOMDPSparse(const std::string filename) {
     std::string s;
 
     // values corresponding to parsing steps
-    int temp_num = 0;
+    int64_t temp_num = 0;
     bool ReadDiscount = false;
     bool ReadStates = false;
     bool ReadActions = false;
@@ -86,7 +86,7 @@ ParsedPOMDPSparse::ParsedPOMDPSparse(const std::string filename) {
         this->Observations.push_back(s);
       }
 
-      // Get intial belief
+      // Get initial belief
       if (ReadStart && temp_num > 0) {
         double pb = stod(s);
         b0.push_back(pb);
@@ -109,15 +109,15 @@ ParsedPOMDPSparse::ParsedPOMDPSparse(const std::string filename) {
   // begin from where we stopped from previous loop temporary variables to store
   // information
 
-  this->TransFuncVecs.resize(Actions.size(),
-                             std::vector<std::map<int, double>>(States.size()));
+  this->TransFuncVecs.resize(
+      Actions.size(), std::vector<std::map<int64_t, double>>(States.size()));
 
   // observation as A -> S' -> O -> proba
   // std::vector< std::vector< std::vector<double> > > O(Actions.size(),
   // std::vector<std::vector<double> >(States.size(),
   // std::vector<double>(Observations.size()) ));
-  this->ObsFuncVecs.resize(Actions.size(),
-                           std::vector<std::map<int, double>>(States.size()));
+  this->ObsFuncVecs.resize(
+      Actions.size(), std::vector<std::map<int64_t, double>>(States.size()));
   // reawrd as A -> S -> reward value
   this->RewardFuncVecs.resize(Actions.size(),
                               std::vector<double>(States.size()));
@@ -134,14 +134,14 @@ ParsedPOMDPSparse::ParsedPOMDPSparse(const std::string filename) {
     std::string s;
 
     // information for deciding which line to consider
-    int temp_num = 0;
+    int64_t temp_num = 0;
     bool buildTrans = false;
     bool buildObs = false;
     bool buildReward = false;
-    int aI = 0;
-    int sI = 0;
-    int oI = 0;
-    int snewI = 0;
+    int64_t aI = 0;
+    int64_t sI = 0;
+    int64_t oI = 0;
+    int64_t snewI = 0;
     double pb = 0;
 
     // Get T,O and R depending on the line
@@ -223,7 +223,7 @@ ParsedPOMDPSparse::ParsedPOMDPSparse(const std::string filename) {
       temp_num += 1;
 
     }  // end of line parsing
-  }    // end of file parsing
+  }  // end of file parsing
 
   // all probabilities stored, close file
   infile.close();
@@ -241,25 +241,27 @@ ParsedPOMDPSparse::ParsedPOMDPSparse(const std::string filename) {
 double ParsedPOMDPSparse::GetDiscount() const { return this->discount; };
 
 /* returns number of states */
-int ParsedPOMDPSparse::GetSizeOfS() const { return this->S_size; };
+int64_t ParsedPOMDPSparse::GetSizeOfS() const { return this->S_size; };
 
 /* returns number of actions */
-int ParsedPOMDPSparse::GetSizeOfA() const { return this->A_size; };
+int64_t ParsedPOMDPSparse::GetSizeOfA() const { return this->A_size; };
 
 /* returns number of observations */
-int ParsedPOMDPSparse::GetSizeOfObs() const { return this->Obs_size; };
+int64_t ParsedPOMDPSparse::GetSizeOfObs() const { return this->Obs_size; };
 
 // /* returns initial belief */
 // std::std::vector<double> ParsedPOMDPSparse::GetInitBelief(){
 // 	return this->b0;
 // };
 
-const std::map<int, double> *ParsedPOMDPSparse::GetInitBeliefSparse() const {
+const std::map<int64_t, double> *ParsedPOMDPSparse::GetInitBeliefSparse()
+    const {
   return &this->b0_sparse;
 };
 
 /* returns transition function probability */
-double ParsedPOMDPSparse::TransFunc(int sI, int aI, int s_newI) const {
+double ParsedPOMDPSparse::TransFunc(int64_t sI, int64_t aI,
+                                    int64_t s_newI) const {
   // if key absent
   if ((this->TransFuncVecs[aI][sI]).find(s_newI) ==
       this->TransFuncVecs[aI][sI].end()) {
@@ -274,12 +276,13 @@ double ParsedPOMDPSparse::TransFunc(int sI, int aI, int s_newI) const {
 };
 
 /* returns observation probabilities */
-double ParsedPOMDPSparse::ObsFunc(int oI, int s_newI, int aI) const {
+double ParsedPOMDPSparse::ObsFunc(int64_t oI, int64_t s_newI,
+                                  int64_t aI) const {
   return this->ObsFuncVecs[aI][s_newI].find(oI)->second;
 };
 
 /* returns reward */
-double ParsedPOMDPSparse::Reward(int sI, int aI) const {
+double ParsedPOMDPSparse::Reward(int64_t sI, int64_t aI) const {
   return this->RewardFuncVecs[aI][sI];
 };
 
@@ -287,16 +290,16 @@ double ParsedPOMDPSparse::Reward(int sI, int aI) const {
 ParsedPOMDPSparse::~ParsedPOMDPSparse() {}
 
 /* return a prob distribution for transition function*/
-// std::map<int,double>* ParsedPOMDPSparse::GetTransProbDist(int sI, int aI){
-// 	return &this->TransFuncVecs[aI][sI];
+// std::map<int64_t,double>* ParsedPOMDPSparse::GetTransProbDist(int64_t sI,
+// int64_t aI){ 	return &this->TransFuncVecs[aI][sI];
 // };
-const std::map<int, double> *ParsedPOMDPSparse::GetTransProbDist(int sI,
-                                                                 int aI) const {
+const std::map<int64_t, double> *ParsedPOMDPSparse::GetTransProbDist(
+    int64_t sI, int64_t aI) const {
   return &this->TransFuncVecs[aI][sI];
 };
 
-const std::map<int, double> *ParsedPOMDPSparse::GetObsFuncProbDist(
-    int s_newI, int aI) const {
+const std::map<int64_t, double> *ParsedPOMDPSparse::GetObsFuncProbDist(
+    int64_t s_newI, int64_t aI) const {
   return &this->ObsFuncVecs[aI][s_newI];
 };
 
@@ -311,4 +314,4 @@ const std::std::vector<std::string> &ParsedPOMDPSparse::GetAllObservations()
   return this->Observations;
 }
 
-}
+}  // namespace MCVI

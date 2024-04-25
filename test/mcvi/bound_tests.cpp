@@ -15,12 +15,13 @@ class TestPOMDP : public SimInterface {
 
  public:
   double GetDiscount() const override { return 0.99; }
-  int GetNbAgent() const override { return 1; }
-  int GetSizeOfA() const override { return actions.size(); }
-  int GetSizeOfObs() const override { return observations.size(); }
-  int SampleStartState() override { return 0; }
-  bool IsTerminal(int sI) const override { return sI == 5; }
-  std::tuple<int, int, double, bool> Step(int sI, int aI) override {
+  int64_t GetNbAgent() const override { return 1; }
+  int64_t GetSizeOfA() const override { return actions.size(); }
+  int64_t GetSizeOfObs() const override { return observations.size(); }
+  int64_t SampleStartState() override { return 0; }
+  bool IsTerminal(int64_t sI) const override { return sI == 5; }
+  std::tuple<int64_t, int64_t, double, bool> Step(int64_t sI,
+                                                  int64_t aI) override {
     if (aI == 9) return {sI, 0, -13.0, false};
     switch (sI) {
       case 0:
@@ -48,7 +49,7 @@ class TestPOMDP : public SimInterface {
           std::mt19937_64 rng(std::random_device{}());
           std::uniform_real_distribution<double> unif(0, 1);
           const double u = unif(rng);
-          const int s_next = u < 0.4 ? 3 : 5;
+          const int64_t s_next = u < 0.4 ? 3 : 5;
           return {s_next, 0, -2.0, s_next == 5};
         }
         return {sI, 0, -50.0, false};

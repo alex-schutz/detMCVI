@@ -11,13 +11,13 @@ using namespace MCVI;
 class CTP : public MCVI::SimInterface {
  private:
   std::mt19937_64& rng;
-  std::vector<int> nodes;
-  std::unordered_map<std::pair<int, int>, double, pairhash>
+  std::vector<int64_t> nodes;
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
       edges;  // bidirectional, smallest node is first, double is weight
-  std::unordered_map<std::pair<int, int>, double, pairhash>
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
       stoch_edges;  // probability of being blocked
-  int goal;
-  int origin;
+  int64_t goal;
+  int64_t origin;
   StateSpace stateSpace;
   StateSpace observationSpace;
   std::vector<std::string> actions;
@@ -38,29 +38,31 @@ class CTP : public MCVI::SimInterface {
         actions(initActions()),
         observations(initObs()) {}
 
-  int GetSizeOfObs() const override { return observationSpace.size(); }
-  int GetSizeOfA() const override { return actions.size(); }
+  int64_t GetSizeOfObs() const override { return observationSpace.size(); }
+  int64_t GetSizeOfA() const override { return actions.size(); }
   double GetDiscount() const override { return 0.95; }
-  int GetNbAgent() const override { return 1; }
+  int64_t GetNbAgent() const override { return 1; }
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
-  int getGoal() const { return goal; }
-  bool IsTerminal(int sI) const override {
+  int64_t getGoal() const { return goal; }
+  bool IsTerminal(int64_t sI) const override {
     return stateSpace.getStateFactorElem(sI, "loc") == goal;
   }
 
-  std::tuple<int, int, double, bool> Step(int sI, int aI) override {
-    int sNext;
+  std::tuple<int64_t, int64_t, double, bool> Step(int64_t sI,
+                                                  int64_t aI) override {
+    int64_t sNext;
     const double reward = applyActionToState(sI, aI, sNext);
-    const int oI = observeState(sNext);
+    const int64_t oI = observeState(sNext);
     const bool finished = stateSpace.getStateFactorElem(sNext, "loc") == goal;
     // sI_next, oI, Reward, Done
-    return std::tuple<int, int, double, bool>(sNext, oI, reward, finished);
+    return std::tuple<int64_t, int64_t, double, bool>(sNext, oI, reward,
+                                                      finished);
   }
 
-  int SampleStartState() override {
+  int64_t SampleStartState() override {
     std::uniform_real_distribution<> unif(0, 1);
-    std::map<std::string, int> state;
+    std::map<std::string, int64_t> state;
     // agent starts at origin
     state["loc"] = origin;
     // stochastic edge status
@@ -103,12 +105,12 @@ class CTP : public MCVI::SimInterface {
     return acts;
   }
 
-  std::string edge2str(std::pair<int, int> e) const {
+  std::string edge2str(std::pair<int64_t, int64_t> e) const {
     return "e" + std::to_string(e.first) + "_" + std::to_string(e.second);
   }
 
   StateSpace initStateSpace() const {
-    std::map<std::string, std::vector<int>> state_factors;
+    std::map<std::string, std::vector<int64_t>> state_factors;
     // agent location
     state_factors["loc"] = nodes;
     // stochastic edge status
@@ -121,20 +123,22 @@ class CTP : public MCVI::SimInterface {
 
   // agent can observe any element from state space or -1 (unknown)
   StateSpace initObsSpace() const {
-    std::map<std::string, std::vector<int>> observation_factors;
+    std::map<std::string, std::vector<int64_t>> observation_factors;
     // agent location
-    std::vector<int> agent_locs = nodes;
+    std::vector<int64_t> agent_locs = nodes;
     agent_locs.push_back(-1);
     observation_factors["loc"] = agent_locs;
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
       observation_factors[edge2str(edge)] = {0, 1, -1};
     StateSpace os(observation_factors);
+    size_t max_size = (size_t)-1;
+    std::cout << "Max size: " << max_size << std::endl;
     std::cout << "Observation space size: " << os.size() << std::endl;
     return os;
   }
 
-  std::string map2string(const std::map<std::string, int>& map) const {
+  std::string map2string(const std::map<std::string, int64_t>& map) const {
     std::stringstream ss;
     for (auto it = map.begin(); it != map.end(); ++it) {
       ss << it->first << ": " << it->second;
@@ -152,7 +156,7 @@ class CTP : public MCVI::SimInterface {
     return obs;
   }
 
-  bool nodesAdjacent(int a, int b, int state) const {
+  bool nodesAdjacent(int64_t a, int64_t b, int64_t state) const {
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
     if (edges.find(edge) == edges.end()) return false;  // edge does not exist
@@ -166,9 +170,10 @@ class CTP : public MCVI::SimInterface {
            1;  // traversable
   }
 
-  double applyActionToState(int state, int action, int& sNext) const {
+  double applyActionToState(int64_t state, int64_t action,
+                            int64_t& sNext) const {
     sNext = state;
-    const int loc = stateSpace.getStateFactorElem(state, "loc");
+    const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
     if (!nodesAdjacent(loc, action, state)) return _bad_action_reward;
 
     sNext = stateSpace.updateStateFactor(state, "loc", action);
@@ -179,16 +184,17 @@ class CTP : public MCVI::SimInterface {
     return action < loc ? -edges.at({action, loc}) : -edges.at({loc, action});
   }
 
-  int observeState(int state) const {
-    std::map<std::string, int> observation;
+  int64_t observeState(int64_t state) const {
+    std::map<std::string, int64_t> observation;
 
-    const int loc = stateSpace.getStateFactorElem(state, "loc");
+    const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
     observation["loc"] = loc;
 
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges) {
       if (loc == edge.first || loc == edge.second) {
-        const int status = stateSpace.getStateFactorElem(state, edge2str(edge));
+        const int64_t status =
+            stateSpace.getStateFactorElem(state, edge2str(edge));
         observation[edge2str(edge)] = status;
       } else {
         observation[edge2str(edge)] = -1;
@@ -215,7 +221,7 @@ int main() {
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
   std::unordered_map<int64_t, int64_t> state_counts;
-  for (int i = 0; i < nb_particles_b0; ++i)
+  for (int64_t i = 0; i < nb_particles_b0; ++i)
     state_counts[pomdp.SampleStartState()] += 1;
   auto init_belief = BeliefDistribution();
   for (const auto& [state, count] : state_counts)

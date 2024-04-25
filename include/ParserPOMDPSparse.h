@@ -21,26 +21,26 @@ class ParsedPOMDPSparse : public PomdpInterface {
  private:
   // set of states
   std::vector<std::string> States;
-  int S_size;
+  int64_t S_size;
 
   // set of actions
   std::vector<std::string> Actions;
-  int A_size;
+  int64_t A_size;
 
   // set of observations
   std::vector<std::string> Observations;
-  int Obs_size;
+  int64_t Obs_size;
 
   // initial belief
   std::vector<double> b0;
 
-  std::map<int, double> b0_sparse;
+  std::map<int64_t, double> b0_sparse;
 
   // transition function as A -> S -> P(S)
-  std::vector<std::vector<std::map<int, double>>> TransFuncVecs;
+  std::vector<std::vector<std::map<int64_t, double>>> TransFuncVecs;
 
   // observation as A -> S' -> O -> proba
-  std::vector<std::vector<std::map<int, double>>> ObsFuncVecs;
+  std::vector<std::vector<std::map<int64_t, double>>> ObsFuncVecs;
 
   // reward function as A -> S -> reward
   std::vector<std::vector<double>> RewardFuncVecs;
@@ -55,19 +55,21 @@ class ParsedPOMDPSparse : public PomdpInterface {
   ~ParsedPOMDPSparse();
   // get discount value
   double GetDiscount() const;
-  int GetSizeOfS() const;
-  int GetSizeOfA() const;
-  int GetSizeOfObs() const;
-  double TransFunc(int sI, int aI, int s_newI) const;
-  double ObsFunc(int oI, int s_newI, int aI) const;
-  double Reward(int sI, int aI) const;
+  int64_t GetSizeOfS() const;
+  int64_t GetSizeOfA() const;
+  int64_t GetSizeOfObs() const;
+  double TransFunc(int64_t sI, int64_t aI, int64_t s_newI) const;
+  double ObsFunc(int64_t oI, int64_t s_newI, int64_t aI) const;
+  double Reward(int64_t sI, int64_t aI) const;
   const std::std::vector<std::string> &GetAllStates() const;
   const std::std::vector<std::string> &GetAllActions() const;
   const std::std::vector<std::string> &GetAllObservations() const;
   // for sparse representation
-  const std::map<int, double> *GetTransProbDist(int sI, int aI) const;
-  const std::map<int, double> *GetObsFuncProbDist(int s_newI, int aI) const;
-  const std::map<int, double> *GetInitBeliefSparse() const;
+  const std::map<int64_t, double> *GetTransProbDist(int64_t sI,
+                                                    int64_t aI) const;
+  const std::map<int64_t, double> *GetObsFuncProbDist(int64_t s_newI,
+                                                      int64_t aI) const;
+  const std::map<int64_t, double> *GetInitBeliefSparse() const;
 };
 
 }  // namespace MCVI
