@@ -15,7 +15,6 @@ Modify `experiments/CTP_graph.h` to update the problem instance.
 - Path finding for bounds crashes if there are no terminal states
 
 ## Optimisations
-- Initialise FSCs using shortest paths
 - Optimise path storage in shortest path calculator (only need to store action + next node instead of entire path)
 - Add multi-threading
 - Add pruning based on reachability
