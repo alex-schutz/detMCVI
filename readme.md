@@ -13,8 +13,6 @@ Modify `experiments/CTP_graph.h` to update the problem instance.
 
 ## Issues
 - Path finding for bounds crashes if there are no terminal states
-- Simulation depth paramater might not need to exist, see how this was done originally
-	- That's the excess uncertainty parameter in the belief expansion
 
 ## Optimisations
 - Initialise FSCs using shortest paths
@@ -22,3 +20,4 @@ Modify `experiments/CTP_graph.h` to update the problem instance.
 - Add multi-threading
 - Add pruning based on reachability
 - Add `AvailableActions` functionality
+- Simulation depth paramater does not need to exist
