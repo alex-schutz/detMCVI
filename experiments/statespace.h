@@ -117,7 +117,7 @@ class StateSpace {
  private:
   std::map<std::string, IndexMap<int64_t>> _sf_map;  // ordered by name
   size_t _size;
-  std::map<std::string, int64_t> prodSF;  // cumulative product of sf lengths
+  std::map<std::string, uint64_t> prodSF;  // cumulative product of sf lengths
 
   /// @brief create a map of state factor names to index maps
   std::map<std::string, IndexMap<int64_t>> mapStateFactors(
@@ -129,13 +129,17 @@ class StateSpace {
   }
 
   /// @brief calculate a cumulative product of state factor lengths
-  std::map<std::string, int64_t> calculateProdSF() const {
+  std::map<std::string, uint64_t> calculateProdSF() const {
     std::vector<int64_t> _prodSF_vec = {1};
-    for (auto sf = _sf_map.crbegin(); sf != _sf_map.crend(); ++sf)
-      _prodSF_vec.insert(_prodSF_vec.begin(),
-                         _prodSF_vec[0] * sf->second.size());
+    for (auto sf = _sf_map.crbegin(); sf != _sf_map.crend(); ++sf) {
+      uint64_t x = _prodSF_vec[0] * sf->second.size();
+      if (_prodSF_vec[0] != 0 && x / _prodSF_vec[0] != sf->second.size()) {
+        throw std::overflow_error("State space is too large!");
+      }
+      _prodSF_vec.insert(_prodSF_vec.begin(), x);
+    }
 
-    std::map<std::string, int64_t> _prodSF;
+    std::map<std::string, uint64_t> _prodSF;
     int64_t i = 1;
     for (const auto &[name, sf] : _sf_map) {
       _prodSF[name] = _prodSF_vec[i++];
