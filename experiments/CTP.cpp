@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <random>
 
@@ -19,7 +20,7 @@ class CTP : public MCVI::SimInterface {
   int64_t goal;
   int64_t origin;
   StateSpace stateSpace;
-  StateSpace observationSpace;
+  int64_t max_obs_width;
   std::vector<std::string> actions;
   std::vector<std::string> observations;
   double _idle_reward = -5;
@@ -34,11 +35,11 @@ class CTP : public MCVI::SimInterface {
         goal(CTPGoal),
         origin(CTPOrigin),
         stateSpace(initStateSpace()),
-        observationSpace(initObsSpace()),
+        max_obs_width(initObsWidth()),
         actions(initActions()),
         observations(initObs()) {}
 
-  int64_t GetSizeOfObs() const override { return observationSpace.size(); }
+  int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
   int64_t GetSizeOfA() const override { return actions.size(); }
   double GetDiscount() const override { return 0.95; }
   int64_t GetNbAgent() const override { return 1; }
@@ -121,38 +122,39 @@ class CTP : public MCVI::SimInterface {
     return ss;
   }
 
-  // agent can observe any element from state space or -1 (unknown)
-  StateSpace initObsSpace() const {
-    std::map<std::string, std::vector<int64_t>> observation_factors;
-    // agent location
-    std::vector<int64_t> agent_locs = nodes;
-    agent_locs.push_back(-1);
-    observation_factors["loc"] = agent_locs;
-    // stochastic edge status
-    for (const auto& [edge, _] : stoch_edges)
-      observation_factors[edge2str(edge)] = {0, 1, -1};
-    StateSpace os(observation_factors);
-    size_t max_size = (size_t)-1;
-    std::cout << "Max size: " << max_size << std::endl;
-    std::cout << "Observation space size: " << os.size() << std::endl;
-    return os;
-  }
-
-  std::string map2string(const std::map<std::string, int64_t>& map) const {
-    std::stringstream ss;
-    for (auto it = map.begin(); it != map.end(); ++it) {
-      ss << it->first << ": " << it->second;
-      if (std::next(it) != map.end()) {
-        ss << ", ";
+  // Return all stochastic edges adjacent to `node`
+  std::vector<std::pair<int64_t, int64_t>> AdjacentStochEdges(
+      int64_t node) const {
+    std::vector<std::pair<int64_t, int64_t>> edges;
+    for (const auto& [edge, p] : stoch_edges) {
+      if (edge.first == node || edge.second == node) {
+        edges.push_back(edge);
       }
     }
-    return ss.str();
+
+    auto compareEdges = [node](const std::pair<int64_t, int64_t>& edge1,
+                               const std::pair<int64_t, int64_t>& edge2) {
+      int64_t other1 = (edge1.first == node) ? edge1.second : edge1.first;
+      int64_t other2 = (edge2.first == node) ? edge2.second : edge2.first;
+      return other1 < other2;
+    };
+
+    std::sort(edges.begin(), edges.end(), compareEdges);
+
+    return edges;
+  }
+
+  int64_t initObsWidth() const {
+    size_t max_stoch_edges_at_node = 0;
+    for (const auto& node : nodes)
+      max_stoch_edges_at_node =
+          std::max(max_stoch_edges_at_node, AdjacentStochEdges(node).size());
+
+    return std::pow(2, max_stoch_edges_at_node);
   }
 
   std::vector<std::string> initObs() const {
     std::vector<std::string> obs;  // Observation space can be very large!
-    // for (size_t o = 0; o < observationSpace.size(); ++o)
-    //   obs.push_back(map2string(observationSpace.at(o)));
     return obs;
   }
 
@@ -185,22 +187,21 @@ class CTP : public MCVI::SimInterface {
   }
 
   int64_t observeState(int64_t state) const {
-    std::map<std::string, int64_t> observation;
+    int64_t observation = 0;
 
     const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
-    observation["loc"] = loc;
 
     // stochastic edge status
-    for (const auto& [edge, _] : stoch_edges) {
-      if (loc == edge.first || loc == edge.second) {
-        const int64_t status =
-            stateSpace.getStateFactorElem(state, edge2str(edge));
-        observation[edge2str(edge)] = status;
-      } else {
-        observation[edge2str(edge)] = -1;
-      }
+    int64_t n = 0;
+    for (const auto& edge : AdjacentStochEdges(loc)) {
+      if (stateSpace.getStateFactorElem(state, edge2str(edge)))
+        observation |= ((int64_t)1 << n);
+      ++n;
     }
-    return observationSpace.stateIndex(observation);
+
+    observation += loc * max_obs_width;
+
+    return observation;
   }
 };
 
@@ -210,6 +211,8 @@ int main() {
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;
   auto pomdp = CTP(rng);
+
+  std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
   pomdp.visualiseGraph(std::cerr);
 
