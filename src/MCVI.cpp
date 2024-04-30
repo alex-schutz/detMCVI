@@ -112,7 +112,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     if (std::abs(precision) < epsilon) {
       std::cout << "MCVI planning complete, reached the target precision."
                 << std::endl;
-      Tr_root->DrawBeliefTree(std::cerr);
+      //   Tr_root->DrawBeliefTree(std::cerr);
       return _fsc;
     }
 
@@ -143,7 +143,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
   std::cout << "MCVI planning complete, reached the max iterations."
             << std::endl;
 
-  Tr_root->DrawBeliefTree(std::cerr);
+  //   Tr_root->DrawBeliefTree(std::cerr);
 
   return _fsc;
 }
