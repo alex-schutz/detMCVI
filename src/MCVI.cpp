@@ -144,22 +144,41 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
   return {_fsc, Tr_root};
 }
 
-static int64_t GreedyBestAction(int64_t state, SimInterface* pomdp) {
+static int64_t GreedyBestAction(const BeliefDistribution& belief,
+                                SimInterface* pomdp) {
   int64_t best_a = -1;
   double best_r = -std::numeric_limits<double>::infinity();
-  for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
-    const auto [sNext, obs, reward, done] = pomdp->Step(state, a);
-    if (reward > best_r) {
-      best_r = reward;
-      best_a = a;
+  for (const auto& [state, prob] : belief) {
+    for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
+      const auto [sNext, obs, reward, done] = pomdp->Step(state, a);
+      if (reward * prob > best_r) {
+        best_r = reward;
+        best_a = a;
+      }
     }
   }
   return best_a;
 }
 
+static BeliefDistribution NextBelief(const BeliefDistribution& belief,
+                                     int64_t action, int64_t observation,
+                                     SimInterface* pomdp) {
+  std::unordered_map<int64_t, double> next_states;
+  double total_prob = 0.0;
+  for (const auto& [state, prob] : belief) {
+    const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+    if (obs != observation) continue;
+    next_states[sNext] += prob;
+    total_prob += prob;
+  }
+  for (auto& [s, prob] : next_states) prob /= total_prob;
+  return BeliefDistribution(next_states);
+}
+
 void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   const double gamma = _pomdp->GetDiscount();
   int64_t state = SampleOneState(_b0, _rng);
+  BeliefDistribution belief = _b0;
   double sum_r = 0.0;
   int64_t nI = _fsc.GetStartNodeIndex();
   bool end_reached = false;
@@ -168,7 +187,7 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
       std::cout << "Reached end of policy." << std::endl;
       end_reached = true;
     }
-    const int64_t action = (nI == -1) ? GreedyBestAction(state, _pomdp)
+    const int64_t action = (nI == -1) ? GreedyBestAction(belief, _pomdp)
                                       : _fsc.GetNode(nI).GetBestAction();
     std::cout << "---------" << std::endl;
     std::cout << "step: " << i << std::endl;
@@ -191,6 +210,7 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
       break;
     }
     state = sNext;
+    belief = NextBelief(belief, action, obs, _pomdp);
   }
   std::cout << "sum reward: " << sum_r << std::endl;
 }
@@ -203,17 +223,19 @@ void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
   double min_reward = std::numeric_limits<double>::infinity();
   for (int64_t sim = 0; sim < num_sims; ++sim) {
     int64_t state = SampleOneState(_b0, _rng);
+    BeliefDistribution belief = _b0;
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
     for (int64_t i = 0; i < max_steps; ++i) {
       const int64_t action = (nI != -1) ? _fsc.GetNode(nI).GetBestAction()
-                                        : GreedyBestAction(state, _pomdp);
+                                        : GreedyBestAction(belief, _pomdp);
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
       if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
 
       if (done) break;
       state = sNext;
+      belief = NextBelief(belief, action, obs, _pomdp);
     }
     total_reward += sum_r;
     if (max_reward < sum_r) max_reward = sum_r;
@@ -232,18 +254,21 @@ void MCVIPlanner::EvaluationWithGreedyTreePolicy(
   double max_reward = -std::numeric_limits<double>::infinity();
   double min_reward = std::numeric_limits<double>::infinity();
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    int64_t state = SampleOneState(root->GetBelief(), _rng);
+    BeliefDistribution belief = root->GetBelief();
+    int64_t state = SampleOneState(belief, _rng);
     double sum_r = 0.0;
     auto node = root;
     for (int64_t i = 0; i < max_steps; ++i) {
       if (node && node->GetBestActUBound() == -1) node = nullptr;
       const int64_t action =
-          (node) ? node->GetBestActUBound() : GreedyBestAction(state, _pomdp);
+          (node) ? node->GetBestActUBound() : GreedyBestAction(belief, _pomdp);
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
       if (node) node = node->GetChild(action, obs);
 
       if (done) break;
+      belief =
+          (node) ? node->GetBelief() : NextBelief(belief, action, obs, _pomdp);
       state = sNext;
     }
     total_reward += sum_r;
