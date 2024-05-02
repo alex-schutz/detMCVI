@@ -154,8 +154,12 @@ class BeliefTreeNode {
 
   void DrawBeliefTree(std::ostream& ofs) const;
 
+  int64_t DrawPolicyTree(std::ostream& ofs) const;
+
  private:
   void GenerateGraphviz(std::ostream& out) const;
+
+  void DrawPolicyBranch(std::ostream& ofs, int64_t& i) const;
 };
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(

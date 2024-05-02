@@ -214,7 +214,9 @@ int main() {
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
-  pomdp.visualiseGraph(std::cerr);
+  std::fstream ctp_graph("ctp_graph.dot", std::fstream::out);
+  pomdp.visualiseGraph(ctp_graph);
+  ctp_graph.close();
 
   const int64_t nb_particles_b0 = 100000;
   const int64_t max_node_size = 10000;
@@ -257,15 +259,38 @@ int main() {
   auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, ptt, rng);
   const double converge_thresh = 0.01;
   const int64_t max_iter = 30;
-  const auto fsc = planner.Plan(max_sim_depth, converge_thresh, max_iter,
-                                eval_depth, eval_epsilon);
+  const auto [fsc, root] = planner.Plan(max_sim_depth, converge_thresh,
+                                        max_iter, eval_depth, eval_epsilon);
 
-  fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
+  std::fstream fsc_graph("fsc.dot", std::fstream::out);
+  fsc.GenerateGraphviz(fsc_graph, pomdp.getActions(), pomdp.getObs());
+  fsc_graph.close();
+
+  const int64_t max_eval_steps = 15;
+  const int64_t n_eval_trials = 1000;
 
   // Simulate the resultant FSC
-  planner.SimulationWithFSC(15);
+  std::cout << "Simulation with up to " << max_eval_steps
+            << " steps:" << std::endl;
+  planner.SimulationWithFSC(max_eval_steps);
+  std::cout << std::endl;
+  std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
+            << n_eval_trials << " trials):" << std::endl;
+  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials);
+  std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
+            << std::endl;
 
-  planner.EvaluationWithSimulationFSC(15, 1000);
+  std::fstream policy_tree("greedy_policy_tree.dot", std::fstream::out);
+  const int64_t n_greedy_nodes = root->DrawPolicyTree(policy_tree);
+  policy_tree.close();
+
+  std::cout << std::endl;
+  std::cout << "Evaluation of alternative (AO* greedy) policy ("
+            << max_eval_steps << " steps, " << n_eval_trials
+            << " trials):" << std::endl;
+  planner.EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials);
+  std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
+            << std::endl;
 
   return 0;
 }

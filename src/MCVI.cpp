@@ -90,9 +90,9 @@ void MCVIPlanner::SampleBeliefs(
   }
 }
 
-AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
-                                 int64_t max_nb_iter, int64_t eval_depth,
-                                 double eval_epsilon) {
+std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
+    int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
+    int64_t eval_depth, double eval_epsilon) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
@@ -112,8 +112,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
     if (std::abs(precision) < epsilon) {
       std::cout << "MCVI planning complete, reached the target precision."
                 << std::endl;
-      //   Tr_root->DrawBeliefTree(std::cerr);
-      return _fsc;
+      return {_fsc, Tr_root};
     }
 
     std::cout << "Belief Expand Process" << std::flush;
@@ -142,10 +141,7 @@ AlphaVectorFSC MCVIPlanner::Plan(int64_t max_depth_sim, double epsilon,
   }
   std::cout << "MCVI planning complete, reached the max iterations."
             << std::endl;
-
-  //   Tr_root->DrawBeliefTree(std::cerr);
-
-  return _fsc;
+  return {_fsc, Tr_root};
 }
 
 static int64_t GreedyBestAction(int64_t state, SimInterface* pomdp) {
@@ -215,6 +211,37 @@ void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
       if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
+
+      if (done) break;
+      state = sNext;
+    }
+    total_reward += sum_r;
+    if (max_reward < sum_r) max_reward = sum_r;
+    if (min_reward > sum_r) min_reward = sum_r;
+  }
+  std::cout << "Average reward: " << total_reward / num_sims << std::endl;
+  std::cout << "Highest reward: " << max_reward << std::endl;
+  std::cout << "Lowest reward: " << min_reward << std::endl;
+}
+
+void MCVIPlanner::EvaluationWithGreedyTreePolicy(
+    std::shared_ptr<BeliefTreeNode> root, int64_t max_steps,
+    int64_t num_sims) const {
+  const double gamma = _pomdp->GetDiscount();
+  double total_reward = 0;
+  double max_reward = -std::numeric_limits<double>::infinity();
+  double min_reward = std::numeric_limits<double>::infinity();
+  for (int64_t sim = 0; sim < num_sims; ++sim) {
+    int64_t state = SampleOneState(root->GetBelief(), _rng);
+    double sum_r = 0.0;
+    auto node = root;
+    for (int64_t i = 0; i < max_steps; ++i) {
+      if (node && node->GetBestActUBound() == -1) node = nullptr;
+      const int64_t action =
+          (node) ? node->GetBestActUBound() : GreedyBestAction(state, _pomdp);
+      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
+      sum_r += std::pow(gamma, i) * reward;
+      if (node) node = node->GetChild(action, obs);
 
       if (done) break;
       state = sNext;

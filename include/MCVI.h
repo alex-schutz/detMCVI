@@ -40,9 +40,9 @@ class MCVIPlanner {
   /// @param epsilon Threshold for difference between upper and lower bounds
   /// @param max_nb_iter Maximum number of tree traversals
   /// @return The FSC for the pomdp
-  AlphaVectorFSC Plan(int64_t max_depth_sim, double epsilon,
-                      int64_t max_nb_iter, int64_t eval_depth,
-                      double eval_epsilon);
+  std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> Plan(
+      int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
+      int64_t eval_depth, double eval_epsilon);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
@@ -50,6 +50,10 @@ class MCVIPlanner {
   /// @brief Evaluate the FSC bounds through multiple simulations. Reverts to
   /// greedy policy when policy runs out
   void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims) const;
+
+  void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
+                                      int64_t max_steps,
+                                      int64_t num_sims) const;
 
  private:
   /// @brief Perform a monte-carlo backup on the given belief node

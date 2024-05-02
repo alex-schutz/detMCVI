@@ -243,4 +243,33 @@ void BeliefTreeNode::DrawBeliefTree(std::ostream& ofs) const {
   ofs << "}" << std::endl;
 }
 
+void BeliefTreeNode::DrawPolicyBranch(std::ostream& out, int64_t& i) const {
+  out << "po" << GetId() << " [label=<<B>" << _belief << "</B><BR/>"
+      << "BestAction: " << GetBestActUBound() << "<BR/>"
+      << "UpperBound: " << GetUpper() << ">];" << std::endl;
+  ++i;
+
+  const auto act = GetBestActUBound();
+  if (!_action_edges.contains(act)) return;
+  const auto actNode = _action_edges.at(act);
+  out << "po" << GetId() << "_" << act
+      << " [shape=point, style=filled, fillcolor=black];" << std::endl;
+  out << "po" << GetId() << " -> " << "po" << GetId() << "_" << act
+      << " [label=<a: " << act << ">];" << std::endl;
+  for (const auto& [obs, obsChild] : actNode.GetChildren()) {
+    out << "po" << GetId() << "_" << act << " -> " << "po"
+        << obsChild.GetBelief()->GetId() << " [label=<o: " << obs << ">];"
+        << std::endl;
+    obsChild.GetBelief()->DrawPolicyBranch(out, i);
+  }
+}
+
+int64_t BeliefTreeNode::DrawPolicyTree(std::ostream& ofs) const {
+  int64_t i = 0;
+  ofs << "digraph GreedyPolicyTree {" << std::endl;
+  DrawPolicyBranch(ofs, i);
+  ofs << "}" << std::endl;
+  return i;
+}
+
 }  // namespace MCVI
