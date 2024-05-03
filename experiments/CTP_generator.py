@@ -60,7 +60,7 @@ def distance(e, nodes):
 
 def generate_graph(
     n_nodes: int, seed: int, file, use_edge_weights=False, prop_stoch=0.4, plot=False
-):
+) -> bool:
     print(PREAMBLE, file=file)
 
     # Define world parameters
@@ -102,6 +102,9 @@ def generate_graph(
             edge_probs[e] = round(np.random.uniform(), 2)
     nx.set_edge_attributes(G, edge_probs, "blocked_prob")
 
+    # basic solvability check
+    solvable = nx.has_path(G, origin, goal)
+
     print(
         "const std::vector<int64_t> CTPNodes = {",
         ", ".join(map(str, range(n_nodes))),
@@ -136,6 +139,8 @@ def generate_graph(
 
     if plot:
         plot_nx_graph(G, origin, goal)
+
+    return solvable
 
 
 if __name__ == "__main__":

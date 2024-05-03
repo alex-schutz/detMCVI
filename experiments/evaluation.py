@@ -12,6 +12,7 @@ FL_REGEX = "-?[\d]+[.,\d]+|-?[\d]*[.][\d]+|-?[\d]+"
 INT_REGEX = "-?\d+"
 
 seed = np.random.randint(0, 9999999)
+print("seed: ", seed)
 
 timestr = time.strftime("%Y-%m-%d_%H-%M")
 RESULTS_FOLDER = f"eval_results_random_{timestr}_{seed}"
@@ -36,13 +37,16 @@ subprocess.run(
 
 headers_written = False
 
-print("seed: ", seed)
-for N in reversed(range(5, 51)):
+for N in range(5, 51):
     for i in range(5):
         # Generate CTP instance
         graph_file = "experiments/auto_generated_graph.h"
         with open(graph_file, "w") as f:
-            generate_graph(N, seed + N * 5 + i, f, False, 0.4, False)
+            while True:
+                solvable = generate_graph(N, seed, f, False, 0.4, False)
+                seed += 1
+                if solvable:
+                    break
 
         outfile = f"{RESULTS_FOLDER}/CtpInstance_{N}_{i}.txt"
         with open(outfile, "w") as f:
@@ -75,10 +79,11 @@ for N in reversed(range(5, 51)):
                 shell=True,
             )
             if p.returncode != 0:
+                print(f"INSTANCE {N}_{i} FAILED")
                 print(p.stderr)
-                raise RuntimeError(f"Run failed with returncode {p.returncode}")
+                continue
             else:
-                print(p.stderr, f)
+                print(p.stderr, file=f)
 
         # Summarise results
         instance_result: dict[str, int | float | str] = {"Nodes": N, "Trial": i}
@@ -130,6 +135,15 @@ for N in reversed(range(5, 51)):
                     instance_result["MCVI min reward"] = float(
                         re.findall(FL_REGEX, line)[0]
                     )
+        instance_result["avg_reward_difference"] = (
+            instance_result["MCVI avg reward"] - instance_result["AO* avg reward"]
+        )
+        instance_result["policy_size_ratio"] = (
+            instance_result["MCVI policy nodes"] / instance_result["AO* policy nodes"]
+        )
+        instance_result["runtime_ratio"] = (
+            instance_result["MCVI runtime (s)"] / instance_result["AO* runtime (s)"]
+        )
         results.append(instance_result)
 
         # save as we go

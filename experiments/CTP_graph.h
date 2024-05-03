@@ -37,7 +37,6 @@ const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
 const int64_t CTPOrigin = 1;
 const int64_t CTPGoal = 12;
 */
-
 /*
 // ========= Trivial example ==================================================
 // Change probability of stochastic edge to influence the direction of the
@@ -52,6 +51,7 @@ const int64_t CTPOrigin = 0;
 const int64_t CTPGoal = 3;
 */
 
+/*
 // ========= Many edge example ================================================
 // There are N stochastic edges fanning out from node 1, which connect to a node
 // and then straight to the goal. Edges are weighted in increasing order. The
@@ -69,7 +69,7 @@ const int64_t CTPGoal = 3;
 // .   \  |  /   .
 // .    \ | /    .
 // .      2      .
-#define NUM_FAN_EDGES_CTP 33
+#define NUM_FAN_EDGES_CTP 10
 const int64_t CTPOrigin = 0;
 const int64_t CTPGoal = 2;
 std::vector<int64_t> CTPNodes = {0, 1, 2};
@@ -95,6 +95,7 @@ struct CTPDataInitializer {
   }
 };
 static CTPDataInitializer ctpDataInitializer;
+*/
 
 /*
 // ========= Superfluous edge example ==========================================

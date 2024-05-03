@@ -4,9 +4,10 @@
 #include <random>
 
 #include "AOStar.h"
-#include "CTP_graph.h"
+// #include "CTP_graph.h"
 #include "MCVI.h"
 #include "SimInterface.h"
+#include "auto_generated_graph.h"
 #include "statespace.h"
 
 using namespace MCVI;
@@ -50,7 +51,7 @@ class CTP : public MCVI::SimInterface {
 
   int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
   int64_t GetSizeOfA() const override { return actions.size(); }
-  double GetDiscount() const override { return 0.95; }
+  double GetDiscount() const override { return 0.98; }
   int64_t GetNbAgent() const override { return 1; }
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
@@ -330,19 +331,19 @@ int main() {
 
   // Initial belief parameters
   const int64_t nb_particles_b0 = 100000;
-  const int64_t max_belief_samples = 10000;
+  const int64_t max_belief_samples = 20000;
 
   // MCVI parameters
-  const int64_t max_sim_depth = 15;
+  const int64_t max_sim_depth = 30;
   const int64_t max_node_size = 10000;
-  const int64_t eval_depth = 20;
-  const int64_t eval_epsilon = 0.01;
-  const double converge_thresh = 0.01;
-  const int64_t max_iter = 30;
+  const int64_t eval_depth = 30;
+  const int64_t eval_epsilon = 0.005;
+  const double converge_thresh = 0.005;
+  const int64_t max_iter = 50;
 
   // Evaluation parameters
-  const int64_t max_eval_steps = 15;
-  const int64_t n_eval_trials = 1000;
+  const int64_t max_eval_steps = 30;
+  const int64_t n_eval_trials = 10000;
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;

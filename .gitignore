@@ -3,3 +3,5 @@ BUILD/
 .vscode/
 
 *.dot
+
+eval_results_random*/
