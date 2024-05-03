@@ -15,6 +15,11 @@ namespace MCVI {
 void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
                const PathToTerminal& heuristic, int64_t eval_depth,
                double eval_epsilon, SimInterface* pomdp) {
+  for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
+    initial_belief->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon,
+                                     pomdp);
+  initial_belief->UpdateBestAction();
+
   int64_t iter = 0;
   while (++iter <= max_iter) {
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {
@@ -24,9 +29,8 @@ void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
     size_t i = 0;
     while (i < traversal_list.size()) {
       const auto belief_node = traversal_list[i];
-      for (auto& [obs, obsNode] :
+      for (const auto& [obs, obsNode] :
            belief_node->GetChildren(belief_node->GetBestActUBound())) {
-        // TODO: check terminal belief
         if (obsNode.GetBelief()->GetBestActUBound() == -1) {  // Leaf node
           to_expand.push_back(obsNode.GetBelief());
           continue;

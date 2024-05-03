@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <random>
 
+#include "AOStar.h"
 #include "CTP_graph.h"
 #include "MCVI.h"
 #include "SimInterface.h"
@@ -205,6 +207,101 @@ class CTP : public MCVI::SimInterface {
   }
 };
 
+static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
+                          const std::chrono::steady_clock::time_point& end) {
+  return (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
+              .count()) /
+         1000.0;
+}
+
+void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
+             std::mt19937_64& rng, int64_t max_sim_depth, int64_t max_node_size,
+             int64_t eval_depth, int64_t eval_epsilon, double converge_thresh,
+             int64_t max_iter, int64_t max_eval_steps, int64_t n_eval_trials) {
+  // Initialise heuristic
+  PathToTerminal ptt(pomdp);
+
+  // Initialise the FSC
+  std::cout << "Initialising FSC" << std::endl;
+  const auto init_fsc = AlphaVectorFSC(max_node_size);
+  //   const auto init_fsc =
+  //       InitialiseFSC(ptt, init_belief, max_sim_depth, max_node_size,
+  //       &pomdp);
+  //   init_fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
+
+  // Run MCVI
+  std::cout << "Running MCVI" << std::endl;
+  const std::chrono::steady_clock::time_point mcvi_begin =
+      std::chrono::steady_clock::now();
+  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
+  const auto [fsc, root] = planner.Plan(max_sim_depth, converge_thresh,
+                                        max_iter, eval_depth, eval_epsilon);
+  const std::chrono::steady_clock::time_point mcvi_end =
+      std::chrono::steady_clock::now();
+  std::cout << "MCVI complete (" << s_time_diff(mcvi_begin, mcvi_end)
+            << " seconds)" << std::endl;
+
+  // Draw FSC plot
+  std::fstream fsc_graph("fsc.dot", std::fstream::out);
+  fsc.GenerateGraphviz(fsc_graph, pomdp->getActions(), pomdp->getObs());
+  fsc_graph.close();
+
+  // Simulate the resultant FSC
+  std::cout << "Simulation with up to " << max_eval_steps
+            << " steps:" << std::endl;
+  planner.SimulationWithFSC(max_eval_steps);
+  std::cout << std::endl;
+
+  // Evaluate the FSC policy
+  std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
+            << n_eval_trials << " trials):" << std::endl;
+  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials);
+  std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
+            << std::endl;
+  std::cout << std::endl;
+
+  // Draw the internal belief tree
+  std::fstream belief_tree("belief_tree.dot", std::fstream::out);
+  root->DrawBeliefTree(belief_tree);
+  belief_tree.close();
+}
+
+void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
+               std::mt19937_64& rng, int64_t eval_depth, int64_t eval_epsilon,
+               int64_t max_iter, int64_t max_eval_steps,
+               int64_t n_eval_trials) {
+  // Initialise heuristic
+  PathToTerminal ptt(pomdp);
+
+  // Create root belief node
+  std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
+      init_belief, 0, ptt, eval_depth, eval_epsilon, pomdp);
+
+  // Run AO*
+  std::cout << "Running AO* on belief tree" << std::endl;
+  const std::chrono::steady_clock::time_point ao_begin =
+      std::chrono::steady_clock::now();
+  RunAOStar(root, max_iter, ptt, eval_depth, eval_epsilon, pomdp);
+  const std::chrono::steady_clock::time_point ao_end =
+      std::chrono::steady_clock::now();
+  std::cout << "AO* complete (" << s_time_diff(ao_begin, ao_end) << " seconds)"
+            << std::endl;
+
+  // Draw policy tree
+  std::fstream policy_tree("greedy_policy_tree.dot", std::fstream::out);
+  const int64_t n_greedy_nodes = root->DrawPolicyTree(policy_tree);
+  policy_tree.close();
+
+  // Evaluate policy
+  std::cout << "Evaluation of alternative (AO* greedy) policy ("
+            << max_eval_steps << " steps, " << n_eval_trials
+            << " trials):" << std::endl;
+  EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials, pomdp,
+                                 rng);
+  std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
+            << std::endl;
+}
+
 int main() {
   std::mt19937_64 rng(std::random_device{}());
 
@@ -218,10 +315,21 @@ int main() {
   pomdp.visualiseGraph(ctp_graph);
   ctp_graph.close();
 
+  // Initial belief parameters
   const int64_t nb_particles_b0 = 100000;
-  const int64_t max_node_size = 10000;
-  const int64_t max_sim_depth = 15;
   const int64_t max_belief_samples = 10000;
+
+  // MCVI parameters
+  const int64_t max_sim_depth = 15;
+  const int64_t max_node_size = 10000;
+  const int64_t eval_depth = 20;
+  const int64_t eval_epsilon = 0.01;
+  const double converge_thresh = 0.01;
+  const int64_t max_iter = 30;
+
+  // Evaluation parameters
+  const int64_t max_eval_steps = 15;
+  const int64_t n_eval_trials = 1000;
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
@@ -243,54 +351,16 @@ int main() {
       init_belief[state] = prob / prob_sum;
   }
 
-  // Initialise the FSC
-  std::cout << "Initialising FSC" << std::endl;
-  PathToTerminal ptt(&pomdp);
-  const auto init_fsc = AlphaVectorFSC(max_node_size);
-  //   const auto init_fsc =
-  //       InitialiseFSC(ptt, init_belief, max_sim_depth, max_node_size,
-  //       &pomdp);
-  //   init_fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
-
   // Run MCVI
-  std::cout << "Running MCVI" << std::endl;
-  const int64_t eval_depth = 20;
-  const int64_t eval_epsilon = 0.01;
-  auto planner = MCVIPlanner(&pomdp, init_fsc, init_belief, ptt, rng);
-  const double converge_thresh = 0.01;
-  const int64_t max_iter = 30;
-  const auto [fsc, root] = planner.Plan(max_sim_depth, converge_thresh,
-                                        max_iter, eval_depth, eval_epsilon);
+  auto mcvi_ctp = new CTP(pomdp);
+  runMCVI(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
+          eval_epsilon, converge_thresh, max_iter, max_eval_steps,
+          n_eval_trials);
 
-  std::fstream fsc_graph("fsc.dot", std::fstream::out);
-  fsc.GenerateGraphviz(fsc_graph, pomdp.getActions(), pomdp.getObs());
-  fsc_graph.close();
-
-  const int64_t max_eval_steps = 15;
-  const int64_t n_eval_trials = 1000;
-
-  // Simulate the resultant FSC
-  std::cout << "Simulation with up to " << max_eval_steps
-            << " steps:" << std::endl;
-  planner.SimulationWithFSC(max_eval_steps);
-  std::cout << std::endl;
-  std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
-            << n_eval_trials << " trials):" << std::endl;
-  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials);
-  std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
-            << std::endl;
-
-  std::fstream policy_tree("greedy_policy_tree.dot", std::fstream::out);
-  const int64_t n_greedy_nodes = root->DrawPolicyTree(policy_tree);
-  policy_tree.close();
-
-  std::cout << std::endl;
-  std::cout << "Evaluation of alternative (AO* greedy) policy ("
-            << max_eval_steps << " steps, " << n_eval_trials
-            << " trials):" << std::endl;
-  planner.EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials);
-  std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
-            << std::endl;
+  // Compare to AO*
+  auto aostar_ctp = new CTP(pomdp);
+  runAOStar(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon, max_iter,
+            max_eval_steps, n_eval_trials);
 
   return 0;
 }

@@ -51,10 +51,6 @@ class MCVIPlanner {
   /// greedy policy when policy runs out
   void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims) const;
 
-  void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
-                                      int64_t max_steps,
-                                      int64_t num_sims) const;
-
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
@@ -79,4 +75,7 @@ class MCVIPlanner {
       double target, double R_lower, int64_t max_depth_sim);
 };
 
+void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
+                                    int64_t max_steps, int64_t num_sims,
+                                    SimInterface* pomdp, std::mt19937_64& rng);
 }  // namespace MCVI
