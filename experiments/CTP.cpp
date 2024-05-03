@@ -11,6 +11,11 @@
 
 using namespace MCVI;
 
+static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
+                    const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
+  return p1.second < p2.second;
+}
+
 class CTP : public MCVI::SimInterface {
  private:
   std::mt19937_64& rng;
@@ -25,8 +30,8 @@ class CTP : public MCVI::SimInterface {
   int64_t max_obs_width;
   std::vector<std::string> actions;
   std::vector<std::string> observations;
-  double _idle_reward = -5;
-  double _bad_action_reward = -50;
+  double _idle_reward;
+  double _bad_action_reward;
 
  public:
   CTP(std::mt19937_64& rng)
@@ -39,7 +44,9 @@ class CTP : public MCVI::SimInterface {
         stateSpace(initStateSpace()),
         max_obs_width(initObsWidth()),
         actions(initActions()),
-        observations(initObs()) {}
+        observations(initObs()),
+        _idle_reward(initIdleReward()),
+        _bad_action_reward(initIdleReward() - 1) {}
 
   int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
   int64_t GetSizeOfA() const override { return actions.size(); }
@@ -204,6 +211,12 @@ class CTP : public MCVI::SimInterface {
     observation += loc * max_obs_width;
 
     return observation;
+  }
+
+  double initIdleReward() const {
+    const double min_edge =
+        std::min_element(edges.begin(), edges.end(), CmpPair)->second;
+    return -5 * min_edge;
   }
 };
 
