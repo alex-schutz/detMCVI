@@ -110,6 +110,13 @@ void ActionNode::BackUp(AlphaVectorFSC& fsc, double R_lower,
   CalculateBounds();
 }
 
+void ActionNode::BackUpNoFSC() {
+  for (auto& [obs, obs_node] : _observation_edges)
+    obs_node.BackUpFromNextBelief();
+
+  CalculateBounds();
+}
+
 void BeliefTreeNode::AddChild(int64_t action, const PathToTerminal& heuristic,
                               int64_t eval_depth, double eval_epsilon,
                               SimInterface* pomdp) {
@@ -172,6 +179,11 @@ const ActionNode& BeliefTreeNode::GetOrAddChildren(
   if (it != _action_edges.cend()) return it->second;
   AddChild(action, heuristic, eval_depth, eval_epsilon, pomdp);
   return _action_edges.at(action);
+}
+
+void BeliefTreeNode::BackUpBestActionUpperNoFSC() {
+  if (_bestActUBound == -1) return;
+  _action_edges.at(_bestActUBound).BackUpNoFSC();
 }
 
 void BeliefTreeNode::BackUpActions(AlphaVectorFSC& fsc, double R_lower,

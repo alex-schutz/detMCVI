@@ -83,6 +83,8 @@ class ActionNode {
   void BackUp(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
               SimInterface* pomdp);
 
+  void BackUpNoFSC();
+
  private:
   /// @brief Generate a set of next beliefs mapped by observation,
   /// obtained by taking `action` in belief.
@@ -149,6 +151,8 @@ class BeliefTreeNode {
 
   void BackUpActions(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
                      SimInterface* pomdp);
+
+  void BackUpBestActionUpperNoFSC();
 
   int64_t GetId() const { return _index; }
 

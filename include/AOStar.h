@@ -12,32 +12,44 @@
 
 namespace MCVI {
 
-// Build a greedy policy tree based on the value of each belief node
-void BuildPolicyGraph(std::shared_ptr<BeliefTreeNode> initial_belief) {}
+void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
+               const PathToTerminal& heuristic, int64_t eval_depth,
+               double eval_epsilon, SimInterface* pomdp) {
+  int64_t iter = 0;
+  while (++iter <= max_iter) {
+    std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {
+        initial_belief};
+    std::vector<std::shared_ptr<BeliefTreeNode>> to_expand;
 
-void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief) {
-  std::deque<std::shared_ptr<BeliefTreeNode>> fringe;
-  fringe.emplace_back(initial_belief);
-
-  while (!fringe.empty()) {
-    const auto node = fringe.back();
-    fringe.pop_back();
-
-    for (int64_t a = 0; a < num_actions; ++a) {
-      node->AddChild(a, heuristic, eval_depth, eval_epsilon, pomdp);
-      for (const auto& c : node->GetChildren(a)) fringe.emplace_front(c);
+    size_t i = 0;
+    while (i < traversal_list.size()) {
+      const auto belief_node = traversal_list[i];
+      for (auto& [obs, obsNode] :
+           belief_node->GetChildren(belief_node->GetBestActUBound())) {
+        // TODO: check terminal belief
+        if (obsNode.GetBelief()->GetBestActUBound() == -1) {  // Leaf node
+          to_expand.push_back(obsNode.GetBelief());
+          continue;
+        }
+        traversal_list.push_back(obsNode.GetBelief());
+      }
+      ++i;
     }
 
-    // TODO: find a way of reconstructing the set of nodes that lead to node
-    for (const std::shared_ptr<BeliefTreeNode>& n : policy_tree) {
-      n->BackUpActions();
+    if (to_expand.empty()) return;
+
+    std::vector<std::shared_ptr<BeliefTreeNode>> backup_list = traversal_list;
+    for (const auto& node : to_expand) {
+      for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
+        node->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon, pomdp);
+      backup_list.push_back(node);
+    }
+
+    for (auto it = backup_list.rbegin(); it < backup_list.rend(); ++it) {
+      (*it)->BackUpBestActionUpperNoFSC();
+      (*it)->UpdateBestAction();
     }
   }
-
-  return BuildPolicyGraph(initial_belief);
 }
-
-// TODO: write greedy simulator based on belief node upper bounds
-// run alongside MCVI to evaluate performance
 
 }  // namespace MCVI
