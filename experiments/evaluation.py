@@ -9,10 +9,9 @@ import time
 
 TIMEOUT = 60 * 60 * 50
 
-seed = np.random.randint(0, 9999999)
 timestr = time.strftime("%Y-%m-%d_%H-%M")
 
-mode = "fan"  # fan or random
+mode = "random"  # fan or random
 problem_sizes = list(range(5, 21)) + list(range(20, 51, 5))
 n_repetitions = 5
 
@@ -108,7 +107,7 @@ static CTPDataInitializer ctpDataInitializer;
     print(c_code, file=f)
 
 
-def generate_ctp_instance(N):
+def generate_ctp_instance(N, seed):
     with open(GRAPH_FILE, "w") as f:
         if mode == "random":
             while True:
@@ -178,6 +177,8 @@ def initialise_folder():
 
 
 if __name__ == "__main__":
+    seed = np.random.randint(0, 9999999)
+
     initialise_folder()
 
     results = []
@@ -185,7 +186,7 @@ if __name__ == "__main__":
 
     for N in problem_sizes:
         for i in range(n_repetitions):
-            generate_ctp_instance(N)
+            generate_ctp_instance(N, seed)
 
             outfile, error = run_ctp_instance(N, i)
             if error:
