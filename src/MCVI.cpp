@@ -215,15 +215,36 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   std::cout << "sum reward: " << sum_r << std::endl;
 }
 
-void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
-                                              int64_t num_sims) const {
+BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp) {
+  std::unordered_map<int64_t, int64_t> state_counts;
+  for (int64_t i = 0; i < N; ++i) state_counts[pomdp->SampleStartState()] += 1;
+  auto init_belief = BeliefDistribution();
+  for (const auto& [state, count] : state_counts)
+    init_belief[state] = (double)count / N;
+  return init_belief;
+}
+
+BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
+                                    int64_t max_belief_samples,
+                                    std::mt19937_64& rng) {
+  const auto shuffled_init = weightedShuffle(belief, rng, max_belief_samples);
+  double prob_sum = 0.0;
+  for (const auto& [state, prob] : shuffled_init) prob_sum += prob;
+  auto b = BeliefDistribution();
+  for (const auto& [state, prob] : shuffled_init) b[state] = prob / prob_sum;
+  return b;
+}
+
+void MCVIPlanner::EvaluationWithSimulationFSC(
+    int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
   const double gamma = _pomdp->GetDiscount();
   double total_reward = 0;
   double max_reward = -std::numeric_limits<double>::infinity();
   double min_reward = std::numeric_limits<double>::infinity();
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    int64_t state = SampleOneState(_b0, _rng);
-    BeliefDistribution belief = _b0;
+    BeliefDistribution belief =
+        SampleInitialBelief(init_belief_samples, _pomdp);
+    int64_t state = SampleOneState(belief, _rng);
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
     for (int64_t i = 0; i < max_steps; ++i) {
@@ -248,13 +269,14 @@ void MCVIPlanner::EvaluationWithSimulationFSC(int64_t max_steps,
 
 void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
                                     int64_t max_steps, int64_t num_sims,
+                                    int64_t init_belief_samples,
                                     SimInterface* pomdp, std::mt19937_64& rng) {
   const double gamma = pomdp->GetDiscount();
   double total_reward = 0;
   double max_reward = -std::numeric_limits<double>::infinity();
   double min_reward = std::numeric_limits<double>::infinity();
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    BeliefDistribution belief = root->GetBelief();
+    BeliefDistribution belief = SampleInitialBelief(init_belief_samples, pomdp);
     int64_t state = SampleOneState(belief, rng);
     double sum_r = 0.0;
     auto node = root;

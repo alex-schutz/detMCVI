@@ -49,7 +49,8 @@ class MCVIPlanner {
 
   /// @brief Evaluate the FSC bounds through multiple simulations. Reverts to
   /// greedy policy when policy runs out
-  void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims) const;
+  void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
+                                   int64_t init_belief_samples) const;
 
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
@@ -77,5 +78,12 @@ class MCVIPlanner {
 
 void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
                                     int64_t max_steps, int64_t num_sims,
+                                    int64_t init_belief_samples,
                                     SimInterface* pomdp, std::mt19937_64& rng);
+
+BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp);
+
+BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
+                                    int64_t max_belief_samples,
+                                    std::mt19937_64& rng);
 }  // namespace MCVI

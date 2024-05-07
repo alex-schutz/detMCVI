@@ -231,7 +231,8 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
              std::mt19937_64& rng, int64_t max_sim_depth, int64_t max_node_size,
              int64_t eval_depth, int64_t eval_epsilon, double converge_thresh,
-             int64_t max_iter, int64_t max_eval_steps, int64_t n_eval_trials) {
+             int64_t max_iter, int64_t max_eval_steps, int64_t n_eval_trials,
+             int64_t nb_particles_b0) {
   // Initialise heuristic
   PathToTerminal ptt(pomdp);
 
@@ -269,7 +270,8 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
   // Evaluate the FSC policy
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
             << n_eval_trials << " trials):" << std::endl;
-  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials);
+  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
+                                      nb_particles_b0);
   std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
             << std::endl;
   std::cout << std::endl;
@@ -282,8 +284,8 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
 
 void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
                std::mt19937_64& rng, int64_t eval_depth, int64_t eval_epsilon,
-               int64_t max_iter, int64_t max_eval_steps,
-               int64_t n_eval_trials) {
+               int64_t max_iter, int64_t max_eval_steps, int64_t n_eval_trials,
+               int64_t nb_particles_b0) {
   // Initialise heuristic
   PathToTerminal ptt(pomdp);
 
@@ -310,8 +312,8 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Evaluation of alternative (AO* greedy) policy ("
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials):" << std::endl;
-  EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials, pomdp,
-                                 rng);
+  EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials,
+                                 nb_particles_b0, pomdp, rng);
   std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
             << std::endl;
 }
@@ -347,34 +349,23 @@ int main() {
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
-  std::unordered_map<int64_t, int64_t> state_counts;
-  for (int64_t i = 0; i < nb_particles_b0; ++i)
-    state_counts[pomdp.SampleStartState()] += 1;
-  auto init_belief = BeliefDistribution();
-  for (const auto& [state, count] : state_counts)
-    init_belief[state] = (double)count / nb_particles_b0;
+  auto init_belief = SampleInitialBelief(nb_particles_b0, &pomdp);
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
   if (max_belief_samples < init_belief.size()) {
     std::cout << "Downsampling belief" << std::endl;
-    const auto shuffled_init =
-        weightedShuffle(init_belief, rng, max_belief_samples);
-    double prob_sum = 0.0;
-    for (const auto& [state, prob] : shuffled_init) prob_sum += prob;
-    init_belief.clear();
-    for (const auto& [state, prob] : shuffled_init)
-      init_belief[state] = prob / prob_sum;
+    init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
   }
 
   // Run MCVI
   auto mcvi_ctp = new CTP(pomdp);
   runMCVI(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
           eval_epsilon, converge_thresh, max_iter, max_eval_steps,
-          n_eval_trials);
+          n_eval_trials, nb_particles_b0);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
   runAOStar(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon, max_iter,
-            max_eval_steps, n_eval_trials);
+            max_eval_steps, n_eval_trials, nb_particles_b0);
 
   return 0;
 }
