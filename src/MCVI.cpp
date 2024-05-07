@@ -239,8 +239,7 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
   const double gamma = _pomdp->GetDiscount();
   double total_reward = 0;
-  double max_reward = -std::numeric_limits<double>::infinity();
-  double min_reward = std::numeric_limits<double>::infinity();
+  auto stats = Welford();
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, _pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
@@ -259,13 +258,12 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
       state = sNext;
       belief = NextBelief(belief, action, obs, _pomdp);
     }
-    total_reward += sum_r;
-    if (max_reward < sum_r) max_reward = sum_r;
-    if (min_reward > sum_r) min_reward = sum_r;
+    stats.update(sum_r);
   }
-  std::cout << "Average reward: " << total_reward / num_sims << std::endl;
-  std::cout << "Highest reward: " << max_reward << std::endl;
-  std::cout << "Lowest reward: " << min_reward << std::endl;
+  std::cout << "Average reward: " << stats.getMean() << std::endl;
+  std::cout << "Highest reward: " << stats.getMax() << std::endl;
+  std::cout << "Lowest reward: " << stats.getMin() << std::endl;
+  std::cout << "Reward variance: " << stats.getVariance() << std::endl;
 }
 
 void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
@@ -273,9 +271,7 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
                                     int64_t init_belief_samples,
                                     SimInterface* pomdp, std::mt19937_64& rng) {
   const double gamma = pomdp->GetDiscount();
-  double total_reward = 0;
-  double max_reward = -std::numeric_limits<double>::infinity();
-  double min_reward = std::numeric_limits<double>::infinity();
+  auto stats = Welford();
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
@@ -296,13 +292,12 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
           (node) ? node->GetBelief() : NextBelief(belief, action, obs, pomdp);
       state = sNext;
     }
-    total_reward += sum_r;
-    if (max_reward < sum_r) max_reward = sum_r;
-    if (min_reward > sum_r) min_reward = sum_r;
+    stats.update(sum_r);
   }
-  std::cout << "Average reward: " << total_reward / num_sims << std::endl;
-  std::cout << "Highest reward: " << max_reward << std::endl;
-  std::cout << "Lowest reward: " << min_reward << std::endl;
+  std::cout << "Average reward: " << stats.getMean() << std::endl;
+  std::cout << "Highest reward: " << stats.getMax() << std::endl;
+  std::cout << "Lowest reward: " << stats.getMin() << std::endl;
+  std::cout << "Reward variance: " << stats.getVariance() << std::endl;
 }
 
 }  // namespace MCVI

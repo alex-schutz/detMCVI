@@ -11,7 +11,7 @@ TIMEOUT = 60 * 60 * 50
 
 timestr = time.strftime("%Y-%m-%d_%H-%M")
 
-mode = "fan"  # fan or random
+mode = "random"  # fan or random
 problem_sizes = list(range(5, 21)) + list(range(20, 51, 5))
 n_repetitions = 5
 
@@ -61,6 +61,8 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
                     instance_result[f"{key} max reward"] = extract_float(line)
                     line = next(f)
                     instance_result[f"{key} min reward"] = extract_float(line)
+                    line = next(f)
+                    instance_result[f"{key} reward variance"] = extract_float(line)
     instance_result["avg_reward_difference"] = (
         instance_result["MCVI avg reward"] - instance_result["AO* avg reward"]
     )
