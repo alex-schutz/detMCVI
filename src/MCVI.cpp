@@ -241,9 +241,10 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
   double total_reward = 0;
   double max_reward = -std::numeric_limits<double>::infinity();
   double min_reward = std::numeric_limits<double>::infinity();
+  const BeliefDistribution init_belief =
+      SampleInitialBelief(init_belief_samples, _pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    BeliefDistribution belief =
-        SampleInitialBelief(init_belief_samples, _pomdp);
+    BeliefDistribution belief = init_belief;
     int64_t state = SampleOneState(belief, _rng);
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
@@ -275,8 +276,10 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
   double total_reward = 0;
   double max_reward = -std::numeric_limits<double>::infinity();
   double min_reward = std::numeric_limits<double>::infinity();
+  const BeliefDistribution init_belief =
+      SampleInitialBelief(init_belief_samples, pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    BeliefDistribution belief = SampleInitialBelief(init_belief_samples, pomdp);
+    BeliefDistribution belief = init_belief;
     int64_t state = SampleOneState(belief, rng);
     double sum_r = 0.0;
     auto node = root;

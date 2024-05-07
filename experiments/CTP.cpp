@@ -360,12 +360,12 @@ int main() {
   auto mcvi_ctp = new CTP(pomdp);
   runMCVI(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
           eval_epsilon, converge_thresh, max_iter, max_eval_steps,
-          n_eval_trials, nb_particles_b0);
+          n_eval_trials, 10 * nb_particles_b0);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
   runAOStar(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon, max_iter,
-            max_eval_steps, n_eval_trials, nb_particles_b0);
+            max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
 
   return 0;
 }
