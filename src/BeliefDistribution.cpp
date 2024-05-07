@@ -2,7 +2,7 @@
 
 namespace MCVI {
 int64_t SampleOneState(const BeliefDistribution& belief, std::mt19937_64& rng) {
-  return SamplePDF(belief, rng);
+  return SamplePMF(belief, rng);
 }
 
 std::ostream& operator<<(std::ostream& os, const BeliefDistribution& bd) {
