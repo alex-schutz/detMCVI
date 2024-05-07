@@ -49,8 +49,8 @@ class PathToTerminal : public ShortestPathFasterAlgorithm {
  private:
   SimInterface* pomdp;
   mutable std::unordered_set<int64_t> terminalStates;
-  mutable std::unordered_map<int64_t, std::vector<std::pair<int64_t, int64_t>>>
-      paths;
+  mutable std::unordered_map<int64_t, std::pair<int64_t, int64_t>>
+      paths;  // node: action, next node
 
   std::shared_ptr<PathNode> createPathNode(
       int64_t& id, int64_t action,

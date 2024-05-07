@@ -65,8 +65,7 @@ std::vector<std::tuple<int64_t, double, int64_t>> PathToTerminal::getEdges(
 
 std::tuple<int64_t, double> PathToTerminal::path(int64_t source,
                                                  int64_t max_depth) const {
-  auto path = paths.find(source);
-  if (path == paths.end()) {
+  if (!paths.contains(source)) {
     // NB: shortest path calculation does not account for discount
     const auto [costs, pred] = calculate(source, max_depth);
     const auto best_sink =
@@ -80,20 +79,25 @@ std::tuple<int64_t, double> PathToTerminal::path(int64_t source,
                   ->first;
     const std::vector<std::pair<int64_t, int64_t>> p =
         reconstructPath(best_sink, pred);
-    paths[source] = p;
-    path = paths.find(source);
+    for (size_t i = 0; i < p.size() - 1; ++i) {
+      paths[p.at(i).first] = {p.at(i).second, p.at(i + 1).first};
+    }
+    paths[p.back().first] = {p.back().second, -1};
   }
 
   const double gamma = pomdp->GetDiscount();
   double sum_reward = 0.0;
   double discount = 1.0;
-  for (const auto& [state, action] : path->second) {
+  int64_t state = source;
+  while (true) {
+    const int64_t action = paths.at(state).first;
     if (action == -1) break;
     const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
     sum_reward += discount * reward;
     discount *= gamma;
+    state = sNext;
   }
-  return {path->second[0].second, sum_reward};
+  return {paths.at(state).first, sum_reward};
 }
 
 std::unordered_map<int64_t, std::shared_ptr<PathToTerminal::PathNode>>
@@ -103,7 +107,15 @@ PathToTerminal::buildPathTree() const {
       createPathNode(id, -1, {});  // dummy root
   std::unordered_map<int64_t, std::shared_ptr<PathNode>> startNodes;
 
-  for (const auto& [source, path] : paths) {
+  for (const auto& [source, _] : paths) {
+    std::vector<std::pair<int64_t, int64_t>> path;
+    int64_t state = source;
+    while (true) {
+      const auto p = paths.at(state);
+      path.push_back({state, p.first});
+      state = p.second;
+      if (p.first == -1 || p.second == -1) break;
+    }
     std::shared_ptr<PathNode> nextNode = rootNode;
 
     for (auto it = path.rbegin(); it != path.rend(); ++it) {
