@@ -7,7 +7,7 @@ import re
 import pandas as pd
 import time
 
-TIMEOUT = 60 * 60 * 5
+TIMEOUT = 60 * 60 * 50
 FL_REGEX = "-?[\d]+[.,\d]+|-?[\d]*[.][\d]+|-?[\d]+"
 INT_REGEX = "-?\d+"
 
@@ -86,7 +86,11 @@ for N in range(5, 51):
                 print(p.stderr, file=f)
 
         # Summarise results
-        instance_result: dict[str, int | float | str] = {"Nodes": N, "Trial": i}
+        instance_result: dict[str, int | float | str] = {
+            "Nodes": N,
+            "Trial": i,
+            "Seed": seed,
+        }
         with open(outfile, "r") as f:
             for line in f:
                 if "AO* complete " in line:
@@ -96,6 +100,18 @@ for N in range(5, 51):
                 elif "MCVI complete " in line:
                     instance_result["MCVI runtime (s)"] = float(
                         re.findall(FL_REGEX, line)[0]
+                    )
+                elif "State space size:" in line:
+                    instance_result["State space size"] = int(
+                        re.findall(INT_REGEX, line)[0]
+                    )
+                elif "Observation space size:" in line:
+                    instance_result["Observation space size"] = int(
+                        re.findall(INT_REGEX, line)[0]
+                    )
+                elif "Initial belief size:" in line:
+                    instance_result["Initial belief size"] = int(
+                        re.findall(INT_REGEX, line)[0]
                     )
                 elif "--- Iter " in line:
                     instance_result["MCVI iterations"] = (
