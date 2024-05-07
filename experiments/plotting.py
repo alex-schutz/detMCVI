@@ -17,7 +17,7 @@ df = pd.concat(df_from_each_file, ignore_index=True)
 df["Stochastic edge count"] = (df["State space size"] / df["Nodes"]).apply(math.log2)
 df = df.rename(
     columns={
-        "avg_reward_difference": "Difference in average reward",
+        "avg_reward_difference": "Difference in average reward from AO*",
         "Nodes": "CTP problem nodes",
     }
 )
@@ -33,7 +33,7 @@ fig = px.scatter(
     y=ylabel,
     range_x=range_xy,
     range_y=range_xy,
-    color="Difference in average reward",
+    color="Difference in average reward from AO*",
     trendline="ols",
     title="Policy size",
     color_continuous_midpoint=0,
@@ -65,7 +65,7 @@ fig = px.scatter(
     y=ylabel,
     range_x=range_xy,
     range_y=range_xy,
-    color="Difference in average reward",
+    color="Difference in average reward from AO*",
     trendline="ols",
     title="Computation time",
     color_continuous_midpoint=0,
