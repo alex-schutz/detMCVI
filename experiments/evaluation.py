@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-from CTP_generator import generate_graph
+from CTP_generator import generate_graph, PREAMBLE
 import subprocess
 import re
 import pandas as pd
@@ -10,13 +10,14 @@ import time
 TIMEOUT = 60 * 60 * 50
 
 seed = np.random.randint(0, 9999999)
-print("seed: ", seed)
-
 timestr = time.strftime("%Y-%m-%d_%H-%M")
-RESULTS_FOLDER = f"eval_results_random_{timestr}"
 
+mode = "fan"  # fan or random
 problem_sizes = list(range(5, 21)) + list(range(20, 51, 5))
 n_repetitions = 5
+
+RESULTS_FOLDER = f"eval_results_{mode}_{timestr}"
+GRAPH_FILE = "experiments/auto_generated_graph.h"
 
 
 def extract_int(line):
@@ -73,9 +74,92 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
     return instance_result
 
 
-if __name__ == "__main__":
-    results = []
+def generate_fan_instance(f, N):
+    print(PREAMBLE, file=f)
+    n_edges = f"#define NUM_FAN_EDGES_CTP {N}"
+    print(n_edges, file=f)
+    c_code = """
+const int64_t CTPOrigin = 0;
+const int64_t CTPGoal = 2;
+std::vector<int64_t> CTPNodes = {0, 1, 2};
+std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPEdges = {
+    {{0, 1}, 1}};
+std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPStochEdges;
+struct CTPDataInitializer {
+  CTPDataInitializer() {
+    double prob_prod = 1.0;
+    const double k = 2.0 / (NUM_FAN_EDGES_CTP + 1);
+    for (int64_t i = 1; i < NUM_FAN_EDGES_CTP; ++i) {
+      const int64_t node = 2 + i;
+      CTPNodes.push_back(node);
+      const double p = 1 - 1.0 / (NUM_FAN_EDGES_CTP * prob_prod);
+      prob_prod *= p;
+      CTPEdges[{1, node}] = k * i;
+      CTPEdges[{2, node}] = 1.0;
+      CTPStochEdges[{1, node}] = p;
+    }
+    CTPEdges[{1, 2 + NUM_FAN_EDGES_CTP}] = k * NUM_FAN_EDGES_CTP;
+    CTPEdges[{2, 2 + NUM_FAN_EDGES_CTP}] = 1.0;
+    CTPNodes.push_back(2 + NUM_FAN_EDGES_CTP);
+  }
+};
+static CTPDataInitializer ctpDataInitializer;
+"""
+    print(c_code, file=f)
 
+
+def generate_ctp_instance(N):
+    with open(GRAPH_FILE, "w") as f:
+        if mode == "random":
+            while True:
+                solvable = generate_graph(N, seed, f, False, 0.4, False)
+                seed += 1
+                if solvable:
+                    break
+        elif mode == "fan":
+            generate_fan_instance(f, N)
+
+
+def run_ctp_instance(N, i):
+    outfile = f"{RESULTS_FOLDER}/CTPInstance_{N}_{i}.txt"
+    # Build files
+    cmd = "cd build && make"
+    p = subprocess.run(
+        cmd,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        shell=True,
+    )
+    if p.returncode != 0:
+        print(p.stdout)
+        print(p.stderr)
+        raise RuntimeError(f"Build failed with returncode {p.returncode}")
+
+    with open(outfile, "w") as f:
+        # Run solver
+        cmd = "time build/experiments/ctp_experiment"
+        p = subprocess.run(
+            cmd,
+            stdout=f,
+            stderr=subprocess.PIPE,
+            timeout=TIMEOUT,
+            shell=True,
+        )
+        if p.returncode != 0:
+            print(f"INSTANCE {N}_{i} FAILED")
+            print(p.stderr)
+            return outfile, 1
+        else:
+            print(p.stderr, file=f)
+
+        # Copy problem instance to outfile
+        f.write("\n")
+        with open(GRAPH_FILE, "r") as f1:
+            f.write(f1.read())
+    return outfile, 0
+
+
+def initialise_folder():
     # subprocess.run(
     #     "rm -rf build; mkdir build",
     #     check=True,
@@ -92,61 +176,26 @@ if __name__ == "__main__":
         shell=True,
     )
 
+
+if __name__ == "__main__":
+    initialise_folder()
+
+    results = []
     headers_written = False
 
     for N in problem_sizes:
         for i in range(n_repetitions):
-            # Generate CTP instance
-            graph_file = "experiments/auto_generated_graph.h"
-            with open(graph_file, "w") as f:
-                while True:
-                    solvable = generate_graph(N, seed, f, False, 0.4, False)
-                    seed += 1
-                    if solvable:
-                        break
+            generate_ctp_instance(N)
 
-            outfile = f"{RESULTS_FOLDER}/CtpInstance_{N}_{i}.txt"
-            with open(outfile, "w") as f:
-                # Copy instance to file
-                with open(graph_file, "r") as f1:
-                    f.write(f1.read())
-                f.write("\n")
-
-            # Build files
-            cmd = "cd build && make"
-            p = subprocess.run(
-                cmd,
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                shell=True,
-            )
-            if p.returncode != 0:
-                print(p.stdout)
-                print(p.stderr)
-                raise RuntimeError(f"Build failed with returncode {p.returncode}")
-
-            with open(outfile, "w+") as f:
-                # Run solver
-                cmd = "time build/experiments/ctp_experiment"
-                p = subprocess.run(
-                    cmd,
-                    stdout=f,
-                    stderr=subprocess.PIPE,
-                    timeout=TIMEOUT,
-                    shell=True,
-                )
-                if p.returncode != 0:
-                    print(f"INSTANCE {N}_{i} FAILED")
-                    print(p.stderr)
-                    continue
-                else:
-                    print(p.stderr, file=f)
+            outfile, error = run_ctp_instance(N, i)
+            if error:
+                continue
 
             # Summarise results
             instance_result = process_output_file(outfile, N, i, seed)
             results.append(instance_result)
 
-            # save as we go
+            # Save as we go
             df = pd.DataFrame([instance_result])
             if not headers_written:
                 df.to_csv(f"{RESULTS_FOLDER}/ctp_results_random.csv", index=False)
