@@ -11,7 +11,7 @@ TIMEOUT = 60 * 60 * 50
 
 timestr = time.strftime("%Y-%m-%d_%H-%M")
 
-mode = "random"  # fan or random
+mode = "fan"  # fan or random
 problem_sizes = list(range(5, 21)) + list(range(20, 51, 5))
 n_repetitions = 5
 
@@ -199,15 +199,15 @@ if __name__ == "__main__":
             # Save as we go
             df = pd.DataFrame([instance_result])
             if not headers_written:
-                df.to_csv(f"{RESULTS_FOLDER}/ctp_results_random.csv", index=False)
+                df.to_csv(f"{RESULTS_FOLDER}/ctp_results_{mode}.csv", index=False)
                 headers_written = True
             else:
                 df.to_csv(
-                    f"{RESULTS_FOLDER}/ctp_results_random.csv",
+                    f"{RESULTS_FOLDER}/ctp_results_{mode}.csv",
                     mode="a",
                     index=False,
                     header=False,
                 )
 
     df = pd.DataFrame(results)
-    df.to_csv(f"{RESULTS_FOLDER}/ctp_results_random_all.csv", index=False)
+    df.to_csv(f"{RESULTS_FOLDER}/ctp_results_{mode}_all.csv", index=False)
