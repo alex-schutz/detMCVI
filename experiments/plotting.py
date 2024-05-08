@@ -11,7 +11,7 @@ files = [
 
 def plot_comparison(xlabel, ylabel, title, figname, output="show"):
     xmax = df[xlabel].max()
-    ymax = df[xlabel].max()
+    ymax = df[ylabel].max()
     range_xy = [0, 1.05 * max(xmax, ymax)]
     fig = px.scatter(
         df,
