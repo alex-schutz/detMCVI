@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <iostream>
 
 #include "AlphaVectorFSC.h"
@@ -42,7 +43,7 @@ class MCVIPlanner {
   /// @return The FSC for the pomdp
   std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> Plan(
       int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
-      int64_t eval_depth, double eval_epsilon);
+      int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;

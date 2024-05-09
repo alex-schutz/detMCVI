@@ -231,7 +231,8 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
              std::mt19937_64& rng, int64_t max_sim_depth, int64_t max_node_size,
              int64_t eval_depth, int64_t eval_epsilon, double converge_thresh,
-             int64_t max_iter, int64_t max_eval_steps, int64_t n_eval_trials,
+             int64_t max_iter, int64_t max_computation_ms,
+             int64_t max_eval_steps, int64_t n_eval_trials,
              int64_t nb_particles_b0) {
   // Initialise heuristic
   PathToTerminal ptt(pomdp);
@@ -249,8 +250,9 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
   const std::chrono::steady_clock::time_point mcvi_begin =
       std::chrono::steady_clock::now();
   auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
-  const auto [fsc, root] = planner.Plan(max_sim_depth, converge_thresh,
-                                        max_iter, eval_depth, eval_epsilon);
+  const auto [fsc, root] =
+      planner.Plan(max_sim_depth, converge_thresh, max_iter, max_computation_ms,
+                   eval_depth, eval_epsilon);
   const std::chrono::steady_clock::time_point mcvi_end =
       std::chrono::steady_clock::now();
   std::cout << "MCVI complete (" << s_time_diff(mcvi_begin, mcvi_end)
@@ -284,7 +286,8 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
 
 void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
                std::mt19937_64& rng, int64_t eval_depth, int64_t eval_epsilon,
-               int64_t max_iter, int64_t max_eval_steps, int64_t n_eval_trials,
+               int64_t max_iter, int64_t max_computation_ms,
+               int64_t max_eval_steps, int64_t n_eval_trials,
                int64_t nb_particles_b0) {
   // Initialise heuristic
   PathToTerminal ptt(pomdp);
@@ -297,7 +300,8 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Running AO* on belief tree" << std::endl;
   const std::chrono::steady_clock::time_point ao_begin =
       std::chrono::steady_clock::now();
-  RunAOStar(root, max_iter, ptt, eval_depth, eval_epsilon, pomdp);
+  RunAOStar(root, max_iter, max_computation_ms, ptt, eval_depth, eval_epsilon,
+            pomdp);
   const std::chrono::steady_clock::time_point ao_end =
       std::chrono::steady_clock::now();
   std::cout << "AO* complete (" << s_time_diff(ao_begin, ao_end) << " seconds)"
@@ -342,6 +346,7 @@ int main() {
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
   const int64_t max_iter = 50;
+  const int64_t max_time_ms = 1000;
 
   // Evaluation parameters
   const int64_t max_eval_steps = 30;
@@ -359,13 +364,13 @@ int main() {
   // Run MCVI
   auto mcvi_ctp = new CTP(pomdp);
   runMCVI(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
-          eval_epsilon, converge_thresh, max_iter, max_eval_steps,
+          eval_epsilon, converge_thresh, max_iter, max_time_ms, max_eval_steps,
           n_eval_trials, 10 * nb_particles_b0);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
   runAOStar(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon, max_iter,
-            max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
+            max_time_ms, max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
 
   return 0;
 }

@@ -2,7 +2,6 @@
 #include "MCVI.h"
 
 #include <algorithm>
-#include <chrono>
 #include <limits>
 #include <unordered_set>
 
@@ -92,7 +91,7 @@ void MCVIPlanner::SampleBeliefs(
 
 std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
     int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
-    int64_t eval_depth, double eval_epsilon) {
+    int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
@@ -102,6 +101,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
   const auto node = AlphaVectorNode(RandomAction());
   _fsc.AddNode(node);
 
+  const auto iter_start = std::chrono::steady_clock::now();
   int64_t i = 0;
   while (i < max_nb_iter) {
     std::cout << "--- Iter " << i << " ---" << std::endl;
@@ -138,6 +138,14 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
 
     _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
     ++i;
+    const auto iter_end = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        iter_end - iter_start);
+    if (elapsed.count() >= max_computation_ms) {
+      std::cout << "MCVI planning complete, reached maximum computation time."
+                << std::endl;
+      return {_fsc, Tr_root};
+    }
   }
   std::cout << "MCVI planning complete, reached the max iterations."
             << std::endl;
@@ -238,7 +246,6 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
 void MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
   const double gamma = _pomdp->GetDiscount();
-  double total_reward = 0;
   auto stats = Welford();
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, _pomdp);

@@ -13,13 +13,14 @@
 namespace MCVI {
 
 void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
-               const PathToTerminal& heuristic, int64_t eval_depth,
-               double eval_epsilon, SimInterface* pomdp) {
+               int64_t max_computation_ms, const PathToTerminal& heuristic,
+               int64_t eval_depth, double eval_epsilon, SimInterface* pomdp) {
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
     initial_belief->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon,
                                      pomdp);
   initial_belief->UpdateBestAction();
 
+  const auto iter_start = std::chrono::steady_clock::now();
   int64_t iter = 0;
   while (++iter <= max_iter) {
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {
@@ -40,7 +41,11 @@ void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
       ++i;
     }
 
-    if (to_expand.empty()) return;
+    if (to_expand.empty()) {
+      std::cout << "AO* planning complete, reached policy convergence."
+                << std::endl;
+      return;
+    }
 
     std::vector<std::shared_ptr<BeliefTreeNode>> backup_list = traversal_list;
     for (const auto& node : to_expand) {
@@ -53,7 +58,17 @@ void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
       (*it)->BackUpBestActionUpperNoFSC();
       (*it)->UpdateBestAction();
     }
+    const auto iter_end = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        iter_end - iter_start);
+    if (elapsed.count() >= max_computation_ms) {
+      std::cout << "AO* planning complete, reached maximum computation time."
+                << std::endl;
+      return;
+    }
   }
+  std::cout << "AO* planning complete, reached maximum iterations."
+            << std::endl;
 }
 
 }  // namespace MCVI
