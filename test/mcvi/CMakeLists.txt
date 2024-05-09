@@ -11,3 +11,14 @@ target_link_libraries(
   mcvi_library
 )
 gtest_discover_tests(bound_tests)
+
+add_executable(
+  path_tests
+  path_tests.cpp
+)
+target_link_libraries(
+  path_tests
+  GTest::gtest_main
+  mcvi_library
+)
+gtest_discover_tests(path_tests)
