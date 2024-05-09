@@ -117,8 +117,11 @@ def generate_ctp_instance(N, seed):
                 seed += 1
                 if solvable:
                     break
+                else:
+                    seed += 1
         elif mode == "fan":
             generate_fan_instance(f, N)
+    return seed
 
 
 def run_ctp_instance(N, i):
@@ -188,7 +191,7 @@ if __name__ == "__main__":
 
     for N in problem_sizes:
         for i in range(n_repetitions):
-            generate_ctp_instance(N, seed)
+            seed = generate_ctp_instance(N, seed)
 
             outfile, error = run_ctp_instance(N, i)
             if error:
@@ -197,6 +200,7 @@ if __name__ == "__main__":
             # Summarise results
             instance_result = process_output_file(outfile, N, i, seed)
             results.append(instance_result)
+            seed += 1
 
             # Save as we go
             df = pd.DataFrame([instance_result])
