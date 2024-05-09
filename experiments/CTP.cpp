@@ -317,7 +317,7 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials):" << std::endl;
   EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials,
-                                 nb_particles_b0, pomdp, rng);
+                                 nb_particles_b0, pomdp, rng, ptt, "AO*");
   std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
             << std::endl;
 }
@@ -346,7 +346,7 @@ int main() {
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
   const int64_t max_iter = 50;
-  const int64_t max_time_ms = 1000;
+  const int64_t max_time_ms = 10000;
 
   // Evaluation parameters
   const int64_t max_eval_steps = 30;

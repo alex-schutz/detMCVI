@@ -243,68 +243,129 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
   return b;
 }
 
+typedef struct {
+  Welford complete;
+  Welford off_policy;
+  Welford max_iterations;
+  Welford no_solution;
+} EvaluationStats;
+
+static void PrintStats(const Welford& stats, const std::string& alg_name) {
+  std::cout << alg_name << " Count: " << stats.getCount() << std::endl;
+  std::cout << alg_name << " Average reward: " << stats.getMean() << std::endl;
+  std::cout << alg_name << " Highest reward: " << stats.getMax() << std::endl;
+  std::cout << alg_name << " Lowest reward: " << stats.getMin() << std::endl;
+  std::cout << alg_name << " Reward variance: " << stats.getVariance()
+            << std::endl;
+}
+
+static bool StateHasSolution(int64_t state, const PathToTerminal& ptt,
+                             int64_t max_depth) {
+  ptt.calculate(state, max_depth);
+  return ptt.is_terminal(state);
+}
+
 void MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
   const double gamma = _pomdp->GetDiscount();
-  auto stats = Welford();
+  EvaluationStats eval_stats;
+  int64_t initial_state = -1;
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, _pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
     BeliefDistribution belief = init_belief;
     int64_t state = SampleOneState(belief, _rng);
+    initial_state = state;
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
-    for (int64_t i = 0; i < max_steps; ++i) {
-      const int64_t action = (nI != -1) ? _fsc.GetNode(nI).GetBestAction()
-                                        : GreedyBestAction(belief, _pomdp);
+    int64_t i = 0;
+    for (; i < max_steps; ++i) {
+      if (nI == -1) {
+        eval_stats.off_policy.update(sum_r);
+        break;
+      }
+
+      const int64_t action = _fsc.GetNode(nI).GetBestAction();
       const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
+
+      if (done) {
+        eval_stats.complete.update(sum_r);
+        break;
+      }
+
       if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
 
-      if (done) break;
       state = sNext;
       belief = NextBelief(belief, action, obs, _pomdp);
     }
-    stats.update(sum_r);
+    if (i == max_steps) {
+      if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+        eval_stats.off_policy.update(sum_r);
+      } else {
+        eval_stats.max_iterations.update(sum_r);
+      }
+    }
+    initial_state = -1;
   }
-  std::cout << "Average reward: " << stats.getMean() << std::endl;
-  std::cout << "Highest reward: " << stats.getMax() << std::endl;
-  std::cout << "Lowest reward: " << stats.getMin() << std::endl;
-  std::cout << "Reward variance: " << stats.getVariance() << std::endl;
-}
+  PrintStats(eval_stats.complete, "MCVI completed problem");
+  PrintStats(eval_stats.off_policy, "MCVI exited policy");
+  PrintStats(eval_stats.max_iterations, "MCVI max iterations");
+  PrintStats(eval_stats.no_solution, "MCVI no solution");
+}  // namespace MCVI
 
 void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
                                     int64_t max_steps, int64_t num_sims,
                                     int64_t init_belief_samples,
-                                    SimInterface* pomdp, std::mt19937_64& rng) {
+                                    SimInterface* pomdp, std::mt19937_64& rng,
+                                    const PathToTerminal& ptt,
+                                    const std::string& alg_name) {
   const double gamma = pomdp->GetDiscount();
-  auto stats = Welford();
+  EvaluationStats eval_stats;
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, pomdp);
+  int64_t initial_state = -1;
   for (int64_t sim = 0; sim < num_sims; ++sim) {
     BeliefDistribution belief = init_belief;
     int64_t state = SampleOneState(belief, rng);
+    initial_state = state;
     double sum_r = 0.0;
     auto node = root;
-    for (int64_t i = 0; i < max_steps; ++i) {
+    int64_t i = 0;
+    for (; i < max_steps; ++i) {
       if (node && node->GetBestActUBound() == -1) node = nullptr;
-      const int64_t action =
-          (node) ? node->GetBestActUBound() : GreedyBestAction(belief, pomdp);
+      if (!node) {
+        eval_stats.off_policy.update(sum_r);
+        break;
+      }
+      const int64_t action = node->GetBestActUBound();
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
+
+      if (done) {
+        eval_stats.complete.update(sum_r);
+        break;
+      }
+
       if (node) node = node->GetChild(action, obs);
 
-      if (done) break;
       belief =
           (node) ? node->GetBelief() : NextBelief(belief, action, obs, pomdp);
       state = sNext;
     }
-    stats.update(sum_r);
+    if (i == max_steps) {
+      if (!StateHasSolution(initial_state, ptt, max_steps)) {
+        eval_stats.off_policy.update(sum_r);
+      } else {
+        eval_stats.max_iterations.update(sum_r);
+      }
+    }
+    initial_state = -1;
   }
-  std::cout << "Average reward: " << stats.getMean() << std::endl;
-  std::cout << "Highest reward: " << stats.getMax() << std::endl;
-  std::cout << "Lowest reward: " << stats.getMin() << std::endl;
-  std::cout << "Reward variance: " << stats.getVariance() << std::endl;
+  PrintStats(eval_stats.complete, alg_name + " completed problem");
+  PrintStats(eval_stats.off_policy, alg_name + " exited policy");
+  PrintStats(eval_stats.max_iterations, alg_name + " max iterations");
+  PrintStats(eval_stats.no_solution, alg_name + " no solution");
 }
 
 }  // namespace MCVI

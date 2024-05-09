@@ -167,4 +167,14 @@ std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::findOrCreateNode(
   return node;
 }
 
+bool PathToTerminal::is_terminal(int64_t source) const {
+  if (!paths.contains(source)) return false;
+  int64_t state = source;
+  while (true) {
+    state = paths.at(state).second;
+    if (paths.at(state).first == -1) return false;
+    if (terminalStates.contains(state)) return true;
+  }
+}
+
 }  // namespace MCVI

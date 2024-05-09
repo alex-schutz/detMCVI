@@ -38,6 +38,8 @@ class Welford {
     }
   }
 
+  double getCount() const { return n; }
+
   double getMean() const { return mean; }
 
   double getVariance() const {

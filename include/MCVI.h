@@ -80,7 +80,9 @@ class MCVIPlanner {
 void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
                                     int64_t max_steps, int64_t num_sims,
                                     int64_t init_belief_samples,
-                                    SimInterface* pomdp, std::mt19937_64& rng);
+                                    SimInterface* pomdp, std::mt19937_64& rng,
+                                    const PathToTerminal& ptt,
+                                    const std::string& alg_name);
 
 BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp);
 
