@@ -247,7 +247,8 @@ typedef struct {
   Welford complete;
   Welford off_policy;
   Welford max_iterations;
-  Welford no_solution;
+  Welford no_solution_on_policy;
+  Welford no_solution_off_policy;
 } EvaluationStats;
 
 static void PrintStats(const Welford& stats, const std::string& alg_name) {
@@ -261,7 +262,7 @@ static void PrintStats(const Welford& stats, const std::string& alg_name) {
 
 static bool StateHasSolution(int64_t state, const PathToTerminal& ptt,
                              int64_t max_depth) {
-  ptt.calculate(state, max_depth);
+  ptt.path(state, max_depth);
   return ptt.is_terminal(state);
 }
 
@@ -281,7 +282,11 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t i = 0;
     for (; i < max_steps; ++i) {
       if (nI == -1) {
-        eval_stats.off_policy.update(sum_r);
+        if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+          eval_stats.no_solution_off_policy.update(sum_r);
+        } else {
+          eval_stats.off_policy.update(sum_r);
+        }
         break;
       }
 
@@ -294,14 +299,14 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
         break;
       }
 
-      if (nI != -1) nI = _fsc.GetEdgeValue(nI, obs);
+      nI = _fsc.GetEdgeValue(nI, obs);
 
       state = sNext;
       belief = NextBelief(belief, action, obs, _pomdp);
     }
     if (i == max_steps) {
       if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-        eval_stats.off_policy.update(sum_r);
+        eval_stats.no_solution_on_policy.update(sum_r);
       } else {
         eval_stats.max_iterations.update(sum_r);
       }
@@ -311,8 +316,10 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
   PrintStats(eval_stats.complete, "MCVI completed problem");
   PrintStats(eval_stats.off_policy, "MCVI exited policy");
   PrintStats(eval_stats.max_iterations, "MCVI max iterations");
-  PrintStats(eval_stats.no_solution, "MCVI no solution");
-}  // namespace MCVI
+  PrintStats(eval_stats.no_solution_on_policy, "MCVI no solution (on policy)");
+  PrintStats(eval_stats.no_solution_off_policy,
+             "MCVI no solution (exited policy)");
+}
 
 void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
                                     int64_t max_steps, int64_t num_sims,
@@ -335,7 +342,11 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
     for (; i < max_steps; ++i) {
       if (node && node->GetBestActUBound() == -1) node = nullptr;
       if (!node) {
-        eval_stats.off_policy.update(sum_r);
+        if (!StateHasSolution(initial_state, ptt, max_steps)) {
+          eval_stats.no_solution_off_policy.update(sum_r);
+        } else {
+          eval_stats.off_policy.update(sum_r);
+        }
         break;
       }
       const int64_t action = node->GetBestActUBound();
@@ -347,15 +358,14 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
         break;
       }
 
-      if (node) node = node->GetChild(action, obs);
+      node = node->GetChild(action, obs);
 
-      belief =
-          (node) ? node->GetBelief() : NextBelief(belief, action, obs, pomdp);
+      belief = node->GetBelief();
       state = sNext;
     }
     if (i == max_steps) {
       if (!StateHasSolution(initial_state, ptt, max_steps)) {
-        eval_stats.off_policy.update(sum_r);
+        eval_stats.no_solution_on_policy.update(sum_r);
       } else {
         eval_stats.max_iterations.update(sum_r);
       }
@@ -365,7 +375,10 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
   PrintStats(eval_stats.complete, alg_name + " completed problem");
   PrintStats(eval_stats.off_policy, alg_name + " exited policy");
   PrintStats(eval_stats.max_iterations, alg_name + " max iterations");
-  PrintStats(eval_stats.no_solution, alg_name + " no solution");
+  PrintStats(eval_stats.no_solution_on_policy,
+             alg_name + " no solution (on policy)");
+  PrintStats(eval_stats.no_solution_off_policy,
+             alg_name + " no solution (exited policy)");
 }
 
 }  // namespace MCVI
