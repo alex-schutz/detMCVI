@@ -262,8 +262,7 @@ static void PrintStats(const Welford& stats, const std::string& alg_name) {
 
 static bool StateHasSolution(int64_t state, const PathToTerminal& ptt,
                              int64_t max_depth) {
-  ptt.path(state, max_depth);
-  return ptt.is_terminal(state);
+  return ptt.is_terminal(state, max_depth);
 }
 
 void MCVIPlanner::EvaluationWithSimulationFSC(

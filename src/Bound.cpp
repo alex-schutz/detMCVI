@@ -167,13 +167,13 @@ std::shared_ptr<PathToTerminal::PathNode> PathToTerminal::findOrCreateNode(
   return node;
 }
 
-bool PathToTerminal::is_terminal(int64_t source) const {
-  if (!paths.contains(source)) return false;
+bool PathToTerminal::is_terminal(int64_t source, int64_t max_depth) const {
+  if (!paths.contains(source)) path(source, max_depth);
   int64_t state = source;
   while (true) {
-    state = paths.at(state).second;
-    if (paths.at(state).first == -1) return false;
     if (terminalStates.contains(state)) return true;
+    if (paths.at(state).first == -1) return false;
+    state = paths.at(state).second;
   }
 }
 

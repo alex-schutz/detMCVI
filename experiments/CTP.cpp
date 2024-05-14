@@ -345,7 +345,7 @@ int main() {
   const int64_t eval_depth = 30;
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
-  const int64_t max_iter = 50;
+  const int64_t max_iter = 500;
   const int64_t max_time_ms = 10000;
 
   // Evaluation parameters

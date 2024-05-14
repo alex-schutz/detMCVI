@@ -30,7 +30,7 @@ class PathToTerminal : public ShortestPathFasterAlgorithm {
   /// state reachable from source within max_depth steps.
   std::tuple<int64_t, double> path(int64_t source, int64_t max_depth) const;
 
-  bool is_terminal(int64_t source) const;
+  bool is_terminal(int64_t source, int64_t max_depth) const;
 
   std::vector<std::tuple<int64_t, double, int64_t>> getEdges(
       int64_t state) const override;
