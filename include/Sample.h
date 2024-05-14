@@ -19,8 +19,8 @@ class Welford {
       : n(0),
         mean(0.0),
         M2(0.0),
-        max_val(std::numeric_limits<double>::lowest()),
-        min_val(std::numeric_limits<double>::max()) {}
+        max_val(-std::numeric_limits<double>::infinity()),
+        min_val(std::numeric_limits<double>::infinity()) {}
 
   void update(double x) {
     n++;

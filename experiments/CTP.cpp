@@ -322,7 +322,18 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
             << std::endl;
 }
 
-int main() {
+void parseCommandLine(int argc, char* argv[], int64_t& runtime_ms) {
+  if (argc > 1) {
+    for (int i = 1; i < argc; ++i) {
+      if (std::string(argv[i]) == "--runtime" && i + 1 < argc) {
+        runtime_ms = std::stoi(argv[i + 1]);
+        break;
+      }
+    }
+  }
+}
+
+int main(int argc, char* argv[]) {
   std::mt19937_64 rng(std::random_device{}());
 
   // Initialise the POMDP
@@ -346,11 +357,13 @@ int main() {
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
   const int64_t max_iter = 500;
-  const int64_t max_time_ms = 10000;
+  int64_t max_time_ms = 10000;
 
   // Evaluation parameters
   const int64_t max_eval_steps = 30;
   const int64_t n_eval_trials = 10000;
+
+  parseCommandLine(argc, argv, max_time_ms);
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;

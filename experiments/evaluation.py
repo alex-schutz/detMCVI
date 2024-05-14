@@ -25,8 +25,14 @@ def extract_int(line):
 
 
 def extract_float(line):
-    match = re.findall("-?[\d]+[.,\d]+|-?[\d]*[.][\d]+|-?[\d]+", line)
+    match = re.findall("-?[\d]+[.,\d]+|-?[\d]*[.][\d]+|-?[\d]+|-?inf", line)
     return float(match[0])
+
+
+def percentage_by_type(results, result_types, type_index, alg) -> float:
+    n_trials = sum([results[f"{alg} {t} Count"] for t in result_types])
+    n_type = results[f"{alg} {result_types[type_index]} Count"]
+    return n_type / n_trials * 100
 
 
 def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
@@ -44,27 +50,48 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
         ("--- Iter ", "MCVI iterations", lambda x: extract_int(x) + 1),
         ("MCVI policy FSC contains", "MCVI policy nodes", extract_int),
         ("AO* greedy policy tree contains", "AO* policy nodes", extract_int),
-        ("Evaluation of alternative (AO* greedy) policy", "AO*", None),
-        ("Evaluation of policy", "MCVI", None),
     ]
+    algs = ["MCVI", "AO*"]
+    result_types = [
+        "completed problem",
+        "exited policy",
+        "max iterations",
+        "no solution (on policy)",
+        "no solution (exited policy)",
+    ]
+    data_types = {
+        "Count": extract_int,
+        "Average reward": extract_float,
+        "Highest reward": extract_float,
+        "Lowest reward": extract_float,
+        "Reward variance": extract_float,
+    }
+    for alg in algs:
+        for result_type in result_types:
+            for d, t in data_types.items():
+                key = " ".join([alg, result_type, d])
+                patterns += [(key, key, t)]
+
     with open(f, "r") as f:
         for line in f:
             for pattern, key, extractor in patterns:
                 if pattern not in line:
                     continue
-                if extractor:
-                    instance_result[key] = extractor(line)
-                else:
-                    line = next(f)
-                    instance_result[f"{key} avg reward"] = extract_float(line)
-                    line = next(f)
-                    instance_result[f"{key} max reward"] = extract_float(line)
-                    line = next(f)
-                    instance_result[f"{key} min reward"] = extract_float(line)
-                    line = next(f)
-                    instance_result[f"{key} reward variance"] = extract_float(line)
+                instance_result[key] = extractor(line)
+
+    for alg in algs:
+        for i, t in enumerate(result_types):
+            instance_result[f"{alg} {t} Percentage"] = percentage_by_type(
+                instance_result, result_types, i, alg
+            )
+
     instance_result["avg_reward_difference"] = (
-        instance_result["MCVI avg reward"] - instance_result["AO* avg reward"]
+        instance_result["MCVI completed problem Average reward"]
+        - instance_result["AO* completed problem Average reward"]
+    )
+    instance_result["percentage_complete_difference"] = (
+        instance_result["MCVI completed problem Percentage"]
+        - instance_result["AO* completed problem Percentage"]
     )
     instance_result["policy_size_ratio"] = (
         instance_result["MCVI policy nodes"] / instance_result["AO* policy nodes"]
@@ -126,6 +153,8 @@ def generate_ctp_instance(N, seed):
 
 def run_ctp_instance(N, i):
     outfile = f"{RESULTS_FOLDER}/CTPInstance_{N}_{i}.txt"
+    problem_runtime = (N**2 - 20) * 1000
+
     # Build files
     cmd = "cd build && make"
     p = subprocess.run(
@@ -141,7 +170,7 @@ def run_ctp_instance(N, i):
 
     with open(outfile, "w") as f:
         # Run solver
-        cmd = "time build/experiments/ctp_experiment"
+        cmd = f"time build/experiments/ctp_experiment --runtime {problem_runtime}"
         p = subprocess.run(
             cmd,
             stdout=f,
