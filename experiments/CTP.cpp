@@ -98,8 +98,8 @@ class CTP : public MCVI::SimInterface {
   int64_t SampleStartState() override {
     std::uniform_real_distribution<> unif(0, 1);
     std::map<std::string, int64_t> state;
-    // agent starts at origin
-    state["loc"] = origin;
+    // agent starts at special initial state (for init observation)
+    state["loc"] = -2;
     // stochastic edge status
     for (const auto& [edge, p] : stoch_edges)
       state[edge2str(edge)] = (unif(rng)) < p ? 0 : 1;
@@ -149,6 +149,7 @@ class CTP : public MCVI::SimInterface {
     std::map<std::string, std::vector<int64_t>> state_factors;
     // agent location
     state_factors["loc"] = nodes;
+    state_factors["loc"].push_back(-2);  // special state for init observation
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
       state_factors[edge2str(edge)] = {0, 1};  // 0 = blocked, 1 = unblocked
@@ -194,6 +195,7 @@ class CTP : public MCVI::SimInterface {
   }
 
   bool nodesAdjacent(int64_t a, int64_t b, int64_t state) const {
+    if (a == -2 || b == -2) return false;
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
     if (edges.find(edge) == edges.end()) return false;  // edge does not exist
@@ -211,6 +213,10 @@ class CTP : public MCVI::SimInterface {
                             int64_t& sNext) const {
     sNext = state;
     const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
+    if (loc == -2) {  // special initial state
+      sNext = stateSpace.updateStateFactor(state, "loc", origin);
+      return 0;
+    }
     if (loc == goal) return 0;  // goal is absorbing
 
     if (loc == action) return _idle_reward;  // idling
@@ -229,7 +235,8 @@ class CTP : public MCVI::SimInterface {
   int64_t observeState(int64_t state) const {
     int64_t observation = 0;
 
-    const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
+    int64_t loc = stateSpace.getStateFactorElem(state, "loc");
+    if (loc == -2) loc = origin;  // observe initial state as if at origin
 
     // stochastic edge status
     int64_t n = 0;
@@ -245,6 +252,7 @@ class CTP : public MCVI::SimInterface {
   }
 
   bool checkFinished(int64_t sI, int64_t aI, int64_t sNext) const {
+    if (stateSpace.getStateFactorElem(sI, "loc") == -2) return false;
     if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
       return true;
     return stateSpace.getStateFactorElem(sNext, "loc") == goal;
