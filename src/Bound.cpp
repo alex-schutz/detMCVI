@@ -172,6 +172,7 @@ bool PathToTerminal::is_terminal(int64_t source, int64_t max_depth) const {
   int64_t state = source;
   while (true) {
     if (terminalStates.contains(state)) return true;
+    if (!paths.contains(state)) return false;
     if (paths.at(state).first == -1) return false;
     state = paths.at(state).second;
   }
