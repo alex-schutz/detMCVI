@@ -17,6 +17,29 @@ static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
   return p1.second < p2.second;
 }
 
+class GraphPath : public ShortestPathFasterAlgorithm {
+ private:
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+      _edges;  // bidirectional, smallest node is first, double is weight
+
+ public:
+  GraphPath(
+      std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> edges)
+      : _edges(edges) {}
+
+  std::vector<std::tuple<int64_t, double, int64_t>> getEdges(
+      int64_t node) const override {
+    std::vector<std::tuple<int64_t, double, int64_t>> out;
+    for (const auto& e : _edges) {
+      if (e.first.first == node)
+        out.push_back({e.first.second, e.second, e.first.second});
+      else if (e.first.second == node)
+        out.push_back({e.first.first, e.second, e.first.first});
+    }
+    return out;
+  }
+};
+
 class CTP : public MCVI::SimInterface {
  private:
   std::mt19937_64& rng;
@@ -33,6 +56,7 @@ class CTP : public MCVI::SimInterface {
   std::vector<std::string> observations;
   double _idle_reward;
   double _bad_action_reward;
+  mutable std::unordered_map<int64_t, bool> goal_reachable;
 
  public:
   CTP(std::mt19937_64& rng)
@@ -47,7 +71,7 @@ class CTP : public MCVI::SimInterface {
         actions(initActions()),
         observations(initObs()),
         _idle_reward(initIdleReward()),
-        _bad_action_reward(initIdleReward() - 1) {}
+        _bad_action_reward(initBadReward()) {}
 
   int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
   int64_t GetSizeOfA() const override { return actions.size(); }
@@ -65,7 +89,7 @@ class CTP : public MCVI::SimInterface {
     int64_t sNext;
     const double reward = applyActionToState(sI, aI, sNext);
     const int64_t oI = observeState(sNext);
-    const bool finished = stateSpace.getStateFactorElem(sNext, "loc") == goal;
+    const bool finished = checkFinished(sI, aI, sNext);
     // sI_next, oI, Reward, Done
     return std::tuple<int64_t, int64_t, double, bool>(sNext, oI, reward,
                                                       finished);
@@ -113,6 +137,7 @@ class CTP : public MCVI::SimInterface {
   std::vector<std::string> initActions() const {
     std::vector<std::string> acts;
     for (const auto& n : nodes) acts.push_back(std::to_string(n));
+    acts.push_back("decide_goal_unreachable");
     return acts;
   }
 
@@ -186,13 +211,18 @@ class CTP : public MCVI::SimInterface {
                             int64_t& sNext) const {
     sNext = state;
     const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
+    if (loc == goal) return 0;  // goal is absorbing
+
+    if (loc == action) return _idle_reward;  // idling
+
+    if (actions.at(action) == "decide_goal_unreachable")
+      return goalUnreachable(state) ? 0 : _bad_action_reward;
+
+    // invalid move
     if (!nodesAdjacent(loc, action, state)) return _bad_action_reward;
 
+    // moving
     sNext = stateSpace.updateStateFactor(state, "loc", action);
-    if (loc == action) {
-      if (loc == goal) return 0;
-      return _idle_reward;
-    }
     return action < loc ? -edges.at({action, loc}) : -edges.at({loc, action});
   }
 
@@ -214,10 +244,45 @@ class CTP : public MCVI::SimInterface {
     return observation;
   }
 
+  bool checkFinished(int64_t sI, int64_t aI, int64_t sNext) const {
+    if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
+      return true;
+    return stateSpace.getStateFactorElem(sNext, "loc") == goal;
+  }
+
+  bool goalUnreachable(int64_t state) const {
+    // check if goal is reachable from the origin (cached)
+    const int64_t origin_state =
+        stateSpace.updateStateFactor(state, "loc", origin);
+    const auto ret = goal_reachable.find(origin_state);
+    if (ret != goal_reachable.end()) return !ret->second;
+
+    // find shortest path to goal, return true if none exists
+    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+        state_edges;
+    for (const auto& e : edges) {
+      if (!stoch_edges.contains(e.first) ||
+          stateSpace.getStateFactorElem(state, edge2str(e.first)) == 1)
+        state_edges.insert(e);
+    }
+    auto gp = GraphPath(state_edges);
+    const auto [costs, pred] = gp.calculate(origin, state_edges.size() + 1);
+    const bool reaches_goal = costs.contains(goal);
+    goal_reachable[origin_state] = reaches_goal;
+
+    return !reaches_goal;
+  }
+
   double initIdleReward() const {
     const double min_edge =
         std::min_element(edges.begin(), edges.end(), CmpPair)->second;
     return -5 * min_edge;
+  }
+
+  double initBadReward() const {
+    const double min_edge =
+        std::min_element(edges.begin(), edges.end(), CmpPair)->second;
+    return -50 * min_edge;
   }
 };
 
