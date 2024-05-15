@@ -89,6 +89,19 @@ void MCVIPlanner::SampleBeliefs(
   }
 }
 
+static bool MCVITimeExpired(const std::chrono::steady_clock::time_point& begin,
+                            int64_t max_computation_ms) {
+  const auto now = std::chrono::steady_clock::now();
+  const auto elapsed =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - begin);
+  if (elapsed.count() >= max_computation_ms) {
+    std::cout << "MCVI planning complete, reached maximum computation time."
+              << std::endl;
+    return true;
+  }
+  return false;
+}
+
 std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
     int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
     int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon) {
@@ -132,20 +145,15 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
       auto tr_node = traversal_list.back();
       BackUp(tr_node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
       traversal_list.pop_back();
+      if (MCVITimeExpired(iter_start, max_computation_ms))
+        return {_fsc, Tr_root};
     }
     end = std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
 
     _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
     ++i;
-    const auto iter_end = std::chrono::steady_clock::now();
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        iter_end - iter_start);
-    if (elapsed.count() >= max_computation_ms) {
-      std::cout << "MCVI planning complete, reached maximum computation time."
-                << std::endl;
-      return {_fsc, Tr_root};
-    }
+    if (MCVITimeExpired(iter_start, max_computation_ms)) return {_fsc, Tr_root};
   }
   std::cout << "MCVI planning complete, reached the max iterations."
             << std::endl;

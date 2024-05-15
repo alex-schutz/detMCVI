@@ -12,6 +12,27 @@
 
 namespace MCVI {
 
+bool AOStarTimeExpired(const std::chrono::steady_clock::time_point& begin,
+                       int64_t max_computation_ms) {
+  const auto now = std::chrono::steady_clock::now();
+  const auto elapsed =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - begin);
+  if (elapsed.count() >= max_computation_ms) {
+    std::cout << "AO* planning complete, reached maximum computation time."
+              << std::endl;
+    return true;
+  }
+  return false;
+}
+
+void AOStarFinalise(
+    const std::vector<std::shared_ptr<BeliefTreeNode>>& backup_list) {
+  for (auto it = backup_list.rbegin(); it < backup_list.rend(); ++it) {
+    (*it)->BackUpBestActionUpperNoFSC();
+    (*it)->UpdateBestAction();
+  }
+}
+
 void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
                int64_t max_computation_ms, const PathToTerminal& heuristic,
                int64_t eval_depth, double eval_epsilon, SimInterface* pomdp) {
@@ -52,20 +73,13 @@ void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
       for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
         node->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon, pomdp);
       backup_list.push_back(node);
+
+      if (AOStarTimeExpired(iter_start, max_computation_ms))
+        return AOStarFinalise(backup_list);
     }
 
-    for (auto it = backup_list.rbegin(); it < backup_list.rend(); ++it) {
-      (*it)->BackUpBestActionUpperNoFSC();
-      (*it)->UpdateBestAction();
-    }
-    const auto iter_end = std::chrono::steady_clock::now();
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        iter_end - iter_start);
-    if (elapsed.count() >= max_computation_ms) {
-      std::cout << "AO* planning complete, reached maximum computation time."
-                << std::endl;
-      return;
-    }
+    AOStarFinalise(backup_list);
+    if (AOStarTimeExpired(iter_start, max_computation_ms)) return;
   }
   std::cout << "AO* planning complete, reached maximum iterations."
             << std::endl;
