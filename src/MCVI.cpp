@@ -371,8 +371,7 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, _pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    BeliefDistribution belief = init_belief;
-    int64_t state = SampleOneState(belief, _rng);
+    int64_t state = SampleOneState(init_belief, _rng);
     initial_state = state;
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
@@ -399,7 +398,6 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
       nI = _fsc.GetEdgeValue(nI, obs);
 
       state = sNext;
-      belief = NextBelief(belief, action, obs, _pomdp);
     }
     if (i == max_steps) {
       if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
@@ -430,8 +428,7 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
       SampleInitialBelief(init_belief_samples, pomdp);
   int64_t initial_state = -1;
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    BeliefDistribution belief = init_belief;
-    int64_t state = SampleOneState(belief, rng);
+    int64_t state = SampleOneState(init_belief, rng);
     initial_state = state;
     double sum_r = 0.0;
     auto node = root;
@@ -457,7 +454,6 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
 
       node = node->GetChild(action, obs);
 
-      belief = node->GetBelief();
       state = sNext;
     }
     if (i == max_steps) {
