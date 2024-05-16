@@ -209,10 +209,6 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
       auto tr_node = traversal_list.back();
       BackUp(tr_node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
       traversal_list.pop_back();
-      if (MCVITimeExpired(iter_start, max_computation_ms)) {
-        _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
-        return {_fsc, Tr_root};
-      }
     }
     end = std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;

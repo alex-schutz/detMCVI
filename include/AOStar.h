@@ -7,6 +7,7 @@
 #pragma once
 
 #include "BeliefTree.h"
+#include "MCVI.h"
 
 namespace MCVI {
 
@@ -77,6 +78,79 @@ void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
 
     AOStarFinalise(backup_list);
     if (AOStarTimeExpired(iter_start, max_computation_ms)) return;
+  }
+  std::cout << "AO* planning complete, reached maximum iterations."
+            << std::endl;
+}
+
+void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
+                          int64_t max_iter, int64_t max_computation_ms,
+                          const PathToTerminal& heuristic, int64_t eval_depth,
+                          double eval_epsilon, int64_t max_eval_steps,
+                          int64_t n_eval_trials, int64_t nb_particles_b0,
+                          std::mt19937_64& rng, const PathToTerminal& ptt,
+                          SimInterface* pomdp) {
+  for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
+    initial_belief->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon,
+                                     pomdp);
+  initial_belief->UpdateBestAction();
+
+  int64_t iter = 0;
+  int64_t time_sum = 0;
+  while (++iter <= max_iter) {
+    const auto iter_start = std::chrono::steady_clock::now();
+    std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {
+        initial_belief};
+    std::vector<std::shared_ptr<BeliefTreeNode>> to_expand;
+
+    size_t i = 0;
+    while (i < traversal_list.size()) {
+      const auto belief_node = traversal_list[i];
+      for (const auto& [obs, obsNode] :
+           belief_node->GetChildren(belief_node->GetBestActUBound())) {
+        if (obsNode.GetBelief()->GetBestActUBound() == -1) {  // Leaf node
+          to_expand.push_back(obsNode.GetBelief());
+          continue;
+        }
+        traversal_list.push_back(obsNode.GetBelief());
+      }
+      ++i;
+    }
+
+    if (to_expand.empty()) {
+      std::cout << "AO* planning complete, reached policy convergence."
+                << std::endl;
+      return;
+    }
+
+    std::vector<std::shared_ptr<BeliefTreeNode>> backup_list = traversal_list;
+    for (const auto& node : to_expand) {
+      for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
+        node->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon, pomdp);
+      backup_list.push_back(node);
+    }
+
+    AOStarFinalise(backup_list);
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - iter_start);
+    time_sum += elapsed.count();
+
+    std::cout << "Evaluation of alternative (AO* greedy) policy ("
+              << max_eval_steps << " steps, " << n_eval_trials
+              << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
+    EvaluationWithGreedyTreePolicy(initial_belief, max_eval_steps,
+                                   n_eval_trials, nb_particles_b0, pomdp, rng,
+                                   ptt, "AO*");
+    std::fstream policy_tree(
+        "greedy_policy_tree_" + std::to_string(time_sum) + ".dot",
+        std::fstream::out);
+    const int64_t n_greedy_nodes = initial_belief->DrawPolicyTree(policy_tree);
+    policy_tree.close();
+    std::cout << "AO* greedy policy tree contains " << n_greedy_nodes
+              << " nodes." << std::endl;
+
+    if (time_sum >= max_computation_ms) return;
   }
   std::cout << "AO* planning complete, reached maximum iterations."
             << std::endl;

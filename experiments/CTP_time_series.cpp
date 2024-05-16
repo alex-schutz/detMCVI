@@ -43,32 +43,9 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
-  int64_t time_sum = 0;
-  while (time_sum < max_time_ms) {
-    const std::chrono::steady_clock::time_point ao_begin =
-        std::chrono::steady_clock::now();
-    RunAOStar(root, 1, max_time_ms, ptt, eval_depth, eval_epsilon, pomdp);
-    const std::chrono::steady_clock::time_point ao_end =
-        std::chrono::steady_clock::now();
-    time_sum +=
-        std::chrono::duration_cast<std::chrono::milliseconds>(ao_end - ao_begin)
-            .count();
-
-    // Evaluate policy
-    std::cout << "Evaluation of alternative (AO* greedy) policy ("
-              << max_eval_steps << " steps, " << n_eval_trials
-              << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
-    EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials,
-                                   nb_particles_b0, pomdp, rng, ptt, "AO*");
-
-    std::fstream policy_tree(
-        "greedy_policy_tree_" + std::to_string(time_sum) + ".dot",
-        std::fstream::out);
-    const int64_t n_greedy_nodes = root->DrawPolicyTree(policy_tree);
-    policy_tree.close();
-    std::cout << "AO* greedy policy tree contains " << n_greedy_nodes
-              << " nodes." << std::endl;
-  }
+  RunAOStarAndEvaluate(root, 100000000000, max_time_ms, ptt, eval_depth,
+                       eval_epsilon, max_eval_steps, n_eval_trials,
+                       nb_particles_b0, rng, ptt, pomdp);
 }
 
 int main() {
