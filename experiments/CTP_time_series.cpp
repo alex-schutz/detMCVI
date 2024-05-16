@@ -24,28 +24,9 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
   auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
-  int64_t time_sum = 0;
-  while (time_sum < max_time_ms) {
-    const std::chrono::steady_clock::time_point mcvi_begin =
-        std::chrono::steady_clock::now();
-    const auto [fsc, root] =
-        planner.Plan(max_sim_depth, converge_thresh, 1, max_time_ms, eval_depth,
-                     eval_epsilon);
-    const std::chrono::steady_clock::time_point mcvi_end =
-        std::chrono::steady_clock::now();
-    time_sum += std::chrono::duration_cast<std::chrono::milliseconds>(
-                    mcvi_end - mcvi_begin)
-                    .count();
-
-    // Evaluate policy
-    std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
-              << n_eval_trials << " trials) at time " << time_sum / 1000.0
-              << ":" << std::endl;
-    planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
-                                        nb_particles_b0);
-    std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
-              << std::endl;
-  }
+  const auto [fsc, root] = planner.PlanAndEvaluate(
+      max_sim_depth, converge_thresh, 100000000000, max_time_ms, eval_depth,
+      eval_epsilon, max_eval_steps, n_eval_trials, nb_particles_b0);
 }
 
 void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
