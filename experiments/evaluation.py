@@ -140,7 +140,7 @@ def generate_ctp_instance(N, seed):
     with open(GRAPH_FILE, "w") as f:
         if mode == "random":
             while True:
-                solvable = generate_graph(N, seed, f, False, 0.4, False)
+                solvable = generate_graph(N, seed, f, True, 0.4, False)
                 if solvable:
                     break
                 else:
