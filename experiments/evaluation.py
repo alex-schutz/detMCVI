@@ -141,7 +141,6 @@ def generate_ctp_instance(N, seed):
         if mode == "random":
             while True:
                 solvable = generate_graph(N, seed, f, False, 0.4, False)
-                seed += 1
                 if solvable:
                     break
                 else:
