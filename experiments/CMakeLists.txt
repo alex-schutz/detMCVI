@@ -1,2 +1,5 @@
 add_executable(ctp_experiment CTP.cpp)
 target_link_libraries(ctp_experiment mcvi_library)
+
+add_executable(ctp_timeseries CTP_time_series.cpp)
+target_link_libraries(ctp_timeseries mcvi_library)
