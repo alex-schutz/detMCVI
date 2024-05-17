@@ -278,15 +278,15 @@ class CTP : public MCVI::SimInterface {
   }
 
   double initIdleReward() const {
-    const double min_edge =
-        std::min_element(edges.begin(), edges.end(), CmpPair)->second;
-    return -5 * min_edge;
+    const double max_edge =
+        std::max_element(edges.begin(), edges.end(), CmpPair)->second;
+    return -5 * max_edge;
   }
 
   double initBadReward() const {
-    const double min_edge =
-        std::min_element(edges.begin(), edges.end(), CmpPair)->second;
-    return -50 * min_edge;
+    const double max_edge =
+        std::max_element(edges.begin(), edges.end(), CmpPair)->second;
+    return -50 * max_edge;
   }
 };
 }  // namespace MCVI
