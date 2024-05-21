@@ -37,7 +37,7 @@ class GraphPath : public ShortestPathFasterAlgorithm {
 };
 
 class CTP : public MCVI::SimInterface {
- private:
+ protected:
   std::mt19937_64& rng;
   std::vector<int64_t> nodes;
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
@@ -95,7 +95,7 @@ class CTP : public MCVI::SimInterface {
     std::uniform_real_distribution<> unif(0, 1);
     std::map<std::string, int64_t> state;
     // agent starts at special initial state (for init observation)
-    state["loc"] = -2;
+    state["loc"] = (int64_t)nodes.size();
     // stochastic edge status
     for (const auto& [edge, p] : stoch_edges)
       state[edge2str(edge)] = (unif(rng)) < p ? 0 : 1;
@@ -129,29 +129,9 @@ class CTP : public MCVI::SimInterface {
     os << "}" << std::endl;
   }
 
- private:
-  std::vector<std::string> initActions() const {
-    std::vector<std::string> acts;
-    for (const auto& n : nodes) acts.push_back(std::to_string(n));
-    acts.push_back("decide_goal_unreachable");
-    return acts;
-  }
-
+ protected:
   std::string edge2str(std::pair<int64_t, int64_t> e) const {
     return "e" + std::to_string(e.first) + "_" + std::to_string(e.second);
-  }
-
-  StateSpace initStateSpace() const {
-    std::map<std::string, std::vector<int64_t>> state_factors;
-    // agent location
-    state_factors["loc"] = nodes;
-    state_factors["loc"].push_back(-2);  // special state for init observation
-    // stochastic edge status
-    for (const auto& [edge, _] : stoch_edges)
-      state_factors[edge2str(edge)] = {0, 1};  // 0 = blocked, 1 = unblocked
-    StateSpace ss(state_factors);
-    std::cout << "State space size: " << ss.size() << std::endl;
-    return ss;
   }
 
   // Return all stochastic edges adjacent to `node`
@@ -176,6 +156,28 @@ class CTP : public MCVI::SimInterface {
     return edges;
   }
 
+ private:
+  std::vector<std::string> initActions() const {
+    std::vector<std::string> acts;
+    for (const auto& n : nodes) acts.push_back(std::to_string(n));
+    acts.push_back("decide_goal_unreachable");
+    return acts;
+  }
+
+  StateSpace initStateSpace() const {
+    std::map<std::string, std::vector<int64_t>> state_factors;
+    // agent location
+    state_factors["loc"] = nodes;
+    state_factors["loc"].push_back(
+        nodes.size());  // special state for init observation
+    // stochastic edge status
+    for (const auto& [edge, _] : stoch_edges)
+      state_factors[edge2str(edge)] = {0, 1};  // 0 = blocked, 1 = unblocked
+    StateSpace ss(state_factors);
+    std::cout << "State space size: " << ss.size() << std::endl;
+    return ss;
+  }
+
   int64_t initObsWidth() const {
     size_t max_stoch_edges_at_node = 0;
     for (const auto& node : nodes)
@@ -191,7 +193,7 @@ class CTP : public MCVI::SimInterface {
   }
 
   bool nodesAdjacent(int64_t a, int64_t b, int64_t state) const {
-    if (a == -2 || b == -2) return false;
+    if (a == (int64_t)nodes.size() || b == (int64_t)nodes.size()) return false;
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
     if (edges.find(edge) == edges.end()) return false;  // edge does not exist
@@ -209,7 +211,7 @@ class CTP : public MCVI::SimInterface {
                             int64_t& sNext) const {
     sNext = state;
     const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
-    if (loc == -2) {  // special initial state
+    if (loc == (int64_t)nodes.size()) {  // special initial state
       sNext = stateSpace.updateStateFactor(state, "loc", origin);
       return 0;
     }
@@ -232,7 +234,8 @@ class CTP : public MCVI::SimInterface {
     int64_t observation = 0;
 
     int64_t loc = stateSpace.getStateFactorElem(state, "loc");
-    if (loc == -2) loc = origin;  // observe initial state as if at origin
+    if (loc == (int64_t)nodes.size())
+      loc = origin;  // observe initial state as if at origin
 
     // stochastic edge status
     int64_t n = 0;
@@ -248,7 +251,8 @@ class CTP : public MCVI::SimInterface {
   }
 
   bool checkFinished(int64_t sI, int64_t aI, int64_t sNext) const {
-    if (stateSpace.getStateFactorElem(sI, "loc") == -2) return false;
+    if (stateSpace.getStateFactorElem(sI, "loc") == (int64_t)nodes.size())
+      return false;
     if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
       return true;
     return stateSpace.getStateFactorElem(sNext, "loc") == goal;
