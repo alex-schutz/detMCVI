@@ -97,7 +97,7 @@ std::tuple<int64_t, double> PathToTerminal::path(int64_t source,
     discount *= gamma;
     state = sNext;
   }
-  return {paths.at(state).first, sum_reward};
+  return {paths.at(source).first, sum_reward};
 }
 
 std::unordered_map<int64_t, std::shared_ptr<PathToTerminal::PathNode>>
