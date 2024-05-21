@@ -54,6 +54,16 @@ class Welford {
   double getMin() const { return min_val; }
 };
 
+typedef struct {
+  Welford complete;
+  Welford off_policy;
+  Welford max_iterations;
+  Welford no_solution_on_policy;
+  Welford no_solution_off_policy;
+} EvaluationStats;
+
+void PrintStats(const Welford& stats, const std::string& alg_name);
+
 /// @brief Sample from a PMF
 int64_t SamplePMF(const std::unordered_map<int64_t, double>& pmf,
                   std::mt19937_64& rng);

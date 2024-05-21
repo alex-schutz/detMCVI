@@ -324,40 +324,6 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
   return b;
 }
 
-typedef struct {
-  Welford complete;
-  Welford off_policy;
-  Welford max_iterations;
-  Welford no_solution_on_policy;
-  Welford no_solution_off_policy;
-} EvaluationStats;
-
-static std::string print_inf(double num) {
-  if (std::isinf(num)) {
-    if (num > 0)
-      return "inf";
-    else
-      return "-inf";
-  } else {
-    std::ostringstream stream;
-    stream << num;
-    return stream.str();
-  }
-}
-
-static void PrintStats(const Welford& stats, const std::string& alg_name) {
-  std::cout << alg_name << " Count: " << stats.getCount() << std::endl;
-  std::cout << alg_name << " Average reward: " << print_inf(stats.getMean())
-            << std::endl;
-  std::cout << alg_name << " Highest reward: " << print_inf(stats.getMax())
-            << std::endl;
-  std::cout << alg_name << " Lowest reward: " << print_inf(stats.getMin())
-            << std::endl;
-  std::cout << alg_name
-            << " Reward variance: " << print_inf(stats.getVariance())
-            << std::endl;
-}
-
 static bool StateHasSolution(int64_t state, const PathToTerminal& ptt,
                              int64_t max_depth) {
   return ptt.is_terminal(state, max_depth);
@@ -367,12 +333,11 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
   const double gamma = _pomdp->GetDiscount();
   EvaluationStats eval_stats;
-  int64_t initial_state = -1;
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, _pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
     int64_t state = SampleOneState(init_belief, _rng);
-    initial_state = state;
+    const int64_t initial_state = state;
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
     int64_t i = 0;
@@ -406,7 +371,6 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
         eval_stats.max_iterations.update(sum_r);
       }
     }
-    initial_state = -1;
   }
   PrintStats(eval_stats.complete, "MCVI completed problem");
   PrintStats(eval_stats.off_policy, "MCVI exited policy");
