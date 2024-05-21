@@ -168,3 +168,16 @@ const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
 const int64_t CTPOrigin = 0;
 const int64_t CTPGoal = 10;
 */
+
+// ========= Replan adversarial example
+// ================================================== Change probability of
+// stochastic edge to influence the direction of the policy. Higher -> policy
+// always chooses 0->1->3, lower -> policy prefers 0->2->3/0->2->0->1->3
+const std::vector<int64_t> CTPNodes = {0, 1, 2, 3, 4};
+const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+    CTPEdges = {{{0, 1}, 1},  {{0, 2}, 1.01}, {{1, 3}, 0.5}, {{2, 3}, 0.5},
+                {{1, 4}, 10}, {{2, 4}, 9},    {{3, 4}, 0.5}};
+const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+    CTPStochEdges = {{{2, 4}, 0.5}, {{3, 4}, 0.8}};
+const int64_t CTPOrigin = 0;
+const int64_t CTPGoal = 4;

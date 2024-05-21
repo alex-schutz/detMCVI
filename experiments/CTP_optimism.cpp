@@ -33,13 +33,13 @@ class CTP_Optimism : public CTP {
       const auto [sNext, obs, reward, done] = Step(state_true, action);
       std::cout << "receive obs: " << obs << std::endl;
       std::cout << "reward: " << reward << std::endl;
+      sum_r += std::pow(gamma, i) * reward;
 
       if (done) {
         std::cout << "Reached terminal state." << std::endl;
         break;
       }
 
-      sum_r += std::pow(gamma, i) * reward;
       state_true = sNext;
 
       // next state if no blocked edges observed
@@ -76,13 +76,13 @@ class CTP_Optimism : public CTP {
         const int64_t action = GetBestAction(state_optimistic, max_depth);
         const auto [sNext, obs, reward, done] = Step(state_true, action);
         sum_r += std::pow(gamma, i) * reward;
-
-        state_optimistic = ApplyObservation(state_optimistic, obs);
-        state_true = sNext;
         if (done) {
           eval_stats.complete.update(sum_r);
           break;
         }
+
+        state_optimistic = ApplyObservation(state_optimistic, obs);
+        state_true = sNext;
       }
       if (i == max_depth) {
         if (!ptt.is_terminal(init_state, max_depth)) {
