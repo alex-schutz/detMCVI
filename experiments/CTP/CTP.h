@@ -11,7 +11,7 @@ static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
   return p1.second < p2.second;
 }
 
-class GraphPath : public ShortestPathFasterAlgorithm {
+class GraphPath : public MCVI::ShortestPathFasterAlgorithm {
  private:
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
       _edges;  // bidirectional, smallest node is first, double is weight

@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

@@ -160,14 +160,14 @@ int main(int argc, char* argv[]) {
   }
 
   // Run MCVI
-  auto mcvi_ctp = new Battleships(pomdp);
-  runMCVI(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
+  auto mcvi = new Battleships(pomdp);
+  runMCVI(mcvi, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
           eval_epsilon, converge_thresh, max_iter, max_time_ms, max_eval_steps,
           n_eval_trials, 10 * nb_particles_b0);
 
   // Compare to AO*
-  auto aostar_ctp = new Battleships(pomdp);
-  runAOStar(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon, max_iter,
+  auto aostar = new Battleships(pomdp);
+  runAOStar(aostar, init_belief, rng, eval_depth, eval_epsilon, max_iter,
             max_time_ms, max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
 
   return 0;
