@@ -1,12 +1,10 @@
 #pragma once
 
 // #include "CTP_graph.h"
+#include "../statespace.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
 #include "auto_generated_graph.h"
-#include "statespace.h"
-
-namespace MCVI {
 
 static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
                     const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
@@ -293,4 +291,3 @@ class CTP : public MCVI::SimInterface {
     return -50 * max_edge;
   }
 };
-}  // namespace MCVI
