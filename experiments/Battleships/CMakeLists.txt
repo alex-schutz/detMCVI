@@ -1,0 +1,2 @@
+add_executable(battleships_experiment battleships.cpp)
+target_link_libraries(battleships_experiment mcvi_library)
