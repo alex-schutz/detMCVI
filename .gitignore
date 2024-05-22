@@ -4,4 +4,6 @@ BUILD/
 
 *.dot
 
-eval_results_random*/
+eval_results_*/
+
+experiments/CTP/auto_generated_graph.h
