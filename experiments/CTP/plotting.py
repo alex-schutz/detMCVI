@@ -5,11 +5,11 @@ output = "show"
 # output="html"
 
 files = [
-    "eval_results_random_2024-05-14_18-16/ctp_results_random.csv",
+    "eval_results_random_2024-05-16_13-30/ctp_results_random.csv",
 ]
 
 
-def plot_comparison(xlabel, ylabel, title, figname, output="show"):
+def plot_comparison(df, xlabel, ylabel, title, figname, output="show"):
     xmax = df[xlabel].max()
     ymax = df[ylabel].max()
     xmin = df[xlabel].min()
@@ -71,9 +71,15 @@ if __name__ == "__main__":
     )
 
     plot_comparison(
-        "AO* policy nodes", "MCVI policy nodes", "Policy size", "policy_size", output
+        df,
+        "AO* policy nodes",
+        "MCVI policy nodes",
+        "Policy size",
+        "policy_size",
+        output,
     )
     plot_comparison(
+        df,
         "AO* completed problem Average reward",
         "MCVI completed problem Average reward",
         "Average reward",

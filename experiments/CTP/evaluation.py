@@ -16,7 +16,7 @@ problem_sizes = list(range(5, 21)) + list(range(20, 51, 5))
 n_repetitions = 5
 
 RESULTS_FOLDER = f"eval_results_{mode}_{timestr}"
-GRAPH_FILE = "experiments/auto_generated_graph.h"
+GRAPH_FILE = "experiments/CTP/auto_generated_graph.h"
 
 
 def extract_int(line):
@@ -169,7 +169,7 @@ def run_ctp_instance(N, i):
 
     with open(outfile, "w") as f:
         # Run solver
-        cmd = f"time build/experiments/ctp_experiment --runtime {problem_runtime}"
+        cmd = f"time build/experiments/CTP/ctp_experiment --runtime {problem_runtime}"
         p = subprocess.run(
             cmd,
             stdout=f,

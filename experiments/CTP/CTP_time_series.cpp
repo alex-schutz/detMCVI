@@ -71,7 +71,7 @@ int main() {
   const int64_t eval_depth = 30;
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
-  const int64_t max_time_ms = 100000;
+  const int64_t max_time_ms = 1000 * 60 * 60 * 24;
 
   // Evaluation parameters
   const int64_t max_eval_steps = 30;
@@ -87,10 +87,11 @@ int main() {
   }
 
   // Run MCVI
-  auto mcvi_ctp = new CTP(pomdp);
-  runMCVIIncrements(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size,
-                    eval_depth, eval_epsilon, converge_thresh, max_time_ms,
-                    max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
+  //   auto mcvi_ctp = new CTP(pomdp);
+  //   runMCVIIncrements(mcvi_ctp, init_belief, rng, max_sim_depth,
+  //   max_node_size,
+  //                     eval_depth, eval_epsilon, converge_thresh, max_time_ms,
+  //                     max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
