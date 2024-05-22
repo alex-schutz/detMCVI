@@ -89,8 +89,8 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Running AO* on belief tree" << std::endl;
   const std::chrono::steady_clock::time_point ao_begin =
       std::chrono::steady_clock::now();
-  RunAOStar(root, max_iter, max_computation_ms, ptt, eval_depth, eval_epsilon,
-            pomdp);
+  RunAOStar2(root, max_iter, max_computation_ms, ptt, eval_depth, eval_epsilon,
+             rng, pomdp);
   const std::chrono::steady_clock::time_point ao_end =
       std::chrono::steady_clock::now();
   std::cout << "AO* complete (" << s_time_diff(ao_begin, ao_end) << " seconds)"
