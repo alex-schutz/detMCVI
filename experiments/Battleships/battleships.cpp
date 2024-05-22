@@ -136,16 +136,16 @@ int main(int argc, char* argv[]) {
   const int64_t max_belief_samples = 20000;
 
   // MCVI parameters
-  const int64_t max_sim_depth = 30;
+  const int64_t max_sim_depth = 100;
   const int64_t max_node_size = 10000;
-  const int64_t eval_depth = 30;
+  const int64_t eval_depth = 100;
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
-  const int64_t max_iter = 500;
+  const int64_t max_iter = 50;
   int64_t max_time_ms = 10000;
 
   // Evaluation parameters
-  const int64_t max_eval_steps = 30;
+  const int64_t max_eval_steps = 100;
   const int64_t n_eval_trials = 10000;
 
   parseCommandLine(argc, argv, max_time_ms);

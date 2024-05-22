@@ -102,7 +102,6 @@ class Battleships : public MCVI::SimInterface {
     std::vector<int64_t> grid_coords;
     for (int64_t i = 0; i < grid_size; ++i) grid_coords.push_back(i);
     // ship location and orientation
-    std::cerr << ship_sizes.size() << " " << ship_count_multiplier << std::endl;
     for (const auto& ship_sz : ship_sizes) {
       for (int64_t n = 0; n < ship_count_multiplier; ++n) {
         state_factors[ship2str(ship_sz, n) + "_row"] = grid_coords;
@@ -185,7 +184,7 @@ class Battleships : public MCVI::SimInterface {
 
   // No ships may be adjacent or diagonally adjacent in a valid configuration
   bool tile_valid(const std::map<std::string, int64_t>& grid, int64_t row,
-                  int64_t col) {
+                  int64_t col) const {
     for (int dr = -1; dr <= 1; ++dr) {
       for (int dc = -1; dc <= 1; ++dc) {
         const int64_t r = row + dr;
@@ -200,7 +199,7 @@ class Battleships : public MCVI::SimInterface {
 
   bool valid_ship_placement(const std::map<std::string, int64_t>& grid,
                             int64_t row, int64_t col, int ship_size,
-                            bool is_horizontal) {
+                            bool is_horizontal) const {
     if (is_horizontal) {
       if (col + ship_size > grid_size) return false;
       for (int i = 0; i < ship_size; ++i)
@@ -215,7 +214,7 @@ class Battleships : public MCVI::SimInterface {
   }
 
   void place_ship(std::map<std::string, int64_t>& grid, int64_t row,
-                  int64_t col, int ship_size, bool is_horizontal) {
+                  int64_t col, int ship_size, bool is_horizontal) const {
     if (is_horizontal) {
       for (int i = 0; i < ship_size; ++i) grid[coord2str(row, col + i)] = 1;
     } else {  // vertical
@@ -223,23 +222,37 @@ class Battleships : public MCVI::SimInterface {
     }
   }
 
-  std::tuple<int64_t, int64_t, bool> generate_random_position() {
+  std::tuple<int64_t, int64_t, bool> generate_random_position() const {
     static std::uniform_int_distribution<int64_t> unif(0, grid_size - 1);
     static std::uniform_int_distribution<int64_t> coin(0, 1);
     return {unif(rng), unif(rng), coin(rng)};
   }
 
   std::tuple<int64_t, int64_t, bool> attempt_to_place_ship(
-      std::map<std::string, int64_t>& grid, int ship_size) {
-    const int max_attempts = 100;
-    for (int i = 0; i < max_attempts; ++i) {
-      const auto [row, col, direction] = generate_random_position();
-      if (valid_ship_placement(grid, row, col, ship_size, direction)) {
-        place_ship(grid, row, col, ship_size, direction);
-        return {row, col, direction};
-      }
+      std::map<std::string, int64_t>& grid, int ship_size) const {
+    const auto [row, col, direction] = generate_random_position();
+    if (valid_ship_placement(grid, row, col, ship_size, direction)) {
+      place_ship(grid, row, col, ship_size, direction);
+      return {row, col, direction};
     }
     return {-1, -1, 0};  // failure
+  }
+
+  bool generate_config(
+      std::vector<std::tuple<int, int, int64_t, int64_t, bool>>& config) const {
+    std::map<std::string, int64_t> grid;
+    for (int i = 0; i < grid_size; ++i)
+      for (int j = 0; j < grid_size; ++j) grid[coord2str(i, j)] = 0;
+
+    for (const auto& ship_sz : ship_sizes) {
+      for (int n = 0; n < ship_count_multiplier; ++n) {
+        const auto ship_loc = attempt_to_place_ship(grid, ship_sz);
+        if (std::get<0>(ship_loc) < 0) return false;
+        config.push_back({ship_sz, n, std::get<0>(ship_loc),
+                          std::get<1>(ship_loc), std::get<2>(ship_loc)});
+      }
+    }
+    return true;
   }
 
   // Find a legal arrangement of ships for a square grid of size `grid_size`
@@ -250,23 +263,15 @@ class Battleships : public MCVI::SimInterface {
     std::vector<std::tuple<int, int, int64_t, int64_t, bool>>
         ship_locs;  // ship_sz, n, row, col, is_horiz
 
-    std::map<std::string, int64_t> grid;
-    for (int i = 0; i < grid_size; ++i)
-      for (int j = 0; j < grid_size; ++j) grid[coord2str(i, j)] = 0;
-
-    for (const auto& ship_sz : ship_sizes) {
-      for (int n = 0; n < ship_count_multiplier; ++n) {
-        const auto ship_loc = attempt_to_place_ship(grid, ship_sz);
-        if (std::get<0>(ship_loc) < 0) {
-          throw std::runtime_error(
-              "Failed to place all ships, please try again with different "
-              "parameters or a larger grid.");
-        }
-        ship_locs.push_back({ship_sz, n, std::get<0>(ship_loc),
-                             std::get<1>(ship_loc), std::get<2>(ship_loc)});
-      }
+    const int max_attempts = 100;
+    for (int i = 0; i < max_attempts; ++i) {
+      if (generate_config(ship_locs))
+        return ship_locs;
+      else
+        ship_locs.clear();
     }
-
-    return ship_locs;
+    throw std::runtime_error(
+        "Failed to place all ships, please try again with different "
+        "parameters or a larger grid.");
   }
 };
