@@ -8,7 +8,8 @@ output = "show"
 # output="png"
 # output="html"
 
-series_file = "timeseries.txt"
+series_file = "timeseries_40_9117029.txt"
+# generate_graph(40, 9117029, gf, True, 0.4, True)
 
 
 def extract_int(line) -> int:
@@ -51,9 +52,10 @@ def parse_evaluation(lines: list[str]) -> dict[str, float | int]:
     result = {}
     for pattern, extractor in patterns:
         for line in lines:
-            if pattern not in line:
-                continue
-            result[pattern] = extractor(line)
+            if pattern in line:
+                result[pattern] = extractor(line)
+            elif "nodes." in line:
+                result["policy nodes"] = extract_int(line)
 
     for i, res in enumerate(result_types):
         if result[f"{res} Count"] == 0:
@@ -78,6 +80,8 @@ def parse_file(filename) -> pd.DataFrame:
                 i += 26
             elif lines[i].startswith("Evaluation of alternative (AO* greedy) policy"):
                 time = extract_float(lines[i].split("at time ")[1])
+                if i + 27 > len(lines):
+                    break
                 info_lines = lines[i + 1 : i + 27]
                 ao_stats[time] = parse_evaluation(info_lines)
                 i += 26
@@ -151,22 +155,27 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
         fig.write_html(f"{figname}.html")
 
 
-def plot_completion(df: pd.DataFrame, title, figname, output="show"):
+def plot_data(df: pd.DataFrame, dataname, title, figname, output="show"):
     algs = ["MCVI", "AO*"]
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    colours = px.colors.qualitative.Plotly
+    fig = go.Figure()
 
-    for i, alg in enumerate(algs):
+    for alg in algs:
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
         fig.add_trace(
             go.Scatter(
                 x=data["Timestamp"],
-                y=data["completed problem Percentage"],
-                fill="tozeroy",
+                y=data[dataname],
                 mode="lines",
-                name=f"{alg} % completed problem",
+                name=alg,
+                line_shape="hv",
             )
         )
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Execution time (s)",
+        yaxis_title=dataname,
+    )
 
     if output == "show":
         fig.show()
@@ -183,4 +192,11 @@ if __name__ == "__main__":
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     plot_timeseries(df, "Policy value", "timeseries_14_v", output)
-    plot_completion(df, "Policy completion", "timeseries_14_c", output)
+    plot_data(
+        df,
+        "completed problem Percentage",
+        "Policy completion",
+        "timeseries_14_c",
+        output,
+    )
+    plot_data(df, "policy nodes", "Policy size", "timeseries_14_n", output)
