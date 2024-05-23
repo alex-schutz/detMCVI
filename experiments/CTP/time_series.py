@@ -8,8 +8,9 @@ output = "show"
 # output="png"
 # output="html"
 
-series_file1 = "timeseries_40_9117029.txt"
-series_file2 = "timeseries_40_9117029_AO2.txt"
+series_file = "timeseries_10_516847623.txt"
+series_file = "timeseries_14_516847623_2.txt"
+# series_file2 = "timeseries_40_9117029_AO2.txt"
 # generate_graph(40, 9117029, gf, True, 0.4, True)
 
 
@@ -76,6 +77,8 @@ def parse_file(filename) -> pd.DataFrame:
         while i < len(lines):
             if lines[i].startswith("Evaluation of policy"):
                 time = extract_float(lines[i].split("at time ")[1])
+                if i + 27 > len(lines):
+                    break
                 info_lines = lines[i + 1 : i + 27]
                 mcvi_stats[time] = parse_evaluation(info_lines)
                 i += 26
@@ -121,6 +124,8 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
                 line_shape="hv",
                 line=dict(color=colours[i]),
                 name=alg,
+                customdata=data["completed problem Percentage"],
+                hovertemplate="Percentage completed: %{customdata:.2f}",
             )
         )
         fig.add_trace(
@@ -147,6 +152,12 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
                 name=alg + " Lowest reward",
             )
         )
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Execution time (s)",
+        yaxis_title="Reward",
+    )
 
     if output == "show":
         fig.show()
@@ -189,10 +200,10 @@ def plot_data(df: pd.DataFrame, dataname, title, figname, output="show"):
 if __name__ == "__main__":
     import numpy as np
 
-    df = parse_file(series_file1)
-    df = df[df["Algorithm"] == "MCVI"]
-    df2 = parse_file(series_file2)
-    df = pd.concat([df, df2], ignore_index=True, sort=False)
+    df = parse_file(series_file)
+    # df = df[df["Algorithm"] == "MCVI"]
+    # df2 = parse_file(series_file2)
+    # df = pd.concat([df, df2], ignore_index=True, sort=False)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     plot_timeseries(df, "Policy value", "timeseries_14_v", output)
