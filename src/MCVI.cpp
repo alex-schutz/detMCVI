@@ -179,6 +179,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
 
   int64_t i = 0;
   int64_t time_sum = 0;
+  int64_t last_eval = -10000;
   while (i < max_nb_iter) {
     const auto iter_start = std::chrono::steady_clock::now();
     std::cout << "--- Iter " << i << " ---" << std::endl;
@@ -220,15 +221,25 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
 
-    std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
-              << n_eval_trials << " trials) at time " << time_sum / 1000.0
-              << ":" << std::endl;
-    EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials, nb_particles_b0);
-    std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes() << " nodes."
-              << std::endl;
+    if (time_sum - last_eval >= 10000) {  // evaluate at least every 10 seconds
+      last_eval = time_sum;
+      std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
+                << n_eval_trials << " trials) at time " << time_sum / 1000.0
+                << ":" << std::endl;
+      EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
+                                  nb_particles_b0);
+      std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
+                << " nodes." << std::endl;
+    }
     if (time_sum >= max_computation_ms) return {_fsc, Tr_root};
   }
   std::cout << "MCVI planning complete, reached the max iterations."
+            << std::endl;
+  std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
+            << n_eval_trials << " trials) at time " << time_sum / 1000.0 << ":"
+            << std::endl;
+  EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials, nb_particles_b0);
+  std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes() << " nodes."
             << std::endl;
   return {_fsc, Tr_root};
 }

@@ -196,6 +196,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
 
   int64_t iter = 0;
   int64_t time_sum = 0;
+  int64_t last_eval = -10000;
   while (++iter <= max_iter && FringeInGraph(fringe, graph)) {
     const auto iter_start = std::chrono::steady_clock::now();
     const auto [belief_node, history] = ChooseNode(fringe, graph, rng);
@@ -238,20 +239,23 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
 
-    std::cout << "Evaluation of alternative (AO* greedy) policy ("
-              << max_eval_steps << " steps, " << n_eval_trials
-              << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
-    EvaluationWithGreedyTreePolicy(initial_belief, max_eval_steps,
-                                   n_eval_trials, nb_particles_b0, pomdp, rng,
-                                   ptt, "AO*");
-    std::fstream policy_tree(
-        "greedy_policy_tree_" + std::to_string(time_sum) + ".dot",
-        std::fstream::out);
-    const int64_t n_greedy_nodes = initial_belief->DrawPolicyTree(policy_tree);
-    policy_tree.close();
-    std::cout << "AO* greedy policy tree contains " << n_greedy_nodes
-              << " nodes." << std::endl;
-
+    if (time_sum - last_eval >= 10000) {  // evaluate at least every 10 seconds
+      last_eval = time_sum;
+      std::cout << "Evaluation of alternative (AO* greedy) policy ("
+                << max_eval_steps << " steps, " << n_eval_trials
+                << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
+      EvaluationWithGreedyTreePolicy(initial_belief, max_eval_steps,
+                                     n_eval_trials, nb_particles_b0, pomdp, rng,
+                                     ptt, "AO*");
+      std::fstream policy_tree(
+          "greedy_policy_tree_" + std::to_string(time_sum) + ".dot",
+          std::fstream::out);
+      const int64_t n_greedy_nodes =
+          initial_belief->DrawPolicyTree(policy_tree);
+      policy_tree.close();
+      std::cout << "AO* greedy policy tree contains " << n_greedy_nodes
+                << " nodes." << std::endl;
+    }
     if (time_sum >= max_computation_ms) return;
   }
   if (!FringeInGraph(fringe, graph))
@@ -259,6 +263,19 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
   else
     std::cout << "AO* planning complete, reached maximum iterations."
               << std::endl;
+
+  std::cout << "Evaluation of alternative (AO* greedy) policy ("
+            << max_eval_steps << " steps, " << n_eval_trials
+            << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
+  EvaluationWithGreedyTreePolicy(initial_belief, max_eval_steps, n_eval_trials,
+                                 nb_particles_b0, pomdp, rng, ptt, "AO*");
+  std::fstream policy_tree(
+      "greedy_policy_tree_" + std::to_string(time_sum) + ".dot",
+      std::fstream::out);
+  const int64_t n_greedy_nodes = initial_belief->DrawPolicyTree(policy_tree);
+  policy_tree.close();
+  std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
+            << std::endl;
 }
 
 }  // namespace MCVI
