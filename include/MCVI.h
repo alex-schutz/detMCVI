@@ -50,15 +50,16 @@ class MCVIPlanner {
       int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
       int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
       int64_t max_eval_steps, int64_t n_eval_trials, int64_t nb_particles_b0,
-      int64_t eval_interval_ms);
+      int64_t eval_interval_ms, int64_t completion_threshold,
+      int64_t completion_reps);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
 
   /// @brief Evaluate the FSC bounds through multiple simulations. Reverts to
   /// greedy policy when policy runs out
-  void EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
-                                   int64_t init_belief_samples) const;
+  int64_t EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
+                                      int64_t init_belief_samples) const;
 
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
@@ -84,12 +85,10 @@ class MCVIPlanner {
       double target, double R_lower, int64_t max_depth_sim);
 };
 
-void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
-                                    int64_t max_steps, int64_t num_sims,
-                                    int64_t init_belief_samples,
-                                    SimInterface* pomdp, std::mt19937_64& rng,
-                                    const PathToTerminal& ptt,
-                                    const std::string& alg_name);
+int64_t EvaluationWithGreedyTreePolicy(
+    std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
+    int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
+    const PathToTerminal& ptt, const std::string& alg_name);
 
 BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp);
 

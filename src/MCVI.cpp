@@ -167,8 +167,9 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                              int64_t max_nb_iter, int64_t max_computation_ms,
                              int64_t eval_depth, double eval_epsilon,
                              int64_t max_eval_steps, int64_t n_eval_trials,
-                             int64_t nb_particles_b0,
-                             int64_t eval_interval_ms) {
+                             int64_t nb_particles_b0, int64_t eval_interval_ms,
+                             int64_t completion_threshold,
+                             int64_t completion_reps) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
@@ -181,6 +182,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
   int64_t i = 0;
   int64_t time_sum = 0;
   int64_t last_eval = -eval_interval_ms;
+  int64_t completed_times = 0;
   while (i < max_nb_iter) {
     const auto iter_start = std::chrono::steady_clock::now();
     std::cout << "--- Iter " << i << " ---" << std::endl;
@@ -227,10 +229,15 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
       std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
                 << n_eval_trials << " trials) at time " << time_sum / 1000.0
                 << ":" << std::endl;
-      EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
-                                  nb_particles_b0);
+      const int64_t completed_count = EvaluationWithSimulationFSC(
+          max_eval_steps, n_eval_trials, nb_particles_b0);
       std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
                 << " nodes." << std::endl;
+      if (completed_count >= completion_threshold)
+        completed_times++;
+      else
+        completed_times = 0;
+      if (completed_times >= completion_reps) return {_fsc, Tr_root};
     }
     if (time_sum >= max_computation_ms) return {_fsc, Tr_root};
   }
@@ -341,7 +348,7 @@ static bool StateHasSolution(int64_t state, const PathToTerminal& ptt,
   return ptt.is_terminal(state, max_depth);
 }
 
-void MCVIPlanner::EvaluationWithSimulationFSC(
+int64_t MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
   const double gamma = _pomdp->GetDiscount();
   EvaluationStats eval_stats;
@@ -390,14 +397,13 @@ void MCVIPlanner::EvaluationWithSimulationFSC(
   PrintStats(eval_stats.no_solution_on_policy, "MCVI no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,
              "MCVI no solution (exited policy)");
+  return eval_stats.complete.getCount();
 }
 
-void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
-                                    int64_t max_steps, int64_t num_sims,
-                                    int64_t init_belief_samples,
-                                    SimInterface* pomdp, std::mt19937_64& rng,
-                                    const PathToTerminal& ptt,
-                                    const std::string& alg_name) {
+int64_t EvaluationWithGreedyTreePolicy(
+    std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
+    int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
+    const PathToTerminal& ptt, const std::string& alg_name) {
   const double gamma = pomdp->GetDiscount();
   EvaluationStats eval_stats;
   const BeliefDistribution init_belief =
@@ -448,6 +454,7 @@ void EvaluationWithGreedyTreePolicy(std::shared_ptr<BeliefTreeNode> root,
              alg_name + " no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,
              alg_name + " no solution (exited policy)");
+  return eval_stats.complete.getCount();
 }
 
 }  // namespace MCVI
