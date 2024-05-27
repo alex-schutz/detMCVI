@@ -167,7 +167,8 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                              int64_t max_nb_iter, int64_t max_computation_ms,
                              int64_t eval_depth, double eval_epsilon,
                              int64_t max_eval_steps, int64_t n_eval_trials,
-                             int64_t nb_particles_b0) {
+                             int64_t nb_particles_b0,
+                             int64_t eval_interval_ms) {
   // Calculate the lower bound
   const double R_lower =
       FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
@@ -179,7 +180,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
 
   int64_t i = 0;
   int64_t time_sum = 0;
-  int64_t last_eval = -10000;
+  int64_t last_eval = -eval_interval_ms;
   while (i < max_nb_iter) {
     const auto iter_start = std::chrono::steady_clock::now();
     std::cout << "--- Iter " << i << " ---" << std::endl;
@@ -221,7 +222,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
 
-    if (time_sum - last_eval >= 10000) {  // evaluate at least every 10 seconds
+    if (time_sum - last_eval >= eval_interval_ms) {
       last_eval = time_sum;
       std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
                 << n_eval_trials << " trials) at time " << time_sum / 1000.0

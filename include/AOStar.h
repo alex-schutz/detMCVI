@@ -187,8 +187,8 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
                           const PathToTerminal& heuristic, int64_t eval_depth,
                           double eval_epsilon, int64_t max_eval_steps,
                           int64_t n_eval_trials, int64_t nb_particles_b0,
-                          std::mt19937_64& rng, const PathToTerminal& ptt,
-                          SimInterface* pomdp) {
+                          int64_t eval_interval_ms, std::mt19937_64& rng,
+                          const PathToTerminal& ptt, SimInterface* pomdp) {
   std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
                         std::vector<std::shared_ptr<BeliefTreeNode>>>>
       fringe = {{initial_belief, {}}};
@@ -196,7 +196,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
 
   int64_t iter = 0;
   int64_t time_sum = 0;
-  int64_t last_eval = -10000;
+  int64_t last_eval = -eval_interval_ms;
   while (++iter <= max_iter && FringeInGraph(fringe, graph)) {
     const auto iter_start = std::chrono::steady_clock::now();
     const auto [belief_node, history] = ChooseNode(fringe, graph, rng);
@@ -239,7 +239,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
 
-    if (time_sum - last_eval >= 10000) {  // evaluate at least every 10 seconds
+    if (time_sum - last_eval >= eval_interval_ms) {
       last_eval = time_sum;
       std::cout << "Evaluation of alternative (AO* greedy) policy ("
                 << max_eval_steps << " steps, " << n_eval_trials

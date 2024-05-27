@@ -49,7 +49,8 @@ class MCVIPlanner {
   std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> PlanAndEvaluate(
       int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
       int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
-      int64_t max_eval_steps, int64_t n_eval_trials, int64_t nb_particles_b0);
+      int64_t max_eval_steps, int64_t n_eval_trials, int64_t nb_particles_b0,
+      int64_t eval_interval_ms);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
