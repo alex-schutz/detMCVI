@@ -52,18 +52,27 @@ def plot_nx_graph(G: nx.Graph, origin, goal):
     plt.show()
 
 
-def distance(e, nodes):
-    dx = nodes[e[0]][0] - nodes[e[1]][0]
-    dy = nodes[e[0]][1] - nodes[e[1]][1]
+def distance(p1: tuple[float, float], p2: tuple[float, float]) -> float:
+    dx = p1[0] - p2[0]
+    dy = p1[1] - p2[1]
     return np.sqrt(dx * dx + dy * dy)
 
 
+def edge_distance(e, nodes):
+    return distance(nodes[e[0]], nodes[e[1]])
+
+
 def generate_graph(
-    n_nodes: int, seed: int, use_edge_weights=False, prop_stoch=0.4, plot=False
+    n_nodes: int,
+    seed: int,
+    use_edge_weights=False,
+    prop_stoch=0.4,
+    plot=False,
+    grid_size=10,
 ) -> tuple[nx.Graph, int, int, bool]:
     # Define world parameters
-    xmax = 10  # max x-grid coordinate
-    ymax = 10  # max y-grid coordinate
+    xmax = grid_size  # max x-grid coordinate
+    ymax = grid_size  # max y-grid coordinate
 
     # Fix seed for graph generation
     np.random.seed(seed)
@@ -72,9 +81,17 @@ def generate_graph(
     node_pos = np.random.choice(xmax * ymax, n_nodes, replace=False)
     grid_nodes = [(i // (ymax + 1), i % (ymax + 1)) for i in node_pos]
 
-    # Define origin and goal nodes
-    origin = grid_nodes.index(min(grid_nodes, key=lambda point: point[0] + point[1]))
-    goal = grid_nodes.index(max(grid_nodes, key=lambda point: point[0] + point[1]))
+    # Define origin and goal nodes based on furthest apart nodes
+    goal = int(
+        np.argmax(
+            [distance(grid_nodes[0], grid_nodes[i]) for i in range(len(grid_nodes))]
+        )
+    )
+    origin = int(
+        np.argmax(
+            [distance(grid_nodes[goal], grid_nodes[i]) for i in range(len(grid_nodes))]
+        )
+    )
 
     # Apply Delaunay triangulation
     delaunay = Delaunay(grid_nodes)
@@ -88,7 +105,7 @@ def generate_graph(
         nx.add_path(G, path)
     weights = {}
     for e in G.edges():
-        weights[e] = round(distance(e, grid_nodes), 2) if use_edge_weights else 1
+        weights[e] = round(edge_distance(e, grid_nodes), 2) if use_edge_weights else 1
     nx.set_edge_attributes(G, values=weights, name="weight")
 
     # Define stochastic edges and probabilities
@@ -145,9 +162,38 @@ def graph_to_cpp(G: nx.Graph, origin, goal, file):
     print(f"const int64_t CTPGoal = {goal};", file=file)
 
 
+def generate_delaunay_graph_set(location_count: int, set_size: int, seed: int):
+    """
+    Delaunay graphs with 100 vertices whose coordinates are randomly chosen over the region [1, 100] x [1, 100] on the plane.
+    Edge lengths are set to the Euclidean distance between their end vertices and the two farthest vertices of the graph are designated as the starting and termination vertices, respectively.
+    Each grid edge has a 0.25 probability of being stochastic and marks of stochastic edges are sampled from the uniform distribution. (Aksakalli et al. 2016)
+    """
+    problem_set = []
+    for n in range(set_size):
+        while True:
+            G, origin, goal, solvable = generate_graph(
+                location_count, seed, True, 0.25, False, 100
+            )
+            if solvable:
+                problem_set.append((G, origin, goal, seed))
+                break
+            else:
+                seed += 1
+        seed += 1
+    return problem_set
+
+
+# def generate_grid_graph_set(grid_size: int):
+#     """
+#     Grid graphs where imax = jmax = 10.
+#     The starting and termination vertices are taken as s = (5, 10) and t = (5, 1).
+#     As in Delaunay graphs, each edge has a 0.25 probability of being stochastic with uniform marks. (Aksakalli et al. 2016)
+#     """
+
+
 if __name__ == "__main__":
     seed = np.random.randint(0, 9999999)
     N = 15
-    G, origin, goal, solvable = generate_graph(N, seed, plot=True)
-    print("seed: ", seed, "nodes: ", N, "solvable: ", solvable)
+    G, origin, goal, solvable = generate_graph(N, seed, True, plot=True)
+    print("seed:", seed, "nodes:", N, "solvable:", solvable)
     graph_to_cpp(G, origin, goal, sys.stdout)
