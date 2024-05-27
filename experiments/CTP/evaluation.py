@@ -192,7 +192,7 @@ def run_ctp_instance(N, i):
     return outfile, 0
 
 
-def initialise_folder():
+def initialise_folder(results_folder):
     # subprocess.run(
     #     "rm -rf build; mkdir build",
     #     check=True,
@@ -204,7 +204,7 @@ def initialise_folder():
         shell=True,
     )
     subprocess.run(
-        f"mkdir {RESULTS_FOLDER}",
+        f"mkdir {results_folder}",
         check=True,
         shell=True,
     )
@@ -213,7 +213,7 @@ def initialise_folder():
 if __name__ == "__main__":
     seed = np.random.randint(0, 9999999)
 
-    initialise_folder()
+    initialise_folder(RESULTS_FOLDER)
 
     results = []
     headers_written = False

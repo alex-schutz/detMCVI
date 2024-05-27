@@ -82,7 +82,7 @@ int main() {
   // Evaluation parameters
   const int64_t max_eval_steps = 30;
   const int64_t n_eval_trials = 10000;
-  const int64_t eval_interval_ms = 10000;
+  const int64_t eval_interval_ms = 10;
   const int64_t completion_threshold = 9900;
   const int completion_reps = 3;
 

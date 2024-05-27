@@ -1,17 +1,8 @@
 import plotly.graph_objects as go
 import plotly.express as px
-from plotly.subplots import make_subplots
+import numpy as np
 import pandas as pd
 import re
-
-output = "show"
-# output="png"
-# output="html"
-
-series_file = "timeseries_10_516847623.txt"
-series_file = "timeseries_14_516847623_2.txt"
-# series_file2 = "timeseries_40_9117029_AO2.txt"
-# generate_graph(40, 9117029, gf, True, 0.4, True)
 
 
 def extract_int(line) -> int:
@@ -198,12 +189,21 @@ def plot_data(df: pd.DataFrame, dataname, title, figname, output="show"):
 
 
 if __name__ == "__main__":
-    import numpy as np
 
-    df = parse_file(series_file)
-    # df = df[df["Algorithm"] == "MCVI"]
-    # df2 = parse_file(series_file2)
-    # df = pd.concat([df, df2], ignore_index=True, sort=False)
+    output = "show"
+    # output="png"
+    # output="html"
+
+    # series_file1 = "timeseries_10_516847623.txt"
+    # series_file = "timeseries_14_516847623_2.txt"
+    series_file1 = "timeseries_40_9117029.txt"
+    series_file2 = "timeseries_40_9117029_AO3.txt"
+    # generate_graph(40, 9117029, True, 0.4, True)
+
+    df = parse_file(series_file1)
+    df = df[df["Algorithm"] == "MCVI"]
+    df2 = parse_file(series_file2)
+    df = pd.concat([df, df2], ignore_index=True, sort=False)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     plot_timeseries(df, "Policy value", "timeseries_14_v", output)
