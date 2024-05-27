@@ -193,7 +193,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
     if (std::abs(precision) < epsilon) {
       std::cout << "MCVI planning complete, reached the target precision."
                 << std::endl;
-      return {_fsc, Tr_root};
+      break;
     }
 
     std::cout << "Belief Expand Process" << std::flush;
@@ -241,8 +241,9 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
     }
     if (time_sum >= max_computation_ms) return {_fsc, Tr_root};
   }
-  std::cout << "MCVI planning complete, reached the max iterations."
-            << std::endl;
+  if (i >= max_nb_iter)
+    std::cout << "MCVI planning complete, reached the max iterations."
+              << std::endl;
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
             << n_eval_trials << " trials) at time " << time_sum / 1000.0 << ":"
             << std::endl;
