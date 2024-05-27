@@ -59,10 +59,8 @@ def distance(e, nodes):
 
 
 def generate_graph(
-    n_nodes: int, seed: int, file, use_edge_weights=False, prop_stoch=0.4, plot=False
-) -> bool:
-    print(PREAMBLE, file=file)
-
+    n_nodes: int, seed: int, use_edge_weights=False, prop_stoch=0.4, plot=False
+) -> tuple[nx.Graph, int, int, bool]:
     # Define world parameters
     xmax = 10  # max x-grid coordinate
     ymax = 10  # max y-grid coordinate
@@ -105,9 +103,18 @@ def generate_graph(
     # basic solvability check
     solvable = nx.has_path(G, origin, goal)
 
+    if plot:
+        plot_nx_graph(G, origin, goal)
+
+    return G, origin, goal, solvable
+
+
+def graph_to_cpp(G: nx.Graph, origin, goal, file):
+    print(PREAMBLE, file=file)
+
     print(
         "const std::vector<int64_t> CTPNodes = {",
-        ", ".join(map(str, range(n_nodes))),
+        ", ".join(map(str, range(len(G.nodes)))),
         "};",
         sep="",
         file=file,
@@ -137,13 +144,10 @@ def generate_graph(
     print(f"const int64_t CTPOrigin = {origin};", file=file)
     print(f"const int64_t CTPGoal = {goal};", file=file)
 
-    if plot:
-        plot_nx_graph(G, origin, goal)
-
-    return solvable
-
 
 if __name__ == "__main__":
     seed = np.random.randint(0, 9999999)
-    print("seed: ", seed)
-    generate_graph(15, seed, sys.stdout, plot=True)
+    N = 15
+    G, origin, goal, solvable = generate_graph(N, seed, plot=True)
+    print("seed: ", seed, "nodes: ", N, "solvable: ", solvable)
+    graph_to_cpp(G, origin, goal, sys.stdout)

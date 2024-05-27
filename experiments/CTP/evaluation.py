@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-from CTP_generator import generate_graph, PREAMBLE
+from CTP_generator import generate_graph, graph_to_cpp, PREAMBLE
 import subprocess
 import re
 import pandas as pd
@@ -140,8 +140,9 @@ def generate_ctp_instance(N, seed):
     with open(GRAPH_FILE, "w") as f:
         if mode == "random":
             while True:
-                solvable = generate_graph(N, seed, f, True, 0.4, False)
+                G, origin, goal, solvable = generate_graph(N, seed, True, 0.4, False)
                 if solvable:
+                    graph_to_cpp(G, origin, goal, f)
                     break
                 else:
                     seed += 1
