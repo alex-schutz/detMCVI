@@ -1,8 +1,10 @@
 import plotly.graph_objects as go
-import plotly.express as px
 import numpy as np
 import pandas as pd
 import re
+import plotly.io as pio
+
+pio.kaleido.scope.mathjax = None
 
 
 def extract_int(line) -> int:
@@ -103,10 +105,17 @@ def lighten_colour(colour_str, factor=0.2):
 def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
     algs = ["MCVI", "AO*"]
     fig = go.Figure()
-    colours = px.colors.qualitative.Plotly
+    colours = ["#cb6ce6", "#0097b2"]
 
     for i, alg in enumerate(algs):
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
+        data_info = data[
+            [
+                "completed problem Highest reward",
+                "completed problem Lowest reward",
+                "completed problem Percentage",
+            ]
+        ]
         fig.add_trace(
             go.Scatter(
                 x=data["Timestamp"],
@@ -115,8 +124,8 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
                 line_shape="hv",
                 line=dict(color=colours[i]),
                 name=alg,
-                customdata=data["completed problem Percentage"],
-                hovertemplate="Percentage completed: %{customdata:.2f}",
+                customdata=data_info,
+                hovertemplate="Computation time: %{x:.2f}s<br>Average reward: %{y:.2f}<br>Highest reward: %{customdata[0]:.2f}<br>Lowest reward: %{customdata[1]:.2f}<br>Percentage completed: %{customdata[2]:.2f}%",
             )
         )
         fig.add_trace(
@@ -128,7 +137,7 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
                 mode="lines",
                 line=dict(color=lighten_colour(colours[i], 0.2)),
                 line_shape="hv",
-                name=alg + " Highest reward",
+                name="Highest reward",
             )
         )
         fig.add_trace(
@@ -140,7 +149,7 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
                 mode="lines",
                 line=dict(color=lighten_colour(colours[i], 0.2)),
                 line_shape="hv",
-                name=alg + " Lowest reward",
+                name="Lowest reward",
             )
         )
 
@@ -148,25 +157,28 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
         title=title,
         xaxis_title="Execution time (s)",
         yaxis_title="Reward",
+        xaxis_range=[0, df["Timestamp"].max()],
     )
 
     if output == "show":
         fig.show()
-    elif output == "png":
-        fig.write_image(f"{figname}.png", scale=2)
+    elif output in ["png", "eps", "pdf"]:
+        fig.write_image(f"{figname}.{output}", scale=2)
     elif output == "html":
         fig.write_html(f"{figname}.html")
 
 
-def plot_data(df: pd.DataFrame, dataname, title, figname, output="show"):
+def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show"):
     algs = ["MCVI", "AO*"]
     fig = go.Figure()
+    colours = ["#cb6ce6", "#0097b2"]
 
-    for alg in algs:
+    for i, alg in enumerate(algs):
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
         fig.add_trace(
             go.Scatter(
                 x=data["Timestamp"],
+                line=dict(color=colours[i]),
                 y=data[dataname],
                 mode="lines",
                 name=alg,
@@ -175,21 +187,23 @@ def plot_data(df: pd.DataFrame, dataname, title, figname, output="show"):
         )
 
     fig.update_layout(
-        title=title,
+        # title=title,
         xaxis_title="Execution time (s)",
-        yaxis_title=dataname,
+        yaxis_title=ylabel,
+        xaxis_range=[0, df["Timestamp"].max()],
+        font=dict(size=32),
     )
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
 
     if output == "show":
         fig.show()
-    elif output == "png":
-        fig.write_image(f"{figname}.png", scale=2)
+    elif output in ["png", "eps", "pdf"]:
+        fig.write_image(f"{figname}.{output}")
     elif output == "html":
         fig.write_html(f"{figname}.html")
 
 
 if __name__ == "__main__":
-
     output = "show"
     # output="png"
     # output="html"
@@ -206,12 +220,20 @@ if __name__ == "__main__":
     df = pd.concat([df, df2], ignore_index=True, sort=False)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-    plot_timeseries(df, "Policy value", "timeseries_14_v", output)
+    plot_timeseries(df, "Policy value", "timeseries_14_value", output)
     plot_data(
         df,
         "completed problem Percentage",
+        "Goal reached %",
         "Policy completion",
-        "timeseries_14_c",
+        "timeseries_14_comp",
         output,
     )
-    plot_data(df, "policy nodes", "Policy size", "timeseries_14_n", output)
+    plot_data(
+        df,
+        "policy nodes",
+        "Policy nodes",
+        "Policy size",
+        "timeseries_14_nodes",
+        output,
+    )
