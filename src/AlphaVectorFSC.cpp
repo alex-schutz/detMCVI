@@ -65,12 +65,13 @@ void AlphaVectorFSC::GenerateGraphviz(
   ofs << "}" << std::endl;
 }
 
-double AlphaVectorFSC::SimulateTrajectory(int64_t nI, int64_t state,
+double AlphaVectorFSC::SimulateTrajectory(int64_t nI, const State& state,
                                           int64_t max_depth, double R_lower,
                                           SimInterface* pomdp) {
   const double gamma = pomdp->GetDiscount();
   double V_n_s = 0.0;
   int64_t nI_current = nI;
+  State curr_state = state;
   for (int64_t step = 0; step < max_depth; ++step) {
     if (nI_current == -1) {
       const double reward = std::pow(gamma, max_depth) * R_lower;
@@ -79,18 +80,18 @@ double AlphaVectorFSC::SimulateTrajectory(int64_t nI, int64_t state,
     }
 
     const int64_t action = GetNode(nI_current).GetBestAction();
-    const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+    const auto [sNext, obs, reward, done] = pomdp->Step(curr_state, action);
     nI_current = GetEdgeValue(nI_current, obs);
     V_n_s += std::pow(gamma, step) * reward;
     if (done) break;
-    state = sNext;
+    curr_state = sNext;
   }
 
   return V_n_s;
 }
 
-double AlphaVectorFSC::GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
-                                    int64_t max_depth_sim,
+double AlphaVectorFSC::GetNodeAlpha(const State& state, int64_t nI,
+                                    double R_lower, int64_t max_depth_sim,
                                     SimInterface* pomdp) {
   const std::optional<double> val = GetNode(nI).GetAlpha(state);
   if (val.has_value()) return val.value();

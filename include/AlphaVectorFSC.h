@@ -55,10 +55,10 @@ class AlphaVectorFSC {
       std::ostream& ofs, const std::vector<std::string>& actions = {},
       const std::vector<std::string>& observations = {}) const;
 
-  double SimulateTrajectory(int64_t nI, int64_t state, int64_t max_depth,
+  double SimulateTrajectory(int64_t nI, const State& state, int64_t max_depth,
                             double R_lower, SimInterface* pomdp);
 
-  double GetNodeAlpha(int64_t state, int64_t nI, double R_lower,
+  double GetNodeAlpha(const State& state, int64_t nI, double R_lower,
                       int64_t max_depth_sim, SimInterface* pomdp);
 };
 

@@ -14,8 +14,7 @@ std::ostream& operator<<(std::ostream& os, const BeliefDistribution& bd) {
       os << "<";
       const auto& v = pair.first;
       for (const auto& state_elem : v) {
-        os << state_elem;
-        if (state_elem != v.back()) os << ", ";
+        os << state_elem << ", ";
       }
       os << ">: " << pair.second << ", ";
     }

@@ -64,7 +64,7 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 }
 
 void MCVIPlanner::SampleBeliefs(
-    std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
+    std::shared_ptr<BeliefTreeNode> node, const State& state, int64_t depth,
     int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
     int64_t eval_depth, double eval_epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list, double target,
@@ -272,7 +272,7 @@ static int64_t GreedyBestAction(const BeliefDistribution& belief,
 static BeliefDistribution NextBelief(const BeliefDistribution& belief,
                                      int64_t action, int64_t observation,
                                      SimInterface* pomdp) {
-  std::unordered_map<int64_t, double> next_states;
+  StateMap<double> next_states;
   double total_prob = 0.0;
   for (const auto& [state, prob] : belief) {
     const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
@@ -286,7 +286,7 @@ static BeliefDistribution NextBelief(const BeliefDistribution& belief,
 
 void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   const double gamma = _pomdp->GetDiscount();
-  int64_t state = SampleOneState(_b0, _rng);
+  State state = SampleOneState(_b0, _rng);
   BeliefDistribution belief = _b0;
   double sum_r = 0.0;
   int64_t nI = _fsc.GetStartNodeIndex();
@@ -300,7 +300,9 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
                                       : _fsc.GetNode(nI).GetBestAction();
     std::cout << "---------" << std::endl;
     std::cout << "step: " << i << std::endl;
-    std::cout << "state: " << state << std::endl;
+    std::cout << "state: <";
+    for (const auto& state_elem : state) std::cout << state_elem << ", ";
+    std::cout << ">" << std::endl;
     std::cout << "perform action: " << action << std::endl;
     const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
 
@@ -325,7 +327,7 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
 }
 
 BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp) {
-  std::unordered_map<int64_t, int64_t> state_counts;
+  StateMap<int64_t> state_counts;
   for (int64_t i = 0; i < N; ++i) state_counts[pomdp->SampleStartState()] += 1;
   auto init_belief = BeliefDistribution();
   for (const auto& [state, count] : state_counts)
@@ -344,7 +346,7 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
   return b;
 }
 
-static bool StateHasSolution(int64_t state, const PathToTerminal& ptt,
+static bool StateHasSolution(const State& state, const PathToTerminal& ptt,
                              int64_t max_depth) {
   return ptt.is_terminal(state, max_depth);
 }
@@ -356,8 +358,8 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, _pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    int64_t state = SampleOneState(init_belief, _rng);
-    const int64_t initial_state = state;
+    State state = SampleOneState(init_belief, _rng);
+    const State initial_state = state;
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
     int64_t i = 0;
@@ -409,9 +411,9 @@ int64_t EvaluationWithGreedyTreePolicy(
   EvaluationStats eval_stats;
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, pomdp);
-  int64_t initial_state = -1;
+  State initial_state = {};
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    int64_t state = SampleOneState(init_belief, rng);
+    State state = SampleOneState(init_belief, rng);
     initial_state = state;
     double sum_r = 0.0;
     auto node = root;
@@ -446,7 +448,6 @@ int64_t EvaluationWithGreedyTreePolicy(
         eval_stats.max_iterations.update(sum_r);
       }
     }
-    initial_state = -1;
   }
   PrintStats(eval_stats.complete, alg_name + " completed problem");
   PrintStats(eval_stats.off_policy, alg_name + " exited policy");

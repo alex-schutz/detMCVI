@@ -78,7 +78,7 @@ class MCVIPlanner {
   int64_t RandomAction() const;
 
   void SampleBeliefs(
-      std::shared_ptr<BeliefTreeNode> node, int64_t state, int64_t depth,
+      std::shared_ptr<BeliefTreeNode> node, const State& state, int64_t depth,
       int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
       int64_t eval_depth, double eval_epsilon,
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
