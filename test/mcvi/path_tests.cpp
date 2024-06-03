@@ -104,10 +104,10 @@ TEST(ShortestPathFasterAlgorithmTest, ReconstructPath) {
   const auto [costs, pred] = graph.calculate({1}, 10);
   const auto path = graph.reconstructPath({3}, pred);
   EXPECT_EQ(path.size(), 3);
-  EXPECT_EQ(path[0].first, 1);
+  EXPECT_EQ(path[0].first, State({1}));
   EXPECT_EQ(path[0].second, 1);
-  EXPECT_EQ(path[1].first, 2);
+  EXPECT_EQ(path[1].first, State({2}));
   EXPECT_EQ(path[1].second, 3);
-  EXPECT_EQ(path[2].first, 3);
+  EXPECT_EQ(path[2].first, State({3}));
   EXPECT_EQ(path[2].second, -1);
 }

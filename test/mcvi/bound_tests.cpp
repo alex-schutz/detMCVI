@@ -18,43 +18,43 @@ class TestPOMDP : public SimInterface {
   int64_t GetNbAgent() const override { return 1; }
   int64_t GetSizeOfA() const override { return actions.size(); }
   int64_t GetSizeOfObs() const override { return observations.size(); }
-  int64_t SampleStartState() override { return 0; }
-  bool IsTerminal(int64_t sI) const override { return sI == 5; }
-  std::tuple<int64_t, int64_t, double, bool> Step(int64_t sI,
-                                                  int64_t aI) override {
+  State SampleStartState() override { return {0}; }
+  bool IsTerminal(const State& sI) const override { return sI.at(0) == 5; }
+  std::tuple<State, int64_t, double, bool> Step(const State& sI,
+                                                int64_t aI) override {
     if (aI == 9) return {sI, 0, -13.0, false};
-    switch (sI) {
+    switch (sI.at(0)) {
       case 0:
         if (aI == 0)
-          return {2, 0, -1.0, false};
+          return {{2}, 0, -1.0, false};
         else if (aI == 1)
-          return {1, 0, -1.0, false};
+          return {{1}, 0, -1.0, false};
         return {sI, 0, -50.0, false};
       case 1:
-        if (aI == 2) return {2, 0, -1.0, false};
+        if (aI == 2) return {{2}, 0, -1.0, false};
         return {sI, 0, -50.0, false};
       case 2:
         if (aI == 3)
-          return {1, 0, -1.0, false};
+          return {{1}, 0, -1.0, false};
         else if (aI == 4)
-          return {4, 0, -1.0, false};
+          return {{4}, 0, -1.0, false};
         return {sI, 0, -50.0, false};
       case 3:
-        if (aI == 7) return {4, 0, -1.0, false};
+        if (aI == 7) return {{4}, 0, -1.0, false};
         return {sI, 0, -50.0, false};
       case 4:
         if (aI == 5)
-          return {5, 0, -5.0, true};
+          return {{5}, 0, -5.0, true};
         else if (aI == 6) {
           std::mt19937_64 rng(std::random_device{}());
           std::uniform_real_distribution<double> unif(0, 1);
           const double u = unif(rng);
           const int64_t s_next = u < 0.4 ? 3 : 5;
-          return {s_next, 0, -2.0, s_next == 5};
+          return {{s_next}, 0, -2.0, s_next == 5};
         }
         return {sI, 0, -50.0, false};
       case 5:
-        if (aI == 8) return {5, 0, 0.0, true};
+        if (aI == 8) return {{5}, 0, 0.0, true};
         return {sI, 0, -50.0, true};
     }
     return {sI, 0, -50.0, false};
@@ -64,12 +64,12 @@ class TestPOMDP : public SimInterface {
 TEST(MCVITest, FindRLower) {
   TestPOMDP sim;
 
-  const auto belief = BeliefDistribution({{0, 0.166666},
-                                          {1, 0.166666},
-                                          {2, 0.166666},
-                                          {3, 0.166667},
-                                          {4, 0.166667},
-                                          {5, 0.166667}});
+  const auto belief = BeliefDistribution({{{0}, 0.166666},
+                                          {{1}, 0.166666},
+                                          {{2}, 0.166666},
+                                          {{3}, 0.166667},
+                                          {{4}, 0.166667},
+                                          {{5}, 0.166667}});
 
   const double R_lower_all = FindRLower(&sim, belief, 9, 0.0001, 100);
   EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
