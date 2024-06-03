@@ -1,8 +1,9 @@
 #include "BeliefDistribution.h"
 
 namespace MCVI {
-int64_t SampleOneState(const BeliefDistribution& belief, std::mt19937_64& rng) {
-  return SamplePMF(belief, rng);
+const std::vector<int64_t>& SampleOneState(const BeliefDistribution& belief,
+                                           std::mt19937_64& rng) {
+  return SamplePMF<const std::vector<int64_t>&>(belief, rng);
 }
 
 std::ostream& operator<<(std::ostream& os, const BeliefDistribution& bd) {
@@ -10,7 +11,15 @@ std::ostream& operator<<(std::ostream& os, const BeliefDistribution& bd) {
     os << "{ States: " << bd.size() << "}";
   } else {
     os << "{ ";
-    for (const auto& pair : bd) os << pair.first << ": " << pair.second << ", ";
+    for (const auto& pair : bd) {
+      os << "<";
+      const auto& v = pair.first;
+      for (const auto& state_elem : v) {
+        os << state_elem;
+        if (state_elem != v.back()) os << ", ";
+      }
+      os << ">: " << pair.second << ", ";
+    }
     os << "}";
   }
   return os;
