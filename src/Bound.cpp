@@ -53,13 +53,13 @@ double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,
 
 std::vector<std::tuple<State, double, int64_t>> PathToTerminal::getEdges(
     const State& state) const {
+  if (terminalStates.contains(state)) return {{{}, 0, -1}};
   std::vector<std::tuple<State, double, int64_t>> edges;
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
     const auto& [sNext, o, reward, done] = pomdp->Step(state, a);
     edges.push_back({sNext, -reward, a});
     if (done) terminalStates.insert(sNext);
   }
-  if (terminalStates.contains(state)) edges.push_back({{}, 0, -1});
   return edges;
 }
 

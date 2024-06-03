@@ -24,7 +24,8 @@ namespace MCVI {
  */
 class PathToTerminal : public ShortestPathFasterAlgorithm {
  public:
-  PathToTerminal(SimInterface* pomdp) : pomdp(pomdp) {}
+  PathToTerminal(SimInterface* pomdp)
+      : pomdp(pomdp), terminalStates({State({})}) {}
 
   /// @brief Return the first action and associated total reward for the end
   /// state reachable from source within max_depth steps.
