@@ -65,10 +65,47 @@ typedef struct {
 void PrintStats(const Welford& stats, const std::string& alg_name);
 
 /// @brief Sample from a PMF
-int64_t SamplePMF(const std::unordered_map<int64_t, double>& pmf,
-                  std::mt19937_64& rng);
+template <typename T>
+double SumPMF(const std::unordered_map<T, double>& pmf) {
+  double sum_p = 0.0;
+  for (const auto& [s, p] : pmf) sum_p += p;
+  return sum_p;
+}
 
-std::vector<std::pair<int64_t, double>> weightedShuffle(
-    const std::unordered_map<int64_t, double>& pmf, std::mt19937_64& rng,
-    size_t sample_cap = std::numeric_limits<size_t>::max());
+template <typename T>
+T SamplePMF(const std::unordered_map<T, double>& pmf, std::mt19937_64& rng) {
+  const double max_p = SumPMF<T>(pmf);
+  std::uniform_real_distribution<> dist(0, max_p);
+  const double u = dist(rng);
+  double sum_p = 0.0;
+  for (const auto& [s, p] : pmf) {
+    sum_p += p;
+    if (sum_p > u) return s;
+  }
+  return -1;
+}
+
+template <typename T>
+std::vector<std::pair<T, double>> weightedShuffle(
+    const std::unordered_map<T, double>& pmf, std::mt19937_64& rng,
+    size_t sample_cap) {
+  auto exp_dist = std::exponential_distribution<double>();
+
+  std::vector<std::pair<double, std::pair<T, double>>> index_pairs;
+  index_pairs.reserve(pmf.size());
+  for (const auto& elem : pmf) {
+    const double p = elem.second;
+    index_pairs.emplace_back(exp_dist(rng) / p, elem);
+  }
+  std::sort(index_pairs.begin(), index_pairs.end());
+
+  std::vector<std::pair<T, double>> indices;
+  indices.reserve(std::min(pmf.size(), sample_cap));
+  for (const auto& [w, pair] : index_pairs) {
+    if (indices.capacity() == indices.size()) break;
+    indices.emplace_back(pair);
+  }
+  return indices;
+}
+
 }  // namespace MCVI
