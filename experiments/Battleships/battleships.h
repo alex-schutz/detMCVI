@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <random>
 
-#include "../statespace.h"
 #include "SimInterface.h"
 
 class Battleships : public MCVI::SimInterface {
@@ -13,8 +13,8 @@ class Battleships : public MCVI::SimInterface {
 
   int ship_count_multiplier;
   std::vector<int> ship_sizes = {2, 3, 4, 5};
+  std::map<std::string, size_t> state_factor_sizes;
 
-  StateSpace stateSpace;
   std::mt19937_64& rng;
 
   double _hit_reward = 1;
@@ -28,7 +28,7 @@ class Battleships : public MCVI::SimInterface {
         actions(initActions()),
         observations(initObs()),
         ship_count_multiplier(ship_count_multiplier),
-        stateSpace(initStateSpace()),
+        state_factor_sizes(initStateSpace()),
         rng(rng) {}
 
   int64_t GetSizeOfObs() const override { return observations.size(); }
@@ -37,12 +37,11 @@ class Battleships : public MCVI::SimInterface {
   int64_t GetNbAgent() const override { return 1; }
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
-  bool IsTerminal(int64_t sI) const override {
+  bool IsTerminal(const MCVI::State& sI) const override {
     for (const auto& ship_sz : ship_sizes) {
       for (int64_t n = 0; n < ship_count_multiplier; ++n) {
         for (int i = 0; i < ship_sz; ++i) {
-          if (stateSpace.getStateFactorElem(
-                  sI, ship2str(ship_sz, n) + "_" + std::to_string(i)) == 0)
+          if (sI.at(sfIdx(ship2str(ship_sz, n) + "_" + std::to_string(i))) == 0)
             return false;
         }
       }
@@ -50,18 +49,18 @@ class Battleships : public MCVI::SimInterface {
     return true;
   }
 
-  std::tuple<int64_t, int64_t, double, bool> Step(int64_t sI,
-                                                  int64_t aI) override {
-    int64_t sNext;
+  std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
+                                                      int64_t aI) override {
+    MCVI::State sNext;
     const double reward = applyActionToState(sI, aI, sNext);
     const int64_t oI = observeState(sNext, aI);
     const bool finished = IsTerminal(sNext);
     // sI_next, oI, Reward, Done
-    return std::tuple<int64_t, int64_t, double, bool>(sNext, oI, reward,
-                                                      finished);
+    return std::tuple<MCVI::State, int64_t, double, bool>(sNext, oI, reward,
+                                                          finished);
   }
 
-  int64_t SampleStartState() override {
+  MCVI::State SampleStartState() override {
     std::map<std::string, int64_t> state_factors;
     const auto ship_locs = generateBattleshipConfig();
 
@@ -74,7 +73,7 @@ class Battleships : public MCVI::SimInterface {
       }
     }
 
-    return stateSpace.stateIndex(state_factors);
+    return names2state(state_factors);
   }
 
  private:
@@ -84,6 +83,24 @@ class Battleships : public MCVI::SimInterface {
 
   std::string ship2str(int64_t sz, int64_t rep) const {
     return std::to_string(sz) + "_" + std::to_string(rep);
+  }
+
+  MCVI::State names2state(const std::map<std::string, int64_t>& names) const {
+    assert(names.size() == state_factor_sizes.size());
+    std::vector<int64_t> state;
+    for (const auto& [name, state_elem] : names) {
+      const auto sf_sz = state_factor_sizes.find(name);
+      assert(sf_sz != state_factor_sizes.cend());
+      assert(sf_sz->second > state_elem);
+      state.push_back(state_elem);
+    }
+    return state;
+  }
+
+  int64_t sfIdx(const std::string& state_factor) const {
+    const auto sf_sz = state_factor_sizes.find(state_factor);
+    assert(sf_sz != state_factor_sizes.cend());
+    return (int64_t)std::distance(state_factor_sizes.cbegin(), sf_sz);
   }
 
   std::vector<std::string> initActions() const {
@@ -97,36 +114,36 @@ class Battleships : public MCVI::SimInterface {
     return {aI / grid_size, aI % grid_size};
   }
 
-  StateSpace initStateSpace() const {
-    std::map<std::string, std::vector<int64_t>> state_factors;
+  std::map<std::string, size_t> initStateSpace() const {
+    std::map<std::string, size_t> state_factors;
     std::vector<int64_t> grid_coords;
     for (int64_t i = 0; i < grid_size; ++i) grid_coords.push_back(i);
     // ship location and orientation
     for (const auto& ship_sz : ship_sizes) {
       for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        state_factors[ship2str(ship_sz, n) + "_row"] = grid_coords;
-        state_factors[ship2str(ship_sz, n) + "_col"] = grid_coords;
-        state_factors[ship2str(ship_sz, n) + "_ori"] = {0, 1};
+        state_factors[ship2str(ship_sz, n) + "_row"] = grid_coords.size();
+        state_factors[ship2str(ship_sz, n) + "_col"] = grid_coords.size();
+        state_factors[ship2str(ship_sz, n) + "_ori"] =
+            2;  // vertical, horizontal
         for (int i = 0; i < ship_sz; ++i) {
-          state_factors[ship2str(ship_sz, n) + "_" + std::to_string(i)] = {
-              0, 1};  // unhit, hit
+          state_factors[ship2str(ship_sz, n) + "_" + std::to_string(i)] =
+              2;  // unhit, hit
         }
       }
     }
 
-    StateSpace ss(state_factors);
-    std::cout << "State space size: " << ss.size() << std::endl;
-    return ss;
+    size_t p = 1;
+    for (const auto& [sf, sz] : state_factors) p *= sz;
+    std::cout << "State space size: " << p << std::endl;
+
+    return state_factors;
   }
 
-  bool ship_present(int64_t sI, int ship_sz, int64_t ship_n, int64_t row,
-                    int64_t col) const {
-    const int64_t R =
-        stateSpace.getStateFactorElem(sI, ship2str(ship_sz, ship_n) + "_row");
-    const int64_t C =
-        stateSpace.getStateFactorElem(sI, ship2str(ship_sz, ship_n) + "_col");
-    const bool is_horiz =
-        stateSpace.getStateFactorElem(sI, ship2str(ship_sz, ship_n) + "_ori");
+  bool ship_present(const MCVI::State& sI, int ship_sz, int64_t ship_n,
+                    int64_t row, int64_t col) const {
+    const int64_t R = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_row"));
+    const int64_t C = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_col"));
+    const bool is_horiz = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_ori"));
 
     if (is_horiz) {
       return (R == row && C <= col && C + ship_sz - 1 >= col);
@@ -135,20 +152,19 @@ class Battleships : public MCVI::SimInterface {
     }
   }
 
-  int64_t hit_ship(int64_t sI, int ship_sz, int64_t ship_n, int64_t row,
-                   int64_t col) const {
-    const int64_t R =
-        stateSpace.getStateFactorElem(sI, ship2str(ship_sz, ship_n) + "_row");
-    const int64_t C =
-        stateSpace.getStateFactorElem(sI, ship2str(ship_sz, ship_n) + "_col");
-    const bool is_horiz =
-        stateSpace.getStateFactorElem(sI, ship2str(ship_sz, ship_n) + "_ori");
+  MCVI::State hit_ship(const MCVI::State& sI, int ship_sz, int64_t ship_n,
+                       int64_t row, int64_t col) const {
+    const int64_t R = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_row"));
+    const int64_t C = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_col"));
+    const bool is_horiz = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_ori"));
 
     const int64_t hit_no = (is_horiz) ? col - C : row - R;
     if (hit_no < 0 || hit_no >= ship_sz)
       throw std::runtime_error("Invalid hit");
-    return stateSpace.updateStateFactor(
-        sI, ship2str(ship_sz, ship_n) + "_" + std::to_string(hit_no), 1);
+    MCVI::State out_state = sI;
+    out_state[sfIdx(ship2str(ship_sz, ship_n) + "_" + std::to_string(hit_no))] =
+        1;
+    return out_state;
   }
 
   std::vector<std::string> initObs() const {
@@ -156,7 +172,7 @@ class Battleships : public MCVI::SimInterface {
     return obs;
   }
 
-  int64_t observeState(int64_t sI, int64_t aI) const {
+  int64_t observeState(const MCVI::State& sI, int64_t aI) const {
     const auto [row, col] = decompose_action(aI);
     for (const auto& ship_sz : ship_sizes) {
       for (int64_t n = 0; n < ship_count_multiplier; ++n) {
@@ -166,7 +182,8 @@ class Battleships : public MCVI::SimInterface {
     return 0;
   }
 
-  double applyActionToState(int64_t sI, int64_t aI, int64_t& sNext) const {
+  double applyActionToState(const MCVI::State& sI, int64_t aI,
+                            MCVI::State& sNext) const {
     sNext = sI;
     const auto [row, col] = decompose_action(aI);
     for (const auto& ship_sz : ship_sizes) {

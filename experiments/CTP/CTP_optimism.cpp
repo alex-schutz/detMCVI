@@ -13,20 +13,23 @@ class CTP_Optimism : public CTP {
 
   void SimulateRun(int64_t max_depth) {
     const double gamma = GetDiscount();
-    int64_t state_true = SampleStartState();
+    State state_true = SampleStartState();
     PrintState(state_true);
-    int64_t state_optimistic = InitialiseState();
+    State state_optimistic = InitialiseState();
+    const int64_t loc_idx = sfIdx("loc");
 
     double sum_r = 0.0;
     int64_t i = 0;
     while (i++ < max_depth) {
       std::cout << "---------" << std::endl;
       std::cout << "step: " << i << std::endl;
-      std::cout << "true state: " << state_true << std::endl;
-      std::cout << "optimistic state: " << state_optimistic << std::endl;
-      std::cout << "agent loc: "
-                << stateSpace.getStateFactorElem(state_true, "loc")
-                << std::endl;
+      std::cout << "true state: <";
+      for (const auto& s : state_true) std::cout << s << ", ";
+      std::cout << ">" << std::endl;
+      std::cout << "optimistic state: <";
+      for (const auto& s : state_optimistic) std::cout << s << ", ";
+      std::cout << ">" << std::endl;
+      std::cout << "agent loc: " << state_true.at(loc_idx) << std::endl;
       const int64_t action = GetBestAction(state_optimistic, max_depth);
       std::cout << "perform action: " << action << std::endl;
 
@@ -43,11 +46,11 @@ class CTP_Optimism : public CTP {
       state_true = sNext;
 
       // next state if no blocked edges observed
-      const int64_t optimistic_next_state =
-          (stateSpace.getStateFactorElem(state_optimistic, "loc") ==
-           (int64_t)nodes.size())
-              ? stateSpace.updateStateFactor(state_optimistic, "loc", origin)
-              : stateSpace.updateStateFactor(state_optimistic, "loc", action);
+      State optimistic_next_state = state_optimistic;
+      if (state_optimistic.at(loc_idx) == (int64_t)nodes.size())
+        state_optimistic[loc_idx] = origin;
+      else
+        state_optimistic[loc_idx] = action;
       const int64_t intended_action =
           GetBestAction(optimistic_next_state, max_depth);
       // actual next state
@@ -66,9 +69,9 @@ class CTP_Optimism : public CTP {
     const double gamma = GetDiscount();
 
     for (int64_t sim = 0; sim < num_sims; ++sim) {
-      int64_t state_true = SampleStartState();
-      const int64_t init_state = state_true;
-      int64_t state_optimistic = InitialiseState();
+      State state_true = SampleStartState();
+      const State init_state = state_true;
+      State state_optimistic = InitialiseState();
 
       double sum_r = 0.0;
       int64_t i = 0;
@@ -107,17 +110,16 @@ class CTP_Optimism : public CTP {
 
   // Update the state to set location and blocked edges according to the given
   // observation
-  int64_t ApplyObservation(int64_t state, int64_t observation) const {
-    int64_t out_state = state;
+  State ApplyObservation(const State& state, int64_t observation) const {
+    State out_state = state;
 
     int64_t loc = observation / max_obs_width;  // int div
-    out_state = stateSpace.updateStateFactor(out_state, "loc", loc);
+    out_state[sfIdx("loc")] = loc;
 
     const int64_t edge_bool = observation % max_obs_width;
     int64_t n = 0;
     for (const auto& edge : AdjacentStochEdges(loc)) {
-      out_state = stateSpace.updateStateFactor(
-          out_state, edge2str(edge), bool(edge_bool & ((int64_t)1 << n)));
+      out_state[sfIdx(edge2str(edge))] = bool(edge_bool & ((int64_t)1 << n));
       ++n;
     }
 
@@ -125,16 +127,16 @@ class CTP_Optimism : public CTP {
   }
 
   // Return the state at the initial position with all edges open
-  int64_t InitialiseState() const {
+  State InitialiseState() const {
     std::map<std::string, int64_t> state;
     state["loc"] = (int64_t)nodes.size();
     for (const auto& [edge, p] : stoch_edges) state[edge2str(edge)] = 1;
-    return stateSpace.stateIndex(state);
+    return names2state(state);
   }
 
   // Choose best action based on shortest path to goal
   // If no path to goal, take exit action
-  int64_t GetBestAction(int64_t state, int64_t max_depth) const {
+  int64_t GetBestAction(const State& state, int64_t max_depth) const {
     if (!ptt.is_terminal(state, max_depth)) {
       for (int64_t i = (int64_t)actions.size() - 1; i >= 0; --i) {
         if (actions.at(i) == "decide_goal_unreachable") return i;
@@ -145,13 +147,11 @@ class CTP_Optimism : public CTP {
     return action;
   }
 
-  void PrintState(int64_t state) const {
-    std::cout << "State " << state << ":" << std::endl;
-    std::cout << "loc: " << stateSpace.getStateFactorElem(state, "loc")
-              << std::endl;
+  void PrintState(const State& state) const {
+    std::cout << "State:" << std::endl;
+    std::cout << "loc: " << state.at(sfIdx("loc")) << std::endl;
     for (const auto& [edge, p] : stoch_edges)
-      std::cout << edge2str(edge) << ": "
-                << stateSpace.getStateFactorElem(state, edge2str(edge))
+      std::cout << edge2str(edge) << ": " << state.at(sfIdx(edge2str(edge)))
                 << std::endl;
   }
 };

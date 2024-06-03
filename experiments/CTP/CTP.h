@@ -1,7 +1,8 @@
 #pragma once
 
+#include <cassert>
+#include <random>
 // #include "CTP_graph.h"
-#include "../statespace.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
 #include "auto_generated_graph.h"
@@ -21,14 +22,14 @@ class GraphPath : public MCVI::ShortestPathFasterAlgorithm {
       std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> edges)
       : _edges(edges) {}
 
-  std::vector<std::tuple<int64_t, double, int64_t>> getEdges(
-      int64_t node) const override {
-    std::vector<std::tuple<int64_t, double, int64_t>> out;
+  std::vector<std::tuple<MCVI::State, double, int64_t>> getEdges(
+      const MCVI::State& node) const override {
+    std::vector<std::tuple<MCVI::State, double, int64_t>> out;
     for (const auto& e : _edges) {
-      if (e.first.first == node)
-        out.push_back({e.first.second, e.second, e.first.second});
-      else if (e.first.second == node)
-        out.push_back({e.first.first, e.second, e.first.first});
+      if (e.first.first == node.at(0))
+        out.push_back({{e.first.second}, e.second, e.first.second});
+      else if (e.first.second == node.at(0))
+        out.push_back({{e.first.first}, e.second, e.first.first});
     }
     return out;
   }
@@ -44,13 +45,13 @@ class CTP : public MCVI::SimInterface {
       stoch_edges;  // probability of being blocked
   int64_t goal;
   int64_t origin;
-  StateSpace stateSpace;
+  std::map<std::string, size_t> state_factor_sizes;
   int64_t max_obs_width;
   std::vector<std::string> actions;
   std::vector<std::string> observations;
   double _idle_reward;
   double _bad_action_reward;
-  mutable std::unordered_map<int64_t, bool> goal_reachable;
+  mutable MCVI::StateMap<bool> goal_reachable;
 
  public:
   CTP(std::mt19937_64& rng)
@@ -60,7 +61,7 @@ class CTP : public MCVI::SimInterface {
         stoch_edges(CTPStochEdges),
         goal(CTPGoal),
         origin(CTPOrigin),
-        stateSpace(initStateSpace()),
+        state_factor_sizes(initStateSpace()),
         max_obs_width(initObsWidth()),
         actions(initActions()),
         observations(initObs()),
@@ -74,22 +75,22 @@ class CTP : public MCVI::SimInterface {
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
   int64_t getGoal() const { return goal; }
-  bool IsTerminal(int64_t sI) const override {
-    return stateSpace.getStateFactorElem(sI, "loc") == goal;
+  bool IsTerminal(const MCVI::State& sI) const override {
+    return sI.at(sfIdx("loc")) == goal;
   }
 
-  std::tuple<int64_t, int64_t, double, bool> Step(int64_t sI,
-                                                  int64_t aI) override {
-    int64_t sNext;
+  std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
+                                                      int64_t aI) override {
+    MCVI::State sNext;
     const double reward = applyActionToState(sI, aI, sNext);
     const int64_t oI = observeState(sNext);
     const bool finished = checkFinished(sI, aI, sNext);
     // sI_next, oI, Reward, Done
-    return std::tuple<int64_t, int64_t, double, bool>(sNext, oI, reward,
-                                                      finished);
+    return std::tuple<MCVI::State, int64_t, double, bool>(sNext, oI, reward,
+                                                          finished);
   }
 
-  int64_t SampleStartState() override {
+  MCVI::State SampleStartState() override {
     std::uniform_real_distribution<> unif(0, 1);
     std::map<std::string, int64_t> state;
     // agent starts at special initial state (for init observation)
@@ -97,7 +98,7 @@ class CTP : public MCVI::SimInterface {
     // stochastic edge status
     for (const auto& [edge, p] : stoch_edges)
       state[edge2str(edge)] = (unif(rng)) < p ? 0 : 1;
-    return stateSpace.stateIndex(state);
+    return names2state(state);
   }
 
   void visualiseGraph(std::ostream& os) {
@@ -132,6 +133,24 @@ class CTP : public MCVI::SimInterface {
     return "e" + std::to_string(e.first) + "_" + std::to_string(e.second);
   }
 
+  MCVI::State names2state(const std::map<std::string, int64_t>& names) const {
+    assert(names.size() == state_factor_sizes.size());
+    std::vector<int64_t> state;
+    for (const auto& [name, state_elem] : names) {
+      const auto sf_sz = state_factor_sizes.find(name);
+      assert(sf_sz != state_factor_sizes.cend());
+      assert(sf_sz->second > state_elem);
+      state.push_back(state_elem);
+    }
+    return state;
+  }
+
+  int64_t sfIdx(const std::string& state_factor) const {
+    const auto sf_sz = state_factor_sizes.find(state_factor);
+    assert(sf_sz != state_factor_sizes.cend());
+    return (int64_t)std::distance(state_factor_sizes.cbegin(), sf_sz);
+  }
+
   // Return all stochastic edges adjacent to `node`
   std::vector<std::pair<int64_t, int64_t>> AdjacentStochEdges(
       int64_t node) const {
@@ -162,18 +181,20 @@ class CTP : public MCVI::SimInterface {
     return acts;
   }
 
-  StateSpace initStateSpace() const {
-    std::map<std::string, std::vector<int64_t>> state_factors;
+  std::map<std::string, size_t> initStateSpace() const {
+    std::map<std::string, size_t> state_factors;
     // agent location
-    state_factors["loc"] = nodes;
-    state_factors["loc"].push_back(
-        nodes.size());  // special state for init observation
+    state_factors["loc"] =
+        nodes.size() + 1;  // special state for init observation
     // stochastic edge status
     for (const auto& [edge, _] : stoch_edges)
-      state_factors[edge2str(edge)] = {0, 1};  // 0 = blocked, 1 = unblocked
-    StateSpace ss(state_factors);
-    std::cout << "State space size: " << ss.size() << std::endl;
-    return ss;
+      state_factors[edge2str(edge)] = 2;  // 0 = blocked, 1 = unblocked
+
+    size_t p = 1;
+    for (const auto& [sf, sz] : state_factors) p *= sz;
+    std::cout << "State space size: " << p << std::endl;
+
+    return state_factors;
   }
 
   int64_t initObsWidth() const {
@@ -190,7 +211,7 @@ class CTP : public MCVI::SimInterface {
     return obs;
   }
 
-  bool nodesAdjacent(int64_t a, int64_t b, int64_t state) const {
+  bool nodesAdjacent(int64_t a, int64_t b, const MCVI::State& state) const {
     if (a == (int64_t)nodes.size() || b == (int64_t)nodes.size()) return false;
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
@@ -201,16 +222,16 @@ class CTP : public MCVI::SimInterface {
     if (stoch_ptr == stoch_edges.end()) return true;  // deterministic edge
 
     // check if edge is unblocked
-    return stateSpace.getStateFactorElem(state, edge2str(edge)) ==
-           1;  // traversable
+    return state.at(sfIdx(edge2str(edge))) == 1;  // traversable
   }
 
-  double applyActionToState(int64_t state, int64_t action,
-                            int64_t& sNext) const {
+  double applyActionToState(const MCVI::State& state, int64_t action,
+                            MCVI::State& sNext) const {
     sNext = state;
-    const int64_t loc = stateSpace.getStateFactorElem(state, "loc");
+    const int64_t loc_idx = sfIdx("loc");
+    const int64_t loc = state.at(loc_idx);
     if (loc == (int64_t)nodes.size()) {  // special initial state
-      sNext = stateSpace.updateStateFactor(state, "loc", origin);
+      sNext[loc_idx] = origin;
       return 0;
     }
     if (loc == goal) return 0;  // goal is absorbing
@@ -224,22 +245,21 @@ class CTP : public MCVI::SimInterface {
     if (!nodesAdjacent(loc, action, state)) return _bad_action_reward;
 
     // moving
-    sNext = stateSpace.updateStateFactor(state, "loc", action);
+    sNext[loc_idx] = action;
     return action < loc ? -edges.at({action, loc}) : -edges.at({loc, action});
   }
 
-  int64_t observeState(int64_t state) const {
+  int64_t observeState(const MCVI::State& state) const {
     int64_t observation = 0;
 
-    int64_t loc = stateSpace.getStateFactorElem(state, "loc");
+    int64_t loc = state.at(sfIdx("loc"));
     if (loc == (int64_t)nodes.size())
       loc = origin;  // observe initial state as if at origin
 
     // stochastic edge status
     int64_t n = 0;
     for (const auto& edge : AdjacentStochEdges(loc)) {
-      if (stateSpace.getStateFactorElem(state, edge2str(edge)))
-        observation |= ((int64_t)1 << n);
+      if (state.at(sfIdx(edge2str(edge)))) observation |= ((int64_t)1 << n);
       ++n;
     }
 
@@ -248,18 +268,19 @@ class CTP : public MCVI::SimInterface {
     return observation;
   }
 
-  bool checkFinished(int64_t sI, int64_t aI, int64_t sNext) const {
-    if (stateSpace.getStateFactorElem(sI, "loc") == (int64_t)nodes.size())
-      return false;
+  bool checkFinished(const MCVI::State& sI, int64_t aI,
+                     const MCVI::State& sNext) const {
+    const int64_t loc_idx = sfIdx("loc");
+    if (sI.at(loc_idx) == (int64_t)nodes.size()) return false;
     if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
       return true;
-    return stateSpace.getStateFactorElem(sNext, "loc") == goal;
+    return sNext.at(loc_idx) == goal;
   }
 
-  bool goalUnreachable(int64_t state) const {
+  bool goalUnreachable(const MCVI::State& state) const {
     // check if goal is reachable from the origin (cached)
-    const int64_t origin_state =
-        stateSpace.updateStateFactor(state, "loc", origin);
+    MCVI::State origin_state = state;
+    origin_state[sfIdx("loc")] = origin;
     const auto ret = goal_reachable.find(origin_state);
     if (ret != goal_reachable.end()) return !ret->second;
 
@@ -268,12 +289,12 @@ class CTP : public MCVI::SimInterface {
         state_edges;
     for (const auto& e : edges) {
       if (!stoch_edges.contains(e.first) ||
-          stateSpace.getStateFactorElem(state, edge2str(e.first)) == 1)
+          state.at(sfIdx(edge2str(e.first))) == 1)
         state_edges.insert(e);
     }
     auto gp = GraphPath(state_edges);
-    const auto [costs, pred] = gp.calculate(origin, state_edges.size() + 1);
-    const bool reaches_goal = costs.contains(goal);
+    const auto [costs, pred] = gp.calculate({origin}, state_edges.size() + 1);
+    const bool reaches_goal = costs.contains({goal});
     goal_reachable[origin_state] = reaches_goal;
 
     return !reaches_goal;
