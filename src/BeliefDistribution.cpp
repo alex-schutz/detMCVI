@@ -1,8 +1,7 @@
 #include "BeliefDistribution.h"
 
 namespace MCVI {
-const State& SampleOneState(const BeliefDistribution& belief,
-                            std::mt19937_64& rng) {
+State SampleOneState(const BeliefDistribution& belief, std::mt19937_64& rng) {
   return SamplePMF<State>(belief, rng);
 }
 

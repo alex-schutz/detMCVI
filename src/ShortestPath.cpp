@@ -7,14 +7,12 @@
 
 namespace MCVI {
 
-std::vector<std::pair<std::vector<int64_t>, int64_t>>
+std::vector<std::pair<State, int64_t>>
 ShortestPathFasterAlgorithm::reconstructPath(
-    const std::vector<int64_t>& target,
-    const std::unordered_map<std::vector<int64_t>,
-                             std::pair<std::vector<int64_t>, int64_t>>& pred)
-    const {
-  std::vector<std::pair<std::vector<int64_t>, int64_t>> path;
-  std::pair<std::vector<int64_t>, int64_t> current = {target, -1};
+    const State& target,
+    const StateMap<std::pair<State, int64_t>>& pred) const {
+  std::vector<std::pair<State, int64_t>> path;
+  std::pair<State, int64_t> current = {target, -1};
   while (true) {
     path.push_back(current);
     const auto currentPtr = pred.find(current.first);
@@ -27,20 +25,17 @@ ShortestPathFasterAlgorithm::reconstructPath(
 }
 
 void ShortestPathFasterAlgorithm::initParams() const {
-  d = InfMap(std::unordered_map<std::vector<int64_t>, double>({}));
+  d = InfMap(StateMap<double>({}));
   inQueue = {};
   depth = {};
   predecessor = {};
 }
 
-std::tuple<std::unordered_map<std::vector<int64_t>, double>,
-           std::unordered_map<std::vector<int64_t>,
-                              std::pair<std::vector<int64_t>, int64_t>>>
-ShortestPathFasterAlgorithm::calculate(const std::vector<int64_t>& source,
-                                       int64_t N) const {
+std::tuple<StateMap<double>, StateMap<std::pair<State, int64_t>>>
+ShortestPathFasterAlgorithm::calculate(const State& source, int64_t N) const {
   initParams();
 
-  std::deque<std::vector<int64_t>> q;
+  std::deque<State> q;
   q.push_back(source);
   d[source] = 0.0;
   inQueue[source] = true;

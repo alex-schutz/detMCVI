@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <random>
+#include <stdexcept>
 #include <unordered_map>
 
 namespace MCVI {
@@ -65,15 +66,18 @@ typedef struct {
 void PrintStats(const Welford& stats, const std::string& alg_name);
 
 /// @brief Sample from a PMF
-template <typename T>
-double SumPMF(const std::unordered_map<T, double>& pmf) {
+template <typename T, typename Hash = std::hash<T>,
+          typename Equal = std::equal_to<T>>
+double SumPMF(const std::unordered_map<T, double, Hash, Equal>& pmf) {
   double sum_p = 0.0;
   for (const auto& [s, p] : pmf) sum_p += p;
   return sum_p;
 }
 
-template <typename T>
-T SamplePMF(const std::unordered_map<T, double>& pmf, std::mt19937_64& rng) {
+template <typename T, typename Hash = std::hash<T>,
+          typename Equal = std::equal_to<T>>
+T SamplePMF(const std::unordered_map<T, double, Hash, Equal>& pmf,
+            std::mt19937_64& rng) {
   const double max_p = SumPMF<T>(pmf);
   std::uniform_real_distribution<> dist(0, max_p);
   const double u = dist(rng);
@@ -82,12 +86,13 @@ T SamplePMF(const std::unordered_map<T, double>& pmf, std::mt19937_64& rng) {
     sum_p += p;
     if (sum_p > u) return s;
   }
-  return -1;
+  throw std::runtime_error("Unable to sample from pmf");
 }
 
-template <typename T>
+template <typename T, typename Hash = std::hash<T>,
+          typename Equal = std::equal_to<T>>
 std::vector<std::pair<T, double>> weightedShuffle(
-    const std::unordered_map<T, double>& pmf, std::mt19937_64& rng,
+    const std::unordered_map<T, double, Hash, Equal>& pmf, std::mt19937_64& rng,
     size_t sample_cap) {
   auto exp_dist = std::exponential_distribution<double>();
 
