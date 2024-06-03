@@ -16,14 +16,9 @@
 namespace MCVI {
 
 class AlphaVectorNode {
-  using ValueMap = std::unordered_map<
-      int64_t,
-      std::unordered_map<int64_t, std::unordered_map<int64_t, double>>>;
-
  private:
-  double _V_node;  // a lower bound value
   int64_t _best_action;
-  std::unordered_map<int64_t, double>
+  std::unordered_map<std::vector<int64_t>, double>
       _alpha;  // expected total reward of executing policy from this node with
                // initial state
 
@@ -36,8 +31,10 @@ class AlphaVectorNode {
   /// @brief Return the best value for this node
   double V_node() const;
 
-  void SetAlpha(int64_t state, double value) { _alpha[state] = value; }
-  std::optional<double> GetAlpha(int64_t state) const;
+  void SetAlpha(const std::vector<int64_t>& state, double value) {
+    _alpha[state] = value;
+  }
+  std::optional<double> GetAlpha(const std::vector<int64_t>& state) const;
 };
 
 }  // namespace MCVI
