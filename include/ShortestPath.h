@@ -16,12 +16,15 @@ namespace MCVI {
 
 class InfMap {
  private:
-  std::unordered_map<int64_t, double> _map;
+  std::unordered_map<std::vector<int64_t>, double> _map;
 
  public:
   InfMap() = default;
-  const std::unordered_map<int64_t, double>& map() const { return _map; }
-  double& operator[](int64_t key) {
+  InfMap(const std::unordered_map<std::vector<int64_t>, double>& v) : _map(v) {}
+  const std::unordered_map<std::vector<int64_t>, double>& map() const {
+    return _map;
+  }
+  double& operator[](std::vector<int64_t> key) {
     auto it = _map.find(key);
     if (it != _map.end()) return it->second;
     return _map.insert({key, std::numeric_limits<double>::infinity()})
@@ -43,9 +46,11 @@ class InfMap {
 class ShortestPathFasterAlgorithm {
  private:
   mutable InfMap d;
-  mutable std::unordered_map<int64_t, bool> inQueue;
-  mutable std::unordered_map<int64_t, int64_t> depth;
-  mutable std::unordered_map<int64_t, std::pair<int64_t, int64_t>> predecessor;
+  mutable std::unordered_map<std::vector<int64_t>, bool> inQueue;
+  mutable std::unordered_map<std::vector<int64_t>, int64_t> depth;
+  mutable std::unordered_map<std::vector<int64_t>,
+                             std::pair<std::vector<int64_t>, int64_t>>
+      predecessor;
 
   void initParams() const;
 
@@ -60,8 +65,8 @@ class ShortestPathFasterAlgorithm {
    * The edge number is only used to label which edge is taken when
    * reconstructing the path, and can be set arbitrarily.
    */
-  virtual std::vector<std::tuple<int64_t, double, int64_t>> getEdges(
-      int64_t node) const = 0;
+  virtual std::vector<std::tuple<std::vector<int64_t>, double, int64_t>>
+  getEdges(const std::vector<int64_t>& node) const = 0;
 
   /**
    * @brief Calculate the shortest path between source and each node up to
@@ -70,14 +75,16 @@ class ShortestPathFasterAlgorithm {
    * Returns a map of <destination, cost> pairs and a map of <node,
    * <predecessor_node, edge>> pairs. Use the latter with `reconstructPath`.
    */
-  std::tuple<std::unordered_map<int64_t, double>,
-             std::unordered_map<int64_t, std::pair<int64_t, int64_t>>>
-  calculate(int64_t source, int64_t N) const;
+  std::tuple<std::unordered_map<std::vector<int64_t>, double>,
+             std::unordered_map<std::vector<int64_t>,
+                                std::pair<std::vector<int64_t>, int64_t>>>
+  calculate(const std::vector<int64_t>& source, int64_t N) const;
 
   /// @brief Reconstruct path of <node, next_edge> to target
-  std::vector<std::pair<int64_t, int64_t>> reconstructPath(
-      int64_t target,
-      const std::unordered_map<int64_t, std::pair<int64_t, int64_t>>& pred)
+  std::vector<std::pair<std::vector<int64_t>, int64_t>> reconstructPath(
+      const std::vector<int64_t>& target,
+      const std::unordered_map<std::vector<int64_t>,
+                               std::pair<std::vector<int64_t>, int64_t>>& pred)
       const;
 };
 

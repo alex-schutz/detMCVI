@@ -13,14 +13,15 @@
 #include <unordered_map>
 #include <vector>
 
+#include "StateVector.h"
+
 namespace MCVI {
 
 class AlphaVectorNode {
  private:
   int64_t _best_action;
-  std::unordered_map<std::vector<int64_t>, double>
-      _alpha;  // expected total reward of executing policy from this node with
-               // initial state
+  StateMap<double> _alpha;  // expected total reward of executing policy from
+                            // this node with initial state
 
  public:
   AlphaVectorNode(int64_t init_best_action);
@@ -31,10 +32,8 @@ class AlphaVectorNode {
   /// @brief Return the best value for this node
   double V_node() const;
 
-  void SetAlpha(const std::vector<int64_t>& state, double value) {
-    _alpha[state] = value;
-  }
-  std::optional<double> GetAlpha(const std::vector<int64_t>& state) const;
+  void SetAlpha(const State& state, double value) { _alpha[state] = value; }
+  std::optional<double> GetAlpha(const State& state) const;
 };
 
 }  // namespace MCVI

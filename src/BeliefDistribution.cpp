@@ -1,9 +1,9 @@
 #include "BeliefDistribution.h"
 
 namespace MCVI {
-const std::vector<int64_t>& SampleOneState(const BeliefDistribution& belief,
-                                           std::mt19937_64& rng) {
-  return SamplePMF<const std::vector<int64_t>&>(belief, rng);
+const State& SampleOneState(const BeliefDistribution& belief,
+                            std::mt19937_64& rng) {
+  return SamplePMF<State>(belief, rng);
 }
 
 std::ostream& operator<<(std::ostream& os, const BeliefDistribution& bd) {
