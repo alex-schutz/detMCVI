@@ -61,6 +61,16 @@ class MCVIPlanner {
   int64_t EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
                                       int64_t init_belief_samples) const;
 
+  int64_t EvaluationWithSimulationFSCFixedDist(
+      int64_t max_steps, std::vector<State> init_dist) const;
+
+  std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> PlanAndEvaluate2(
+      int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
+      int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
+      int64_t max_eval_steps,
+      const std::vector<std::pair<int64_t, std::vector<State>>>& eval_data,
+      int64_t completion_threshold, int64_t completion_reps);
+
  private:
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
@@ -85,7 +95,7 @@ class MCVIPlanner {
       double target, double R_lower, int64_t max_depth_sim);
 };
 
-int64_t EvaluationWithGreedyTreePolicy(
+std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
     const PathToTerminal& ptt, const std::string& alg_name);

@@ -20,7 +20,7 @@ def extract_float(line) -> float:
 def percentage_by_type(results, result_types, type_index) -> float:
     n_trials = sum([results[f"{t} Count"] for t in result_types])
     n_type = results[f"{result_types[type_index]} Count"]
-    return n_type / n_trials * 100
+    return n_type / n_trials * 100 if n_trials > 0 else np.nan
 
 
 def parse_evaluation(lines: list[str]) -> dict[str, float | int]:

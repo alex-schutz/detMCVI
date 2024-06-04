@@ -253,6 +253,99 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
   return {_fsc, Tr_root};
 }
 
+std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>>
+MCVIPlanner::PlanAndEvaluate2(
+    int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
+    int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
+    int64_t max_eval_steps,
+    const std::vector<std::pair<int64_t, std::vector<State>>>& eval_data,
+    int64_t completion_threshold, int64_t completion_reps) {
+  // Calculate the lower bound
+  const double R_lower =
+      FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
+
+  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
+      _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
+  const auto node = AlphaVectorNode(RandomAction());
+  _fsc.AddNode(node);
+
+  int64_t i = 0;
+  int64_t time_sum = 0;
+  size_t eval_idx = 0;
+  int64_t completed_times = 0;
+  while (i < max_nb_iter) {
+    const auto iter_start = std::chrono::steady_clock::now();
+    std::cout << "--- Iter " << i << " ---" << std::endl;
+    std::cout << "Tr_root upper bound: " << Tr_root->GetUpper() << std::endl;
+    std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
+    const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
+    std::cout << "Precision: " << precision << std::endl;
+    if (std::abs(precision) < epsilon) {
+      std::cout << "MCVI planning complete, reached the target precision."
+                << std::endl;
+      break;
+    }
+
+    std::cout << "Belief Expand Process" << std::flush;
+    std::chrono::steady_clock::time_point begin =
+        std::chrono::steady_clock::now();
+    std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
+    SampleBeliefs(Tr_root, SampleOneState(_b0, _rng), 0, max_depth_sim, _pomdp,
+                  _heuristic, eval_depth, eval_epsilon, traversal_list,
+                  precision, R_lower, max_depth_sim);
+    std::chrono::steady_clock::time_point end =
+        std::chrono::steady_clock::now();
+    std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
+
+    std::cout << "Backup Process" << std::flush;
+    begin = std::chrono::steady_clock::now();
+    while (!traversal_list.empty()) {
+      auto tr_node = traversal_list.back();
+      BackUp(tr_node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
+      traversal_list.pop_back();
+    }
+    end = std::chrono::steady_clock::now();
+    std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
+
+    _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
+    ++i;
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - iter_start);
+    time_sum += elapsed.count();
+
+    while (eval_idx < eval_data.size() - 1 &&
+           eval_data.at(eval_idx + 1).first <= time_sum)
+      ++eval_idx;
+    if (eval_data.at(eval_idx).first <= time_sum) {
+      std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
+                << eval_data.at(eval_idx).second.size() << " trials) at time "
+                << time_sum / 1000.0 << ":" << std::endl;
+      const int64_t completed_count = EvaluationWithSimulationFSCFixedDist(
+          max_eval_steps, eval_data.at(eval_idx).second);
+      std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
+                << " nodes." << std::endl;
+      if (completed_count >= completion_threshold)
+        completed_times++;
+      else
+        completed_times = 0;
+      if (completed_times >= completion_reps) return {_fsc, Tr_root};
+    }
+    if (time_sum >= max_computation_ms) return {_fsc, Tr_root};
+  }
+  if (i >= max_nb_iter)
+    std::cout << "MCVI planning complete, reached the max iterations."
+              << std::endl;
+  std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
+            << eval_data.at(eval_idx).second.size() << " trials) at time "
+            << time_sum / 1000.0 << ":" << std::endl;
+  EvaluationWithSimulationFSCFixedDist(max_eval_steps,
+                                       eval_data.at(eval_idx).second);
+  std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes() << " nodes."
+            << std::endl;
+  return {_fsc, Tr_root};
+}
+
 static int64_t GreedyBestAction(const BeliefDistribution& belief,
                                 SimInterface* pomdp) {
   int64_t best_a = -1;
@@ -403,12 +496,63 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
   return eval_stats.complete.getCount();
 }
 
-int64_t EvaluationWithGreedyTreePolicy(
+int64_t MCVIPlanner::EvaluationWithSimulationFSCFixedDist(
+    int64_t max_steps, std::vector<State> init_dist) const {
+  const double gamma = _pomdp->GetDiscount();
+  EvaluationStats eval_stats;
+
+  for (const auto& initial_state : init_dist) {
+    State state = initial_state;
+    double sum_r = 0.0;
+    int64_t nI = _fsc.GetStartNodeIndex();
+    int64_t i = 0;
+    for (; i < max_steps; ++i) {
+      if (nI == -1) {
+        if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+          eval_stats.no_solution_off_policy.update(sum_r);
+        } else {
+          eval_stats.off_policy.update(sum_r);
+        }
+        break;
+      }
+
+      const int64_t action = _fsc.GetNode(nI).GetBestAction();
+      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
+      sum_r += std::pow(gamma, i) * reward;
+
+      if (done) {
+        eval_stats.complete.update(sum_r);
+        break;
+      }
+
+      nI = _fsc.GetEdgeValue(nI, obs);
+
+      state = sNext;
+    }
+    if (i == max_steps) {
+      if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+        eval_stats.no_solution_on_policy.update(sum_r);
+      } else {
+        eval_stats.max_iterations.update(sum_r);
+      }
+    }
+  }
+  PrintStats(eval_stats.complete, "MCVI completed problem");
+  PrintStats(eval_stats.off_policy, "MCVI exited policy");
+  PrintStats(eval_stats.max_iterations, "MCVI max iterations");
+  PrintStats(eval_stats.no_solution_on_policy, "MCVI no solution (on policy)");
+  PrintStats(eval_stats.no_solution_off_policy,
+             "MCVI no solution (exited policy)");
+  return eval_stats.complete.getCount();
+}
+
+std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
     const PathToTerminal& ptt, const std::string& alg_name) {
   const double gamma = pomdp->GetDiscount();
   EvaluationStats eval_stats;
+  std::vector<State> success_states;
   const BeliefDistribution init_belief =
       SampleInitialBelief(init_belief_samples, pomdp);
   State initial_state = {};
@@ -434,6 +578,7 @@ int64_t EvaluationWithGreedyTreePolicy(
 
       if (done) {
         eval_stats.complete.update(sum_r);
+        success_states.push_back(initial_state);
         break;
       }
 
@@ -456,7 +601,7 @@ int64_t EvaluationWithGreedyTreePolicy(
              alg_name + " no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,
              alg_name + " no solution (exited policy)");
-  return eval_stats.complete.getCount();
+  return success_states;
 }
 
 }  // namespace MCVI
