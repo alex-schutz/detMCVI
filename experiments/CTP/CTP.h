@@ -7,7 +7,7 @@
 #include "SimInterface.h"
 #include "auto_generated_graph.h"
 
-#define USE_HEURISTIC_BOUNDS 1
+#define USE_HEURISTIC_BOUNDS 0
 
 static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
                     const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
@@ -81,22 +81,17 @@ class CTP : public MCVI::SimInterface {
   bool IsTerminal(const MCVI::State& sI) const override {
     return sI.at(sfIdx("loc")) == goal;
   }
+
+#if (USE_HEURISTIC_BOUNDS == 1)
   std::optional<double> GetHeuristicUpper(const MCVI::StateMap<double>& belief,
                                           int64_t max_depth) const override {
-#if (USE_HEURISTIC_BOUNDS == 1)
     return heuristicUpper(belief, max_depth);
-#else
-    return std::nullopt;
-#endif
   }
   std::optional<double> GetHeuristicLower(const MCVI::StateMap<double>& belief,
                                           int64_t max_depth) const override {
-#if (USE_HEURISTIC_BOUNDS == 1)
     return heuristicLower(belief, max_depth);
-#else
-    return std::nullopt;
-#endif
   }
+#endif
 
   std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
                                                       int64_t aI) override {
