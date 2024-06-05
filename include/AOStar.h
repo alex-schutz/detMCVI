@@ -258,7 +258,7 @@ std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
       policy_tree.close();
       std::cout << "AO* greedy policy tree contains " << n_greedy_nodes
                 << " nodes." << std::endl;
-      if (completed_states.size() >= completion_threshold)
+      if (completed_states.size() >= (size_t)completion_threshold)
         completed_times++;
       else
         completed_times = 0;

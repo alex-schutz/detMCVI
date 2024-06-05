@@ -27,7 +27,7 @@ class AlphaVectorFSC {
 
   /// @brief Return a reference to node number nI
   const AlphaVectorNode& GetNode(int64_t nI) const { return _nodes.at(nI); }
-  AlphaVectorNode& GetNode(int64_t nI) { return _nodes[nI]; }
+  AlphaVectorNode& GetNodeModifiable(int64_t nI) { return _nodes[nI]; }
 
   /// @brief Return the number of nodes in the FSC
   int64_t NumNodes() const { return _nodes.size(); }

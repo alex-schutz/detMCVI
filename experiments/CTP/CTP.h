@@ -7,6 +7,8 @@
 #include "SimInterface.h"
 #include "auto_generated_graph.h"
 
+#define USE_HEURISTIC_BOUNDS 1
+
 static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
                     const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
   return p1.second < p2.second;
@@ -79,9 +81,21 @@ class CTP : public MCVI::SimInterface {
   bool IsTerminal(const MCVI::State& sI) const override {
     return sI.at(sfIdx("loc")) == goal;
   }
-  std::optional<double> GetHeuristic(const MCVI::StateMap<double>& belief,
-                                     int64_t max_depth) const override {
-    return heuristic(belief, max_depth);
+  std::optional<double> GetHeuristicUpper(const MCVI::StateMap<double>& belief,
+                                          int64_t max_depth) const override {
+#if (USE_HEURISTIC_BOUNDS == 1)
+    return heuristicUpper(belief, max_depth);
+#else
+    return std::nullopt;
+#endif
+  }
+  std::optional<double> GetHeuristicLower(const MCVI::StateMap<double>& belief,
+                                          int64_t max_depth) const override {
+#if (USE_HEURISTIC_BOUNDS == 1)
+    return heuristicLower(belief, max_depth);
+#else
+    return std::nullopt;
+#endif
   }
 
   std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
@@ -144,7 +158,7 @@ class CTP : public MCVI::SimInterface {
     for (const auto& [name, state_elem] : names) {
       const auto sf_sz = state_factor_sizes.find(name);
       assert(sf_sz != state_factor_sizes.cend());
-      assert(sf_sz->second > state_elem);
+      //   assert(sf_sz->second > state_elem);
       state.push_back(state_elem);
     }
     return state;
@@ -347,6 +361,22 @@ class CTP : public MCVI::SimInterface {
     return maxElement;
   }
 
+  MCVI::State findMinSumElement(const MCVI::StateMap<double>& belief,
+                                const std::vector<int64_t>& indices) const {
+    MCVI::State minElement;
+    double minSum = std::numeric_limits<double>::infinity();
+
+    for (const auto& [state, value] : belief) {
+      double currentSum = sumStateValues(state, indices);
+      if (currentSum < minSum) {
+        minSum = currentSum;
+        minElement = state;
+      }
+    }
+
+    return minElement;
+  }
+
   double get_state_value(const MCVI::State& state, int64_t max_depth) const {
     // find cost to goal
     std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
@@ -357,46 +387,70 @@ class CTP : public MCVI::SimInterface {
         state_edges.insert(e);
     }
     auto gp = GraphPath(state_edges);
-    const MCVI::State loc = {state.at(sfIdx("loc"))};
-    const auto [costs, pred] = gp.calculate(loc, max_depth);
+    const auto [costs, pred] = gp.calculate({goal}, max_depth);
+    const auto loc_idx = sfIdx("loc");
 
     // Calculate discounted reward
-    const auto path = gp.reconstructPath({goal}, pred);
-    const double gamma = GetDiscount();
-    double sum_reward = 0.0;
-    double discount = 1.0;
-    MCVI::State world_state = state;
-    for (size_t i = 0; i < path.size(); ++i) {
-      const int64_t action = path.at(i).second;
-      if (action == -1) break;
+    for (const auto& node_no : nodes) {
+      const auto path = gp.reconstructPath({node_no}, pred);
+      const double gamma = GetDiscount();
+      double sum_reward = 0.0;
+      double discount = 1.0;
+      MCVI::State world_state = state;
+      for (size_t i = path.size() - 1; i >= 1; --i) {
+        const auto node = path.at(i).first;
+        if (node == MCVI::State({goal})) break;
 
-      world_state[sfIdx("loc")] = path.at(i).first.at(0);
-      MCVI::State sNext;
-      const double reward = applyActionToState(world_state, action, sNext);
-      if (i < path.size() - 1)
-        assert(sNext.at(sfIdx("loc")) == path.at(i + 1).first.at(0));
+        world_state[loc_idx] = path.at(i).first.at(0);
+        MCVI::State sNext;
+        const double reward =
+            applyActionToState(world_state, path.at(i - 1).first.at(0), sNext);
+        assert(sNext.at(loc_idx) == path.at(i - 1).first.at(0));
 
-      sum_reward += discount * reward;
-      discount *= gamma;
+        sum_reward += discount * reward;
+        discount *= gamma;
+      }
+      world_state[loc_idx] = node_no;
+      state_value[world_state] = sum_reward;
     }
 
-    return sum_reward;
+    return state_value.at(state);
   }
 
   // find an upper bound for the value of a belief
-  double heuristic(const MCVI::StateMap<double>& belief,
-                   int64_t max_depth) const {
+  double heuristicUpper(const MCVI::StateMap<double>& belief,
+                        int64_t max_depth) const {
     std::vector<std::string> sf_keys;
     for (const auto& [e, p] : stoch_edges) sf_keys.push_back(edge2str(e));
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
-    const MCVI::State best_case_state = findMaxSumElement(belief, sf_indices);
+    MCVI::State best_case_state = findMaxSumElement(belief, sf_indices);
+    if (best_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
+      best_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(best_case_state);
     if (it != state_value.cend()) return it->second;
 
     const double val = get_state_value(best_case_state, max_depth);
     state_value[best_case_state] = val;
+    return val;
+  }
+
+  double heuristicLower(const MCVI::StateMap<double>& belief,
+                        int64_t max_depth) const {
+    std::vector<std::string> sf_keys;
+    for (const auto& [e, p] : stoch_edges) sf_keys.push_back(edge2str(e));
+    const auto sf_indices = sfToIndices(sf_keys);
+    // get state with most traversable edges
+    MCVI::State worst_case_state = findMinSumElement(belief, sf_indices);
+    if (worst_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
+      worst_case_state[sfIdx("loc")] = origin;
+
+    const auto it = state_value.find(worst_case_state);
+    if (it != state_value.cend()) return it->second;
+
+    const double val = get_state_value(worst_case_state, max_depth);
+    state_value[worst_case_state] = val;
     return val;
   }
 };

@@ -42,8 +42,10 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   const int64_t best_act = Tr_node->GetBestActLBound();
   auto node_new = AlphaVectorNode(best_act);
   std::unordered_map<int64_t, int64_t> node_edges;
-  for (const auto& [obs, next_belief] : Tr_node->GetChildren(best_act))
-    node_edges[obs] = next_belief.GetBestPolicyNode();
+  for (const auto& [obs, next_belief] : Tr_node->GetChildren(best_act)) {
+    if (next_belief.GetBestPolicyNode() >= 0)
+      node_edges[obs] = next_belief.GetBestPolicyNode();
+  }
 
   if (node_edges.empty()) return;  // Terminal belief
 
@@ -104,8 +106,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
     int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
     int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon) {
   // Calculate the lower bound
-  const double R_lower =
-      FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
+  const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
 
   std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
       _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
@@ -168,8 +169,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                              int64_t completion_threshold,
                              int64_t completion_reps) {
   // Calculate the lower bound
-  const double R_lower =
-      FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
+  const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
 
   std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
       _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
@@ -257,8 +257,7 @@ MCVIPlanner::PlanAndEvaluate2(
     const std::vector<std::pair<int64_t, std::vector<State>>>& eval_data,
     int64_t completion_threshold, int64_t completion_reps) {
   // Calculate the lower bound
-  const double R_lower =
-      FindRLower(_pomdp, _b0, _pomdp->GetSizeOfA(), eval_epsilon, eval_depth);
+  const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
 
   std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
       _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);

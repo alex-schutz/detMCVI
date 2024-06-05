@@ -39,7 +39,11 @@ class SimInterface {
 
   // --------------------------------------------------------
 
-  virtual std::optional<double> GetHeuristic(
+  virtual std::optional<double> GetHeuristicUpper(
+      const MCVI::StateMap<double>& /*belief*/, int64_t /*max_depth*/) const {
+    return std::nullopt;
+  }
+  virtual std::optional<double> GetHeuristicLower(
       const MCVI::StateMap<double>& /*belief*/, int64_t /*max_depth*/) const {
     return std::nullopt;
   }

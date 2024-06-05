@@ -12,6 +12,7 @@ void ObservationNode::BackUp(AlphaVectorFSC& fsc, double R_lower,
 }
 
 void ObservationNode::BackUpFromNextBelief() {
+  if (_next_belief->GetBestPolicyNode() == -1) return;
   double nextLower = _next_belief->GetLower() + _sum_reward;
   double nextUpper = _next_belief->GetUpper() + _sum_reward;
 
@@ -218,14 +219,17 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
     const BeliefDistribution& belief, int64_t belief_depth,
     const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
     SimInterface* sim) {
-  const auto H_val = sim->GetHeuristic(belief, eval_depth);
+  const auto H_Uval = sim->GetHeuristicUpper(belief, eval_depth);
+  const auto H_Lval = sim->GetHeuristicLower(belief, eval_depth);
   const auto U =
-      H_val.has_value()
-          ? std::pow(sim->GetDiscount(), belief_depth) * H_val.value()
+      H_Uval.has_value()
+          ? std::pow(sim->GetDiscount(), belief_depth) * H_Uval.value()
           : UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(),
                                  belief_depth, eval_depth);
   const auto L =
-      FindRLower(sim, belief, sim->GetSizeOfA(), eval_epsilon, eval_depth);
+      H_Lval.has_value()
+          ? std::pow(sim->GetDiscount(), belief_depth) * H_Lval.value()
+          : FindRLower(sim, belief, eval_epsilon, eval_depth - belief_depth);
   const auto node =
       std::make_shared<BeliefTreeNode>(belief, belief_depth, U, L);
   return node;

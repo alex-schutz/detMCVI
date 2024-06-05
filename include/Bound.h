@@ -88,6 +88,6 @@ double UpperBoundEvaluation(const BeliefDistribution& belief,
  * @return double
  */
 double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,
-                  int64_t num_actions, double epsilon, int64_t max_depth);
+                  double epsilon, int64_t max_depth);
 
 }  // namespace MCVI

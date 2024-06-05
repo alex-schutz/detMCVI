@@ -118,6 +118,7 @@ class BeliefTreeNode {
         _belief_depth(belief_depth),
         _bestActUBound(-1),
         _bestActLBound(-1),
+        _best_policy_node(-1),
         _upper_bound(upper_bound),
         _lower_bound(lower_bound),
         _index(belief_tree_count++) {}

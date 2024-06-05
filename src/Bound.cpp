@@ -6,11 +6,6 @@
 
 namespace MCVI {
 
-static bool CmpPair(const std::pair<int64_t, double>& p1,
-                    const std::pair<int64_t, double>& p2) {
-  return p1.second < p2.second;
-}
-
 double UpperBoundEvaluation(const BeliefDistribution& belief,
                             const PathToTerminal& solver, double gamma,
                             int64_t belief_depth, int64_t max_depth) {
@@ -24,31 +19,26 @@ double UpperBoundEvaluation(const BeliefDistribution& belief,
 }
 
 double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,
-                  int64_t num_actions, double epsilon, int64_t max_depth) {
-  std::unordered_map<int64_t, double> action_min_reward;
-  for (int64_t action = 0; action < num_actions; ++action) {
-    double min_reward = std::numeric_limits<double>::infinity();
-    for (const auto& [s, prob] : b0) {
-      State state = s;
-      int64_t step = 0;
-      while ((step < max_depth) &&
-             (std::pow(pomdp->GetDiscount(), step) > epsilon)) {
-        const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
-        if (reward < min_reward) {
-          action_min_reward[action] = reward;
-          min_reward = reward;
-        }
-        if (done) break;
-        state = sNext;
-        ++step;
-      }
+                  double epsilon, int64_t max_depth) {
+  const int64_t default_action = 0;
+  const double gamma = pomdp->GetDiscount();
+  double belief_value = 0.0;
+
+  for (const auto& [s, prob] : b0) {
+    double sum_reward = 0;
+    State state = s;
+    int64_t step = 0;
+    while ((step < max_depth) && (std::pow(gamma, step) > epsilon)) {
+      const auto [sNext, obs, reward, done] =
+          pomdp->Step(state, default_action);
+      sum_reward += std::pow(gamma, step) * reward;
+      if (done) break;
+      state = sNext;
+      ++step;
     }
+    belief_value += sum_reward * prob;
   }
-  const double max_min_reward =
-      std::max_element(std::begin(action_min_reward),
-                       std::end(action_min_reward), CmpPair)
-          ->second;
-  return max_min_reward / (1 - pomdp->GetDiscount());
+  return belief_value;
 }
 
 std::vector<std::tuple<State, double, int64_t>> PathToTerminal::getEdges(

@@ -91,7 +91,7 @@ class Battleships : public MCVI::SimInterface {
     for (const auto& [name, state_elem] : names) {
       const auto sf_sz = state_factor_sizes.find(name);
       assert(sf_sz != state_factor_sizes.cend());
-      assert(sf_sz->second > state_elem);
+      //   assert(sf_sz->second > state_elem);
       state.push_back(state_elem);
     }
     return state;

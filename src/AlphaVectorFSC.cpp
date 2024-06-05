@@ -11,7 +11,7 @@ int64_t AlphaVectorFSC::GetEdgeValue(int64_t nI, int64_t observation) const {
 
 const std::unordered_map<int64_t, int64_t>& AlphaVectorFSC::GetEdges(
     int64_t nI) const {
-  return _edges[nI];
+  return _edges.at(nI);
 }
 
 int64_t AlphaVectorFSC::AddNode(const AlphaVectorNode& node) {
@@ -96,7 +96,7 @@ double AlphaVectorFSC::GetNodeAlpha(const State& state, int64_t nI,
   const std::optional<double> val = GetNode(nI).GetAlpha(state);
   if (val.has_value()) return val.value();
   const double V = SimulateTrajectory(nI, state, max_depth_sim, R_lower, pomdp);
-  GetNode(nI).SetAlpha(state, V);
+  GetNodeModifiable(nI).SetAlpha(state, V);
   return V;
 }
 
