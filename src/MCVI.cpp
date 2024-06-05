@@ -64,8 +64,7 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 }
 
 void MCVIPlanner::SampleBeliefs(
-    std::shared_ptr<BeliefTreeNode> node, const State& state, int64_t depth,
-    int64_t max_depth, SimInterface* pomdp, const PathToTerminal& heuristic,
+    std::shared_ptr<BeliefTreeNode> node, int64_t depth, int64_t max_depth,
     int64_t eval_depth, double eval_epsilon,
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list, double target,
     double R_lower, int64_t max_depth_sim) {
@@ -80,9 +79,8 @@ void MCVIPlanner::SampleBeliefs(
 
   try {
     const auto next_node = node->ChooseObservation(target);
-    SampleBeliefs(next_node, state, depth + 1, max_depth, pomdp, heuristic,
-                  eval_depth, eval_epsilon, traversal_list, target, R_lower,
-                  max_depth_sim);
+    SampleBeliefs(next_node, depth + 1, max_depth, eval_depth, eval_epsilon,
+                  traversal_list, target, R_lower, max_depth_sim);
   } catch (std::logic_error& e) {
     if (std::string(e.what()) == "Failed to find best observation") return;
     throw(e);
@@ -132,9 +130,8 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
     std::chrono::steady_clock::time_point begin =
         std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
-    SampleBeliefs(Tr_root, SampleOneState(_b0, _rng), 0, max_depth_sim, _pomdp,
-                  _heuristic, eval_depth, eval_epsilon, traversal_list,
-                  precision, R_lower, max_depth_sim);
+    SampleBeliefs(Tr_root, 0, max_depth_sim, eval_depth, eval_epsilon,
+                  traversal_list, precision, R_lower, max_depth_sim);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
@@ -200,9 +197,8 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
     std::chrono::steady_clock::time_point begin =
         std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
-    SampleBeliefs(Tr_root, SampleOneState(_b0, _rng), 0, max_depth_sim, _pomdp,
-                  _heuristic, eval_depth, eval_epsilon, traversal_list,
-                  precision, R_lower, max_depth_sim);
+    SampleBeliefs(Tr_root, 0, max_depth_sim, eval_depth, eval_epsilon,
+                  traversal_list, precision, R_lower, max_depth_sim);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
@@ -290,9 +286,8 @@ MCVIPlanner::PlanAndEvaluate2(
     std::chrono::steady_clock::time_point begin =
         std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list;
-    SampleBeliefs(Tr_root, SampleOneState(_b0, _rng), 0, max_depth_sim, _pomdp,
-                  _heuristic, eval_depth, eval_epsilon, traversal_list,
-                  precision, R_lower, max_depth_sim);
+    SampleBeliefs(Tr_root, 0, max_depth_sim, eval_depth, eval_epsilon,
+                  traversal_list, precision, R_lower, max_depth_sim);
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;

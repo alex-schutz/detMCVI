@@ -52,6 +52,7 @@ class CTP : public MCVI::SimInterface {
   double _idle_reward;
   double _bad_action_reward;
   mutable MCVI::StateMap<bool> goal_reachable;
+  mutable MCVI::StateMap<double> state_value;
 
  public:
   CTP(std::mt19937_64& rng)
@@ -77,6 +78,10 @@ class CTP : public MCVI::SimInterface {
   int64_t getGoal() const { return goal; }
   bool IsTerminal(const MCVI::State& sI) const override {
     return sI.at(sfIdx("loc")) == goal;
+  }
+  std::optional<double> GetHeuristic(const MCVI::StateMap<double>& belief,
+                                     int64_t max_depth) const override {
+    return heuristic(belief, max_depth);
   }
 
   std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
@@ -310,5 +315,88 @@ class CTP : public MCVI::SimInterface {
     const double max_edge =
         std::max_element(edges.begin(), edges.end(), CmpPair)->second;
     return -50 * max_edge;
+  }
+
+  std::vector<int64_t> sfToIndices(
+      const std::vector<std::string>& sf_keys) const {
+    std::vector<int64_t> indices;
+    for (const auto& key : sf_keys) indices.push_back(sfIdx(key));
+    return indices;
+  }
+
+  double sumStateValues(const MCVI::State& state,
+                        const std::vector<int64_t>& sf_indices) const {
+    return std::accumulate(
+        sf_indices.begin(), sf_indices.end(), 0.0,
+        [&state](double sum, int64_t index) { return sum + state[index]; });
+  }
+
+  MCVI::State findMaxSumElement(const MCVI::StateMap<double>& belief,
+                                const std::vector<int64_t>& indices) const {
+    MCVI::State maxElement;
+    double maxSum = -std::numeric_limits<double>::infinity();
+
+    for (const auto& [state, value] : belief) {
+      double currentSum = sumStateValues(state, indices);
+      if (currentSum > maxSum) {
+        maxSum = currentSum;
+        maxElement = state;
+      }
+    }
+
+    return maxElement;
+  }
+
+  double get_state_value(const MCVI::State& state, int64_t max_depth) const {
+    // find cost to goal
+    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+        state_edges;
+    for (const auto& e : edges) {
+      if (!stoch_edges.contains(e.first) ||
+          state.at(sfIdx(edge2str(e.first))) == 1)
+        state_edges.insert(e);
+    }
+    auto gp = GraphPath(state_edges);
+    const MCVI::State loc = {state.at(sfIdx("loc"))};
+    const auto [costs, pred] = gp.calculate(loc, max_depth);
+
+    // Calculate discounted reward
+    const auto path = gp.reconstructPath({goal}, pred);
+    const double gamma = GetDiscount();
+    double sum_reward = 0.0;
+    double discount = 1.0;
+    MCVI::State world_state = state;
+    for (size_t i = 0; i < path.size(); ++i) {
+      const int64_t action = path.at(i).second;
+      if (action == -1) break;
+
+      world_state[sfIdx("loc")] = path.at(i).first.at(0);
+      MCVI::State sNext;
+      const double reward = applyActionToState(world_state, action, sNext);
+      if (i < path.size() - 1)
+        assert(sNext.at(sfIdx("loc")) == path.at(i + 1).first.at(0));
+
+      sum_reward += discount * reward;
+      discount *= gamma;
+    }
+
+    return sum_reward;
+  }
+
+  // find an upper bound for the value of a belief
+  double heuristic(const MCVI::StateMap<double>& belief,
+                   int64_t max_depth) const {
+    std::vector<std::string> sf_keys;
+    for (const auto& [e, p] : stoch_edges) sf_keys.push_back(edge2str(e));
+    const auto sf_indices = sfToIndices(sf_keys);
+    // get state with most traversable edges
+    const MCVI::State best_case_state = findMaxSumElement(belief, sf_indices);
+
+    const auto it = state_value.find(best_case_state);
+    if (it != state_value.cend()) return it->second;
+
+    const double val = get_state_value(best_case_state, max_depth);
+    state_value[best_case_state] = val;
+    return val;
   }
 };

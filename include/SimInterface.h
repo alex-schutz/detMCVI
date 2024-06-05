@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -37,6 +38,11 @@ class SimInterface {
   virtual bool IsTerminal(const State& sI) const = 0;
 
   // --------------------------------------------------------
+
+  virtual std::optional<double> GetHeuristic(
+      const MCVI::StateMap<double>& /*belief*/, int64_t /*max_depth*/) const {
+    return std::nullopt;
+  }
 
   // Maybe add visulization functions? :)
 };

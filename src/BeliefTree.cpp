@@ -218,8 +218,12 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
     const BeliefDistribution& belief, int64_t belief_depth,
     const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
     SimInterface* sim) {
-  const auto U = UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(),
-                                      belief_depth, eval_depth);
+  const auto H_val = sim->GetHeuristic(belief, eval_depth);
+  const auto U =
+      H_val.has_value()
+          ? std::pow(sim->GetDiscount(), belief_depth) * H_val.value()
+          : UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(),
+                                 belief_depth, eval_depth);
   const auto L =
       FindRLower(sim, belief, sim->GetSizeOfA(), eval_epsilon, eval_depth);
   const auto node =
@@ -232,18 +236,19 @@ void BeliefTreeNode::GenerateGraphviz(std::ostream& out) const {
       << "BestPolicyNode: " << GetBestPolicyNode() << "<BR/>"
       << "BestActLBound: " << GetBestActLBound() << "<BR/>"
       << "BestActUBound: " << GetBestActUBound() << "<BR/>"
-      << "UpperBound: " << GetUpper() << "<BR/>" << "LowerBound: " << GetLower()
-      << ">];" << std::endl;
+      << "UpperBound: " << GetUpper() << "<BR/>"
+      << "LowerBound: " << GetLower() << ">];" << std::endl;
 
   for (const auto& [act, actNode] : _action_edges) {
     out << "tr" << GetId() << "_" << act
         << " [shape=point, style=filled, fillcolor=black];" << std::endl;
-    out << "tr" << GetId() << " -> " << "tr" << GetId() << "_" << act
-        << " [label=<a: " << act << ">];" << std::endl;
+    out << "tr" << GetId() << " -> "
+        << "tr" << GetId() << "_" << act << " [label=<a: " << act << ">];"
+        << std::endl;
     for (const auto& [obs, obsChild] : actNode.GetChildren()) {
-      out << "tr" << GetId() << "_" << act << " -> " << "tr"
-          << obsChild.GetBelief()->GetId() << " [label=<o: " << obs << ">];"
-          << std::endl;
+      out << "tr" << GetId() << "_" << act << " -> "
+          << "tr" << obsChild.GetBelief()->GetId() << " [label=<o: " << obs
+          << ">];" << std::endl;
       obsChild.GetBelief()->GenerateGraphviz(out);
     }
   }
@@ -266,12 +271,13 @@ void BeliefTreeNode::DrawPolicyBranch(std::ostream& out, int64_t& i) const {
   const auto actNode = _action_edges.at(act);
   out << "po" << GetId() << "_" << act
       << " [shape=point, style=filled, fillcolor=black];" << std::endl;
-  out << "po" << GetId() << " -> " << "po" << GetId() << "_" << act
-      << " [label=<a: " << act << ">];" << std::endl;
+  out << "po" << GetId() << " -> "
+      << "po" << GetId() << "_" << act << " [label=<a: " << act << ">];"
+      << std::endl;
   for (const auto& [obs, obsChild] : actNode.GetChildren()) {
-    out << "po" << GetId() << "_" << act << " -> " << "po"
-        << obsChild.GetBelief()->GetId() << " [label=<o: " << obs << ">];"
-        << std::endl;
+    out << "po" << GetId() << "_" << act << " -> "
+        << "po" << obsChild.GetBelief()->GetId() << " [label=<o: " << obs
+        << ">];" << std::endl;
     obsChild.GetBelief()->DrawPolicyBranch(out, i);
   }
 }
