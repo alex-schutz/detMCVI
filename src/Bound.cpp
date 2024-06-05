@@ -48,10 +48,7 @@ std::vector<std::tuple<State, double, int64_t>> PathToTerminal::getEdges(
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
     const auto& [sNext, o, reward, done] = pomdp->Step(state, a);
     edges.push_back({sNext, -reward, a});
-    if (done) {
-      terminalStates.insert(sNext);
-      return {{{}, 0, -1}};
-    }
+    if (done) terminalStates.insert(sNext);
   }
   return edges;
 }
