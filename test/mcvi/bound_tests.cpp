@@ -26,7 +26,7 @@ class TestPOMDP : public SimInterface {
     switch (sI.at(0)) {
       case 0:
         if (aI == 0)
-          return {{2}, 0, -1.0, false};
+          return {{0}, 0, -1.0, false};
         else if (aI == 1)
           return {{1}, 0, -1.0, false};
         return {sI, 0, -50.0, false};
@@ -71,9 +71,11 @@ TEST(MCVITest, FindRLower) {
                                           {{4}, 0.166667},
                                           {{5}, 0.166667}});
 
-  const double R_lower_all = FindRLower(&sim, belief, 9, 0.0001, 100);
-  EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
-
-  const double R_lower_9 = FindRLower(&sim, belief, 10, 0.0001, 100);
-  EXPECT_NEAR(R_lower_9, -13 / 0.01, 1e-9);
+  const double R_lower_all = FindRLower(&sim, belief, 0.0001, 100);
+  double expectation = -50.0 * 0.166667;  // state 5
+  for (int i = 0; i < 100; ++i)
+    expectation +=
+        std::pow(sim.GetDiscount(), i) *
+        (-50.0 * (0.166666 + 0.166666 + 0.166667 + 0.166667) + -1.0 * 0.166666);
+  EXPECT_NEAR(R_lower_all, expectation, 1e-9);
 }
