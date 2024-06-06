@@ -112,6 +112,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
       _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
   const auto node = AlphaVectorNode(RandomAction());
   _fsc.AddNode(node);
+  _fsc.SetStartNodeIndex(0);
 
   const auto iter_start = std::chrono::steady_clock::now();
   int64_t i = 0;
@@ -121,11 +122,6 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
     std::cout << "Tr_root lower bound: " << Tr_root->GetLower() << std::endl;
     const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
     std::cout << "Precision: " << precision << std::endl;
-    if (std::abs(precision) < epsilon) {
-      std::cout << "MCVI planning complete, reached the target precision."
-                << std::endl;
-      return {_fsc, Tr_root};
-    }
 
     std::cout << "Belief Expand Process" << std::flush;
     std::chrono::steady_clock::time_point begin =
@@ -143,15 +139,18 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
       auto tr_node = traversal_list.back();
       BackUp(tr_node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
       traversal_list.pop_back();
-      if (MCVITimeExpired(iter_start, max_computation_ms)) {
-        _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
-        return {_fsc, Tr_root};
-      }
     }
     end = std::chrono::steady_clock::now();
     std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
 
     _fsc.SetStartNodeIndex(Tr_root->GetBestPolicyNode());
+
+    if (std::abs(precision) < epsilon) {
+      std::cout << "MCVI planning complete, reached the target precision."
+                << std::endl;
+      return {_fsc, Tr_root};
+    }
+
     ++i;
     if (MCVITimeExpired(iter_start, max_computation_ms)) return {_fsc, Tr_root};
   }
