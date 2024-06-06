@@ -8,6 +8,56 @@
 
 using namespace MCVI;
 
+class CTP_Online : public CTP {
+ public:
+  CTP_Online(CTP& ctp) : CTP(ctp) {}
+
+  State InitialBeliefState() {
+    State out_state = SampleStartState();
+    for (const auto& [edge, prob] : stoch_edges) {
+      out_state[sfIdx(edge2str(edge))] = -1;
+    }
+    return out_state;
+  }
+
+  State ApplyObservation(const State& state, int64_t observation) const {
+    State out_state = state;
+
+    int64_t loc = observation / max_obs_width;  // int div
+    out_state[sfIdx("loc")] = loc;
+
+    const int64_t edge_bool = observation % max_obs_width;
+    int64_t n = 0;
+    for (const auto& edge : AdjacentStochEdges(loc)) {
+      out_state[sfIdx(edge2str(edge))] = bool(edge_bool & ((int64_t)1 << n));
+      ++n;
+    }
+
+    return out_state;
+  }
+
+  State SampleStartStateFromBeliefState(const State& state) const {
+    std::uniform_real_distribution<> unif(0, 1);
+    State state_new = state;
+    // stochastic edge status
+    for (const auto& [edge, p] : stoch_edges) {
+      const auto e_idx = sfIdx(edge2str(edge));
+      if (state_new.at(e_idx) == -1) state_new[e_idx] = (unif(rng)) < p ? 0 : 1;
+    }
+    return state_new;
+  }
+
+  BeliefDistribution SampleFromBeliefState(int64_t N, const State& state) {
+    StateMap<int64_t> state_counts;
+    for (int64_t i = 0; i < N; ++i)
+      state_counts[SampleStartStateFromBeliefState(state)] += 1;
+    auto init_belief = BeliefDistribution();
+    for (const auto& [state, count] : state_counts)
+      init_belief[state] = (double)count / N;
+    return init_belief;
+  }
+};
+
 static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
                           const std::chrono::steady_clock::time_point& end) {
   return (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
@@ -52,20 +102,6 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
   return {fsc, root};
 }
 
-BeliefDistribution NextBelief(const BeliefDistribution& belief, int64_t action,
-                              int64_t observation, SimInterface* pomdp) {
-  StateMap<double> next_states;
-  double total_prob = 0.0;
-  for (const auto& [state, prob] : belief) {
-    const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
-    if (obs != observation) continue;
-    next_states[sNext] += prob;
-    total_prob += prob;
-  }
-  for (auto& [s, prob] : next_states) prob /= total_prob;
-  return BeliefDistribution(next_states);
-}
-
 void parseCommandLine(int argc, char* argv[], int64_t& runtime_ms) {
   if (argc > 1) {
     for (int i = 1; i < argc; ++i) {
@@ -82,7 +118,8 @@ int main(int argc, char* argv[]) {
 
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;
-  auto pomdp = CTP(rng);
+  auto ctp = CTP(rng);
+  auto pomdp = CTP_Online(ctp);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
@@ -112,12 +149,12 @@ int main(int argc, char* argv[]) {
   init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
 
   // Run MCVI
-  auto mcvi_ctp = new CTP(pomdp);
+  auto mcvi_ctp = new CTP_Online(pomdp);
   PathToTerminal ptt(mcvi_ctp);
 
   const double gamma = mcvi_ctp->GetDiscount();
   State state = SampleOneState(init_belief, rng);
-  BeliefDistribution belief = init_belief;
+  State belief_state = mcvi_ctp->InitialBeliefState();
   std::shared_ptr<BeliefTreeNode> tree_node = nullptr;
   double sum_r = 0.0;
   int64_t nI = -1;
@@ -125,18 +162,19 @@ int main(int argc, char* argv[]) {
   for (int64_t i = 0; i < eval_depth; ++i) {
     if (nI == -1 || tree_node == nullptr) {
       std::cout << "Reached end of policy. Recalculating." << std::endl;
+
+      auto belief =
+          mcvi_ctp->SampleFromBeliefState(nb_particles_b0, belief_state);
+      belief = DownsampleBelief(belief, max_belief_samples, rng);
       std::cout << "Belief size " << belief.size() << std::endl;
+
       const auto a = runMCVI(mcvi_ctp, belief, rng, max_sim_depth,
                              max_node_size, eval_depth, eval_epsilon,
                              converge_thresh, max_iter, max_time_ms, ptt);
-      std::cout << "Copying fsc" << std::endl;
       fsc = a.first;
-      std::cout << "Getting index" << std::endl;
       nI = fsc.GetStartNodeIndex();
-      std::cout << "Copying tree node" << std::endl;
       tree_node = a.second;
     }
-    std::cout << "Getting action" << std::endl;
     const int64_t action = fsc.GetNode(nI).GetBestAction();
     std::cout << "---------" << std::endl;
     std::cout << "step: " << i << std::endl;
@@ -147,9 +185,11 @@ int main(int argc, char* argv[]) {
     const auto [sNext, obs, reward, done] = mcvi_ctp->Step(state, action);
 
     std::cout << "receive obs: " << obs << std::endl;
-    std::cout << "reward: " << reward << std::endl;
+    belief_state = mcvi_ctp->ApplyObservation(belief_state, obs);
 
+    std::cout << "reward: " << reward << std::endl;
     sum_r += std::pow(gamma, i) * reward;
+
     nI = fsc.GetEdgeValue(nI, obs);
 
     if (done) {
@@ -157,7 +197,6 @@ int main(int argc, char* argv[]) {
       break;
     }
     state = sNext;
-    belief = NextBelief(belief, action, obs, mcvi_ctp);
     tree_node = tree_node->GetChild(action, obs);
   }
   std::cout << "sum reward: " << sum_r << std::endl;
