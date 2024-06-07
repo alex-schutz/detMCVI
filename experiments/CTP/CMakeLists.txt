@@ -4,6 +4,9 @@ target_link_libraries(ctp_experiment mcvi_library)
 add_executable(ctp_online CTP_online.cpp)
 target_link_libraries(ctp_online mcvi_library)
 
+add_executable(ctp_disambiguate CTP_Disambiguate.cpp)
+target_link_libraries(ctp_disambiguate mcvi_library)
+
 add_executable(ctp_timeseries CTP_time_series.cpp)
 target_link_libraries(ctp_timeseries mcvi_library)
 
