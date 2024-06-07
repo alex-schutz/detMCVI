@@ -109,7 +109,7 @@ class CTP_Disambiguate : public MCVI::SimInterface {
     std::uniform_real_distribution<> unif(0, 1);
     std::map<std::string, int64_t> state;
     // agent starts at special initial state (for init observation)
-    state["loc"] = (int64_t)nodes.size();
+    state["loc"] = -1;
     // stochastic edge status
     for (const auto& [edge, p] : stoch_edges)
       state[edge2str(edge)] = (unif(rng)) < p ? 0 : 1;
@@ -197,7 +197,7 @@ class CTP_Disambiguate : public MCVI::SimInterface {
   }
 
   bool nodesConnected(int64_t a, int64_t b) const {
-    if (a == (int64_t)nodes.size() || b == (int64_t)nodes.size()) return false;
+    if (a == -1 || b == -1) return false;
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
     if (edges.find(edge) == edges.end()) return false;  // edge does not exist
@@ -220,39 +220,42 @@ class CTP_Disambiguate : public MCVI::SimInterface {
     sNext = state;
     const int64_t loc_idx = sfIdx("loc");
     const int64_t loc = state.at(loc_idx);
-    if (loc == (int64_t)nodes.size()) {  // special initial state
+    if (loc == -1) {  // special initial state
       sNext[loc_idx] = origin;
       return 0;
     }
     if (loc == goal) return 0;  // goal is absorbing
 
-    if (loc == action) return _idle_reward;  // idling
-
     if (actions.at(action) == "decide_goal_unreachable")
       return goalUnreachable(state) ? 0 : _bad_action_reward;
 
+    const int64_t dest_loc = nodes.at(action);
+
+    if (loc == dest_loc) return _idle_reward;  // idling
+
     // invalid move
-    if (!nodesConnected(loc, action)) return _bad_action_reward;
+    if (!nodesConnected(loc, dest_loc)) return _bad_action_reward;
 
     // disambiguate stochastic edge (blocked)
-    if (!edgeUnblocked(loc, action, state)) return _disambiguate_reward;
+    if (!edgeUnblocked(loc, dest_loc, state)) return _disambiguate_reward;
 
     // moving
-    sNext[loc_idx] = action;
-    return action < loc ? -edges.at({action, loc}) : -edges.at({loc, action});
+    sNext[loc_idx] = dest_loc;
+    return dest_loc < loc ? -edges.at({dest_loc, loc})
+                          : -edges.at({loc, dest_loc});
   }
 
   int64_t observeState(const MCVI::State& state) const {
-    const int64_t loc = state.at(sfIdx("loc"));
-    return (loc == (int64_t)nodes.size())
-               ? origin
-               : loc;  // observe initial state as if at origin
+    int64_t loc = state.at(sfIdx("loc"));
+    if (loc == -1) loc = origin;  // observe initial state as if at origin
+    return std::distance(nodes.begin(),
+                         std::find(nodes.begin(), nodes.end(), loc));
   }
 
   bool checkFinished(const MCVI::State& sI, int64_t aI,
                      const MCVI::State& sNext) const {
     const int64_t loc_idx = sfIdx("loc");
-    if (sI.at(loc_idx) == (int64_t)nodes.size()) return false;
+    if (sI.at(loc_idx) == -1) return false;
     if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
       return true;
     return sNext.at(loc_idx) == goal;
@@ -371,8 +374,11 @@ class CTP_Disambiguate : public MCVI::SimInterface {
 
         world_state[loc_idx] = path.at(i).first.at(0);
         MCVI::State sNext;
-        const double reward =
-            applyActionToState(world_state, path.at(i - 1).first.at(0), sNext);
+        const auto action = std::distance(
+            nodes.begin(),
+            std::find(nodes.begin(), nodes.end(), path.at(i - 1).first.at(0)));
+        const double reward = applyActionToState(world_state, action, sNext);
+        assert(sNext.at(loc_idx) == path.at(i - 1).first.at(0));
         assert(sNext.at(loc_idx) == path.at(i - 1).first.at(0));
 
         sum_reward += discount * reward;
@@ -393,7 +399,7 @@ class CTP_Disambiguate : public MCVI::SimInterface {
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
     MCVI::State best_case_state = findMaxSumElement(belief, sf_indices);
-    if (best_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
+    if (best_case_state.at(sfIdx("loc")) == -1)
       best_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(best_case_state);
@@ -411,7 +417,7 @@ class CTP_Disambiguate : public MCVI::SimInterface {
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
     MCVI::State worst_case_state = findMinSumElement(belief, sf_indices);
-    if (worst_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
+    if (worst_case_state.at(sfIdx("loc")) == -1)
       worst_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(worst_case_state);
