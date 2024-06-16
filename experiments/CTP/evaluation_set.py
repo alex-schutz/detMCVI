@@ -13,15 +13,13 @@ TIMEOUT = 60 * 60 * 10
 
 timestr = time.strftime("%Y-%m-%d_%H-%M")
 
-PROBLEM_SIZE = 15
 SET_SIZE = 10
 
-RESULTS_FOLDER = f"eval_results_{PROBLEM_SIZE}x{SET_SIZE}_{timestr}"
 GRAPH_FILE = "experiments/CTP/auto_generated_graph.h"
 
 
-def run_ctp_instance(N, i):
-    outfile = f"{RESULTS_FOLDER}/CTPInstance_{N}_{i}.txt"
+def run_ctp_instance(N, i, results_folder):
+    outfile = f"{results_folder}/CTPInstance_{N}_{i}.txt"
 
     # Build files
     cmd = "cd build && make"
@@ -61,43 +59,46 @@ def run_ctp_instance(N, i):
 
 
 if __name__ == "__main__":
-    seed = np.random.randint(0, 9999999)
+    for problem_size in [5, 10, 15, 20, 50]:
+        results_folder = f"eval_results_{problem_size}x{SET_SIZE}_{timestr}"
 
-    initialise_folder(RESULTS_FOLDER)
+        seed = np.random.randint(0, 9999999)
 
-    results = []
-    headers_written = False
+        initialise_folder(results_folder)
 
-    problem_graphs = generate_delaunay_graph_set(PROBLEM_SIZE, SET_SIZE, seed)
-    with open(f"{RESULTS_FOLDER}/problem_graphs.pickle", "wb") as f:
-        pickle.dump(problem_graphs, f)
+        results = []
+        headers_written = False
 
-    for i, (G, origin, goal, seed) in enumerate(problem_graphs):
-        with open(GRAPH_FILE, "w") as f:
-            graph_to_cpp(G, origin, goal, f)
+        problem_graphs = generate_delaunay_graph_set(problem_size, SET_SIZE, seed)
+        with open(f"{results_folder}/problem_graphs.pickle", "wb") as f:
+            pickle.dump(problem_graphs, f)
 
-        outfile, error = run_ctp_instance(PROBLEM_SIZE, i)
-        if error:
-            continue
+        for i, (G, origin, goal, seed) in enumerate(problem_graphs):
+            with open(GRAPH_FILE, "w") as f:
+                graph_to_cpp(G, origin, goal, f)
 
-        # Summarise results
-        instance_result = parse_file(outfile)
-        instance_result["Seed"] = seed
-        instance_result["Set number"] = i
-        results.append(instance_result)
+            outfile, error = run_ctp_instance(problem_size, i, results_folder)
+            if error:
+                continue
 
-        # Save as we go
-        df = instance_result
-        if not headers_written:
-            df.to_csv(f"{RESULTS_FOLDER}/ctp_results.csv", index=False)
-            headers_written = True
-        else:
-            df.to_csv(
-                f"{RESULTS_FOLDER}/ctp_results.csv",
-                mode="a",
-                index=False,
-                header=False,
-            )
+            # Summarise results
+            instance_result = parse_file(outfile)
+            instance_result["Seed"] = seed
+            instance_result["Set number"] = i
+            results.append(instance_result)
 
-    df = pd.concat(results, ignore_index=True, sort=False)
-    df.to_csv(f"{RESULTS_FOLDER}/ctp_results_all.csv", index=False)
+            # Save as we go
+            df = instance_result
+            if not headers_written:
+                df.to_csv(f"{results_folder}/ctp_results.csv", index=False)
+                headers_written = True
+            else:
+                df.to_csv(
+                    f"{results_folder}/ctp_results.csv",
+                    mode="a",
+                    index=False,
+                    header=False,
+                )
+
+        df = pd.concat(results, ignore_index=True, sort=False)
+        df.to_csv(f"{results_folder}/ctp_results_all.csv", index=False)
