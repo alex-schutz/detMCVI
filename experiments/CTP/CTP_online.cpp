@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -7,6 +8,8 @@
 #include "MCVI.h"
 
 using namespace MCVI;
+
+std::atomic<bool> exit_flag = false;
 
 class CTP_Online : public CTP {
  public:
@@ -80,7 +83,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
   auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
   const auto [fsc, root] =
       planner.Plan(max_sim_depth, converge_thresh, max_iter, max_computation_ms,
-                   eval_depth, eval_epsilon);
+                   eval_depth, eval_epsilon, exit_flag);
   const std::chrono::steady_clock::time_point mcvi_end =
       std::chrono::steady_clock::now();
   std::cout << "MCVI complete (" << s_time_diff(mcvi_begin, mcvi_end)

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -8,6 +9,8 @@
 #include "MCVI.h"
 
 using namespace MCVI;
+
+std::atomic<bool> exit_flag = false;
 
 void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                        std::mt19937_64& rng, int64_t max_sim_depth,
@@ -29,7 +32,7 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
   const auto [fsc, root] = planner.PlanAndEvaluate(
       max_sim_depth, converge_thresh, 100000000000, max_time_ms, eval_depth,
       eval_epsilon, max_eval_steps, n_eval_trials, nb_particles_b0,
-      eval_interval_ms, completion_threshold, completion_reps);
+      eval_interval_ms, completion_threshold, completion_reps, exit_flag);
 }
 
 void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <iostream>
 
@@ -43,7 +44,21 @@ class MCVIPlanner {
   /// @return The FSC for the pomdp
   std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> Plan(
       int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
-      int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon);
+      int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
+      std::atomic<bool>& exit_flag);
+
+  // fsc, root node, converged, timed out, reached max iter
+  std::tuple<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>, double, bool,
+             bool, bool>
+  PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root, double R_lower,
+                int64_t iter, int64_t ms_remaining, int64_t max_depth_sim,
+                double epsilon, int64_t max_nb_iter, int64_t eval_depth,
+                double eval_epsilon, std::atomic<bool>& exit_flag);
+
+  double MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root, double R_lower,
+                       int64_t ms_remaining, int64_t max_depth_sim,
+                       int64_t eval_depth, double eval_epsilon,
+                       std::atomic<bool>& exit_flag);
 
   // run evaluation after each iteration
   std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> PlanAndEvaluate(
@@ -51,7 +66,7 @@ class MCVIPlanner {
       int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
       int64_t max_eval_steps, int64_t n_eval_trials, int64_t nb_particles_b0,
       int64_t eval_interval_ms, int64_t completion_threshold,
-      int64_t completion_reps);
+      int64_t completion_reps, std::atomic<bool>& exit_flag);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
@@ -88,10 +103,9 @@ class MCVIPlanner {
   int64_t RandomAction() const;
 
   void SampleBeliefs(
-      std::shared_ptr<BeliefTreeNode> node, int64_t depth, int64_t max_depth,
-      int64_t eval_depth, double eval_epsilon,
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-      double target, double R_lower, int64_t max_depth_sim);
+      int64_t eval_depth, double eval_epsilon, double target, double R_lower,
+      int64_t max_depth_sim);
 };
 
 std::vector<State> EvaluationWithGreedyTreePolicy(

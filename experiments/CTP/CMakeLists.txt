@@ -10,8 +10,5 @@ target_link_libraries(ctp_disambiguate mcvi_library)
 add_executable(ctp_timeseries CTP_time_series.cpp)
 target_link_libraries(ctp_timeseries mcvi_library)
 
-add_executable(ctp_timeseries_viable CTP_time_series_viable.cpp)
-target_link_libraries(ctp_timeseries_viable mcvi_library)
-
 add_executable(ctp_optimistic CTP_optimism.cpp)
 target_link_libraries(ctp_optimistic mcvi_library)
