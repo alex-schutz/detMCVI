@@ -60,9 +60,9 @@ int64_t MCVIPlanner::RandomAction() const {
 
 static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
                           const std::chrono::steady_clock::time_point& end) {
-  return (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
+  return (std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
               .count()) /
-         1000.0;
+         1e6;
 }
 
 void MCVIPlanner::SampleBeliefs(
@@ -90,8 +90,8 @@ static bool MCVITimeExpired(const std::chrono::steady_clock::time_point& begin,
                             int64_t max_computation_ms) {
   const auto now = std::chrono::steady_clock::now();
   const auto elapsed =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now - begin);
-  if (elapsed.count() >= max_computation_ms) {
+      std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
+  if (elapsed.count() >= max_computation_ms * 1000) {
     std::cout << "MCVI planning complete, reached maximum computation time."
               << std::endl;
     return true;
@@ -115,8 +115,8 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
     if (exit_flag.load()) break;
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now - begin);
-    if (elapsed.count() >= ms_remaining / 2) break;
+        std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
+    if (elapsed.count() >= ms_remaining * 1000 / 2) break;
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   std::cout << " (" << s_time_diff(begin, end) << " seconds)" << std::endl;
@@ -195,8 +195,9 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
         std::chrono::steady_clock::now();
     const auto ms_remaining =
         max_computation_ms -
-        std::chrono::duration_cast<std::chrono::milliseconds>(now - iter_start)
-            .count();
+        std::chrono::duration_cast<std::chrono::microseconds>(now - iter_start)
+                .count() /
+            1000;
     const auto [fsc, root, precision, converged, timed_out, max_iter] =
         PlanIncrement(Tr_root, R_lower, i, ms_remaining, max_depth_sim, epsilon,
                       max_nb_iter, eval_depth, eval_epsilon, exit_flag);
@@ -225,19 +226,19 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
 
   int64_t i = 0;
   int64_t time_sum = 0;
-  int64_t last_eval = -eval_interval_ms;
+  int64_t last_eval = -eval_interval_ms * 1000;
   int64_t completed_times = 0;
 
   while (!exit_flag.load()) {
     const std::chrono::steady_clock::time_point iter_start =
         std::chrono::steady_clock::now();
-    const auto ms_remaining = max_computation_ms - time_sum;
+    const auto ms_remaining = max_computation_ms - time_sum / 1e3;
 
     const auto [fsc, root, precision, converged, timed_out, max_iter] =
         PlanIncrement(Tr_root, R_lower, i, ms_remaining, max_depth_sim, epsilon,
                       max_nb_iter, eval_depth, eval_epsilon, exit_flag);
 
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
 
@@ -245,11 +246,11 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
     Tr_root = root;
     ++i;
 
-    if (time_sum - last_eval >= eval_interval_ms) {
+    if (time_sum - last_eval >= eval_interval_ms * 1000) {
       last_eval = time_sum;
       std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
-                << n_eval_trials << " trials) at time " << time_sum / 1000.0
-                << ":" << std::endl;
+                << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
+                << std::endl;
       const int64_t completed_count = EvaluationWithSimulationFSC(
           max_eval_steps, n_eval_trials, nb_particles_b0);
       std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
@@ -271,11 +272,11 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                 << " Maxed iterations: " << max_iter << std::endl;
       break;
     }
-    if (time_sum >= max_computation_ms) break;
+    if (time_sum >= max_computation_ms * 1000) break;
   }
 
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
-            << n_eval_trials << " trials) at time " << time_sum / 1000.0 << ":"
+            << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
             << std::endl;
   EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials, nb_particles_b0);
   std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes() << " nodes."

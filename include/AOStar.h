@@ -15,8 +15,8 @@ bool AOStarTimeExpired(const std::chrono::steady_clock::time_point& begin,
                        int64_t max_computation_ms) {
   const auto now = std::chrono::steady_clock::now();
   const auto elapsed =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now - begin);
-  if (elapsed.count() >= max_computation_ms) {
+      std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
+  if (elapsed.count() >= max_computation_ms * 1000) {
     std::cout << "AO* planning complete, reached maximum computation time."
               << std::endl;
     return true;
@@ -196,7 +196,7 @@ std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
 
   int64_t iter = 0;
   int64_t time_sum = 0;
-  int64_t last_eval = -eval_interval_ms;
+  int64_t last_eval = -eval_interval_ms * 1000;
   int64_t completed_times = 0;
   std::vector<std::pair<int64_t, std::vector<State>>> completed_time_states;
   while (++iter <= max_iter && FringeInGraph(fringe, graph)) {
@@ -237,15 +237,15 @@ std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
       ++i;
     }
 
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
 
-    if (time_sum - last_eval >= eval_interval_ms) {
+    if (time_sum - last_eval >= eval_interval_ms * 1000) {
       last_eval = time_sum;
       std::cout << "Evaluation of alternative (AO* greedy) policy ("
                 << max_eval_steps << " steps, " << n_eval_trials
-                << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
+                << " trials) at time " << time_sum / 1e6 << ":" << std::endl;
       const auto completed_states = EvaluationWithGreedyTreePolicy(
           initial_belief, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp,
           rng, ptt, "AO*");
@@ -264,7 +264,7 @@ std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
         completed_times = 0;
       if (completed_times >= completion_reps) return completed_time_states;
     }
-    if (time_sum >= max_computation_ms) return completed_time_states;
+    if (time_sum >= max_computation_ms * 1000) return completed_time_states;
   }
   if (!FringeInGraph(fringe, graph))
     std::cout << "AO* planning complete, spanned the graph." << std::endl;
@@ -274,7 +274,7 @@ std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
 
   std::cout << "Evaluation of alternative (AO* greedy) policy ("
             << max_eval_steps << " steps, " << n_eval_trials
-            << " trials) at time " << time_sum / 1000.0 << ":" << std::endl;
+            << " trials) at time " << time_sum / 1e6 << ":" << std::endl;
   EvaluationWithGreedyTreePolicy(initial_belief, max_eval_steps, n_eval_trials,
                                  nb_particles_b0, pomdp, rng, ptt, "AO*");
   std::fstream policy_tree(
