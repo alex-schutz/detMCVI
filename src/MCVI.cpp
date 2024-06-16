@@ -203,6 +203,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
     _fsc = fsc;
     Tr_root = root;
     if (converged || timed_out || max_iter) break;
+    ++i;
   }
   return {_fsc, Tr_root};
 }
