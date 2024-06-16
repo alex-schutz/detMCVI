@@ -154,12 +154,13 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
     _fsc.AddNode(node);
     _fsc.SetStartNodeIndex(0);
   }
-  if (ms_remaining <= 0) return;
+  const double precision_before = Tr_root->GetUpper() - Tr_root->GetLower();
+  if (ms_remaining <= 0)
+    return {_fsc, Tr_root, precision_before, false, true, false};
   if (iter >= max_nb_iter) {
     std::cout << "MCVI planning complete, reached the max iterations."
               << std::endl;
-    const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
-    return {_fsc, Tr_root, precision, false, false, true};
+    return {_fsc, Tr_root, precision_before, false, false, true};
   }
   const auto iter_start = std::chrono::steady_clock::now();
   std::cout << "--- Iter " << iter << " ---" << std::endl;
@@ -235,8 +236,6 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
         PlanIncrement(Tr_root, R_lower, i, ms_remaining, max_depth_sim, epsilon,
                       max_nb_iter, eval_depth, eval_epsilon, exit_flag);
 
-    const std::chrono::steady_clock::time_point now =
-        std::chrono::steady_clock::now();
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - iter_start);
     time_sum += elapsed.count();
