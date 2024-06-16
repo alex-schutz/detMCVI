@@ -183,14 +183,6 @@ def generate_delaunay_graph_set(location_count: int, set_size: int, seed: int):
     return problem_set
 
 
-# def generate_grid_graph_set(grid_size: int):
-#     """
-#     Grid graphs where imax = jmax = 10.
-#     The starting and termination vertices are taken as s = (5, 10) and t = (5, 1).
-#     As in Delaunay graphs, each edge has a 0.25 probability of being stochastic with uniform marks. (Aksakalli et al. 2016)
-#     """
-
-
 if __name__ == "__main__":
     seed = np.random.randint(0, 9999999)
     N = 15

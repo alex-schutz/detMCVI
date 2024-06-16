@@ -9,13 +9,24 @@ import pandas as pd
 import time
 import pickle
 
-TIMEOUT = 60 * 60 * 10
-
-timestr = time.strftime("%Y-%m-%d_%H-%M")
-
+TIMEOUT = 60 * 60 * 20
 SET_SIZE = 10
-
 GRAPH_FILE = "experiments/CTP/auto_generated_graph.h"
+
+max_time = {
+    5: 30 * 1000,
+    10: 2 * 60 * 1000,
+    15: 10 * 60 * 1000,
+    20: 60 * 60 * 1000,
+    50: 5 * 60 * 60 * 1000,
+}
+eval_ms = {
+    5: 1,
+    10: 2,
+    15: 1000,
+    20: 10 * 1000,
+    50: 60 * 1000,
+}
 
 
 def run_ctp_instance(N, i, results_folder):
@@ -36,7 +47,7 @@ def run_ctp_instance(N, i, results_folder):
 
     with open(outfile, "w") as f:
         # Run solver
-        cmd = f"time build/experiments/CTP/ctp_timeseries"
+        cmd = f"time build/experiments/CTP/ctp_timeseries --max_sim_depth {2*N} --max_time_ms {max_time[N]} --eval_interval_ms {eval_ms[N]}"
         p = subprocess.run(
             cmd,
             stdout=f,
@@ -59,7 +70,8 @@ def run_ctp_instance(N, i, results_folder):
 
 
 if __name__ == "__main__":
-    for problem_size in [5, 10, 15, 20, 50]:
+    for problem_size in max_time.keys():
+        timestr = time.strftime("%Y-%m-%d_%H-%M")
         results_folder = f"eval_results_{problem_size}x{SET_SIZE}_{timestr}"
 
         seed = np.random.randint(0, 9999999)

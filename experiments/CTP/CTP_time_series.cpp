@@ -57,7 +57,24 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                        completion_reps, rng, ptt, pomdp);
 }
 
-int main() {
+void parseSeriesArgs(int argc, char** argv, int64_t& n_eval_trials,
+                     int64_t& eval_interval_ms, int64_t& completion_threshold,
+                     int& completion_reps) {
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "--n_eval_trials") == 0 && i + 1 < argc) {
+      n_eval_trials = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--eval_interval_ms") == 0 && i + 1 < argc) {
+      eval_interval_ms = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--completion_threshold") == 0 && i + 1 < argc) {
+      completion_threshold = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--completion_reps") == 0 && i + 1 < argc) {
+      completion_reps = std::stoi(argv[++i]);
+    }
+  }
+}
+
+int main(int argc, char* argv[]) {
+  const CTPParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(std::random_device{}());
 
   // Initialise the POMDP
@@ -70,46 +87,38 @@ int main() {
   pomdp.visualiseGraph(ctp_graph);
   ctp_graph.close();
 
-  // Initial belief parameters
-  const int64_t nb_particles_b0 = 100000;
-  const int64_t max_belief_samples = 20000;
-
-  // MCVI parameters
-  const int64_t max_sim_depth = 30;
-  const int64_t max_node_size = 10000;
-  const int64_t eval_depth = 30;
-  const int64_t eval_epsilon = 0.005;
-  const double converge_thresh = 0.005;
-  const int64_t max_time_ms = 1000 * 60 * 60 * 5;
-
   // Evaluation parameters
-  const int64_t max_eval_steps = 30;
-  const int64_t n_eval_trials = 10000;
-  const int64_t eval_interval_ms = 10;
-  const int64_t completion_threshold = 9900;
-  const int completion_reps = 3;
+  int64_t n_eval_trials = 10000;
+  int64_t eval_interval_ms = 10;
+  int64_t completion_threshold = 9900;
+  int completion_reps = 3;
+  parseSeriesArgs(argc, argv, n_eval_trials, eval_interval_ms,
+                  completion_threshold, completion_reps);
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
-  auto init_belief = SampleInitialBelief(nb_particles_b0, &pomdp);
-  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
-  if (max_belief_samples < init_belief.size()) {
+  auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
+  if (params.max_belief_samples < (int64_t)init_belief.size()) {
     std::cout << "Downsampling belief" << std::endl;
-    init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
+    init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
+  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
 
   // Run MCVI
   auto mcvi_ctp = new CTP(pomdp);
-  runMCVIIncrements(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size,
-                    eval_depth, eval_epsilon, converge_thresh, max_time_ms,
-                    max_eval_steps, n_eval_trials, 10 * nb_particles_b0,
-                    eval_interval_ms, completion_threshold, completion_reps);
+  runMCVIIncrements(mcvi_ctp, init_belief, rng, params.max_sim_depth,
+                    params.max_node_size, params.max_sim_depth,
+                    params.eval_epsilon, params.converge_thresh,
+                    params.max_time_ms, params.max_sim_depth, n_eval_trials,
+                    10 * params.nb_particles_b0, eval_interval_ms,
+                    completion_threshold, completion_reps);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
-  runAOStarIncrements(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon,
-                      max_time_ms, max_eval_steps, n_eval_trials,
-                      10 * nb_particles_b0, eval_interval_ms,
+  runAOStarIncrements(aostar_ctp, init_belief, rng, params.max_sim_depth,
+                      params.eval_epsilon, params.max_time_ms,
+                      params.max_sim_depth, n_eval_trials,
+                      10 * params.nb_particles_b0, eval_interval_ms,
                       completion_threshold, completion_reps);
 
   return 0;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <random>
 // #include "CTP_graph.h"
 #include "ShortestPath.h"
@@ -455,3 +456,57 @@ class CTP : public MCVI::SimInterface {
     return val;
   }
 };
+
+struct CTPParams {
+  int64_t nb_particles_b0 = 100000;   // num init belief samples
+  int64_t max_belief_samples = 2000;  // downsampled belief
+  int64_t max_node_size = 10000;      // num FSC nodes
+  int64_t max_sim_depth = 100;        // trajectory depth
+  double eval_epsilon = 0.005;        // trajectory cumulative discount limit
+  double converge_thresh = 0.005;     // upper and lower bound diff
+  int64_t max_iter = 10;              // MCVI iterations
+  int64_t max_time_ms = 600000;       // MCVI computation time
+};
+
+CTPParams parseArgs(int argc, char** argv) {
+  CTPParams params;
+
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "--nb_particles_b0") == 0 && i + 1 < argc) {
+      params.nb_particles_b0 = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--max_belief_samples") == 0 && i + 1 < argc) {
+      params.max_belief_samples = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--max_node_size") == 0 && i + 1 < argc) {
+      params.max_node_size = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--max_sim_depth") == 0 && i + 1 < argc) {
+      params.max_sim_depth = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--eval_epsilon") == 0 && i + 1 < argc) {
+      params.eval_epsilon = std::stod(argv[++i]);
+    } else if (strcmp(argv[i], "--converge_thresh") == 0 && i + 1 < argc) {
+      params.converge_thresh = std::stod(argv[++i]);
+    } else if (strcmp(argv[i], "--max_iter") == 0 && i + 1 < argc) {
+      params.max_iter = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--max_time_ms") == 0 && i + 1 < argc) {
+      params.max_time_ms = std::stoll(argv[++i]);
+    } else if (strcmp(argv[i], "--help") == 0) {
+      std::cout
+          << "Usage: " << argv[0] << " [options]\n"
+          << "Options:\n"
+          << "  --nb_particles_b0 <int64_t>      Number of initial belief "
+             "samples\n"
+          << "  --max_belief_samples <int64_t>   Max downsampled belief\n"
+          << "  --max_node_size <int64_t>        Max number of FSC nodes\n"
+          << "  --max_sim_depth <int64_t>        Max trajectory depth\n"
+          << "  --eval_epsilon <double>          Trajectory cumulative "
+             "discount limit\n"
+          << "  --converge_thresh <double>       Convergence threshold (upper "
+             "and lower bound difference)\n"
+          << "  --max_iter <int64_t>             MCVI iterations\n"
+          << "  --max_time_ms <int64_t>          MCVI computation time\n"
+          << "  --help                           Show this help message\n";
+      std::exit(0);
+    }
+  }
+
+  return params;
+}
