@@ -74,7 +74,7 @@ class CTP : public MCVI::SimInterface {
 
   int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
   int64_t GetSizeOfA() const override { return actions.size(); }
-  double GetDiscount() const override { return 0.98; }
+  double GetDiscount() const override { return 1.0; }
   int64_t GetNbAgent() const override { return 1; }
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
