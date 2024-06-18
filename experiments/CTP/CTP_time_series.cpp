@@ -8,6 +8,8 @@
 #include "CTP.h"
 #include "MCVI.h"
 
+#define RANDOM_SEED (42)
+
 using namespace MCVI;
 
 std::atomic<bool> exit_flag = false;
@@ -75,7 +77,7 @@ void parseSeriesArgs(int argc, char** argv, int64_t& n_eval_trials,
 
 int main(int argc, char* argv[]) {
   const CTPParams params = parseArgs(argc, argv);
-  std::mt19937_64 rng(std::random_device{}());
+  std::mt19937_64 rng(RANDOM_SEED);
 
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;

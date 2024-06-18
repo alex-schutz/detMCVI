@@ -5,6 +5,8 @@
 #include "CTP.h"
 #include "auto_generated_graph.h"
 
+#define RANDOM_SEED (42)
+
 using namespace MCVI;
 
 class CTP_Optimism : public CTP {
@@ -157,7 +159,7 @@ class CTP_Optimism : public CTP {
 };
 
 int main() {
-  std::mt19937_64 rng(std::random_device{}());
+  std::mt19937_64 rng(RANDOM_SEED);
 
   auto ctp = CTP(rng);
   auto optimism = CTP_Optimism(ctp);
