@@ -5,19 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import Delaunay
 import sys
-
-PREAMBLE = """#pragma once
-#include <unordered_map>
-#include <vector>
-
-struct pairhash {
- public:
-  template <typename T, typename U>
-  std::size_t operator()(const std::pair<T, U>& x) const {
-    return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
-  }
-};
-"""
+from typing import TextIO
 
 
 def plot_nx_graph(G: nx.Graph, origin, goal):
@@ -126,42 +114,6 @@ def generate_graph(
     return G, origin, goal, solvable
 
 
-def graph_to_cpp(G: nx.Graph, origin, goal, file):
-    print(PREAMBLE, file=file)
-
-    print(
-        "const std::vector<int64_t> CTPNodes = {",
-        ", ".join(map(str, range(len(G.nodes)))),
-        "};",
-        sep="",
-        file=file,
-    )
-    edge_cpp = [
-        f"{{{{{min(e)}, {max(e)}}}, {w}}}"
-        for e, w in nx.get_edge_attributes(G, "weight").items()
-    ]
-    print(
-        "const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPEdges = {",
-        ", ".join(edge_cpp),
-        "};",
-        sep="",
-        file=file,
-    )
-    stoch_edge_cpp = [
-        f"{{{{{min(e)}, {max(e)}}}, {w}}}"
-        for e, w in nx.get_edge_attributes(G, "blocked_prob").items()
-    ]
-    print(
-        "const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPStochEdges = {",
-        ", ".join(stoch_edge_cpp),
-        "};",
-        sep="",
-        file=file,
-    )
-    print(f"const int64_t CTPOrigin = {origin};", file=file)
-    print(f"const int64_t CTPGoal = {goal};", file=file)
-
-
 def generate_delaunay_graph_set(location_count: int, set_size: int, seed: int):
     """
     Delaunay graphs with 100 vertices whose coordinates are randomly chosen over the region [1, 100] x [1, 100] on the plane.
@@ -183,9 +135,21 @@ def generate_delaunay_graph_set(location_count: int, set_size: int, seed: int):
     return problem_set
 
 
+def ctp_to_file(G: nx.Graph, origin: int, goal: int, f: TextIO):
+    print("CTPNodes: " + " ".join(map(str, range(len(G.nodes)))), file=f)
+    print("CTPEdges:", file=f)
+    for e, w in nx.get_edge_attributes(G, "weight").items():
+        print(f"{min(e)} {max(e)} {w}", file=f)
+    print("CTPStochEdges:", file=f)
+    for e, p in nx.get_edge_attributes(G, "blocked_prob").items():
+        print(f"{min(e)} {max(e)} {p}", file=f)
+    print(f"CTPOrigin: {origin}", file=f)
+    print(f"CTPGoal: {goal}", file=f)
+
+
 if __name__ == "__main__":
     seed = np.random.randint(0, 9999999)
     N = 25
     G, origin, goal, solvable = generate_graph(N, seed, True, plot=True)
     print("seed:", seed, "nodes:", N, "solvable:", solvable)
-    graph_to_cpp(G, origin, goal, sys.stdout)
+    ctp_to_file(G, origin, goal, sys.stdout)

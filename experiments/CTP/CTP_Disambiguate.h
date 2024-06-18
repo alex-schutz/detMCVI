@@ -4,39 +4,11 @@
 #include <cassert>
 #include <random>
 
+#include "CTP.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
-#include "auto_generated_graph.h"
 
 #define USE_HEURISTIC_BOUNDS 0
-
-static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
-                    const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
-  return p1.second < p2.second;
-}
-
-class GraphPath : public MCVI::ShortestPathFasterAlgorithm {
- private:
-  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
-      _edges;  // bidirectional, smallest node is first, double is weight
-
- public:
-  GraphPath(
-      std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> edges)
-      : _edges(edges) {}
-
-  std::vector<std::tuple<MCVI::State, double, int64_t>> getEdges(
-      const MCVI::State& node) const override {
-    std::vector<std::tuple<MCVI::State, double, int64_t>> out;
-    for (const auto& e : _edges) {
-      if (e.first.first == node.at(0))
-        out.push_back({{e.first.second}, e.second, e.first.second});
-      else if (e.first.second == node.at(0))
-        out.push_back({{e.first.first}, e.second, e.first.first});
-    }
-    return out;
-  }
-};
 
 class CTP_Disambiguate : public MCVI::SimInterface {
  protected:
@@ -58,13 +30,18 @@ class CTP_Disambiguate : public MCVI::SimInterface {
   mutable MCVI::StateMap<double> state_value;
 
  public:
-  CTP_Disambiguate(std::mt19937_64& rng)
+  CTP_Disambiguate(std::mt19937_64& rng, const std::vector<int64_t>& nodes,
+                   const std::unordered_map<std::pair<int64_t, int64_t>, double,
+                                            pairhash>& edges,
+                   const std::unordered_map<std::pair<int64_t, int64_t>, double,
+                                            pairhash>& stoch_edges,
+                   int64_t origin, int64_t goal)
       : rng(rng),
-        nodes(CTPNodes),
-        edges(CTPEdges),
-        stoch_edges(CTPStochEdges),
-        origin(CTPOrigin),
-        goal(CTPGoal),
+        nodes(nodes),
+        edges(edges),
+        stoch_edges(stoch_edges),
+        origin(origin),
+        goal(goal),
         state_factor_sizes(initStateSpace()),
         actions(initActions()),
         observations(initObs()),

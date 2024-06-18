@@ -3,13 +3,27 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <fstream>
+#include <iostream>
 #include <random>
-// #include "CTP_graph.h"
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "ShortestPath.h"
 #include "SimInterface.h"
-#include "auto_generated_graph.h"
 
 #define USE_HEURISTIC_BOUNDS 0
+
+struct pairhash {
+ public:
+  template <typename T, typename U>
+  std::size_t operator()(const std::pair<T, U>& x) const {
+    return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+  }
+};
 
 static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
                     const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
@@ -47,8 +61,8 @@ class CTP : public MCVI::SimInterface {
       edges;  // bidirectional, smallest node is first, double is weight
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
       stoch_edges;  // probability of being blocked
-  int64_t goal;
   int64_t origin;
+  int64_t goal;
   std::map<std::string, size_t> state_factor_sizes;
   int64_t max_obs_width;
   std::vector<std::string> actions;
@@ -59,13 +73,18 @@ class CTP : public MCVI::SimInterface {
   mutable MCVI::StateMap<double> state_value;
 
  public:
-  CTP(std::mt19937_64& rng)
+  CTP(std::mt19937_64& rng, const std::vector<int64_t>& nodes,
+      const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>&
+          edges,
+      const std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>&
+          stoch_edges,
+      int64_t origin, int64_t goal)
       : rng(rng),
-        nodes(CTPNodes),
-        edges(CTPEdges),
-        stoch_edges(CTPStochEdges),
-        goal(CTPGoal),
-        origin(CTPOrigin),
+        nodes(nodes),
+        edges(edges),
+        stoch_edges(stoch_edges),
+        origin(origin),
+        goal(goal),
         state_factor_sizes(initStateSpace()),
         max_obs_width(initObsWidth()),
         actions(initActions()),
@@ -458,6 +477,7 @@ class CTP : public MCVI::SimInterface {
 };
 
 struct CTPParams {
+  std::string filename;               // CTP graph file
   int64_t nb_particles_b0 = 100000;   // num init belief samples
   int64_t max_belief_samples = 2000;  // downsampled belief
   int64_t max_node_size = 10000;      // num FSC nodes
@@ -470,8 +490,31 @@ struct CTPParams {
 
 CTPParams parseArgs(int argc, char** argv) {
   CTPParams params;
+  std::stringstream ss;
+  ss << "Usage: " << argv[0] << " <filename> [options]\n"
+     << "Options:\n"
+     << "  --nb_particles_b0 <int64_t>      Number of initial belief "
+        "samples\n"
+     << "  --max_belief_samples <int64_t>   Max downsampled belief\n"
+     << "  --max_node_size <int64_t>        Max number of FSC nodes\n"
+     << "  --max_sim_depth <int64_t>        Max trajectory depth\n"
+     << "  --eval_epsilon <double>          Trajectory cumulative "
+        "discount limit\n"
+     << "  --converge_thresh <double>       Convergence threshold "
+        "(upper and lower bound difference)\n"
+     << "  --max_iter <int64_t>             MCVI iterations\n"
+     << "  --max_time_ms <int64_t>          MCVI computation time\n"
+     << "  --help                           Show this help message\n";
 
-  for (int i = 1; i < argc; ++i) {
+  if (argc < 2) {
+    std::cerr << "Error: Missing filename argument.\n";
+    std::cerr << ss.str();
+    std::exit(1);
+  }
+
+  params.filename = argv[1];
+
+  for (int i = 2; i < argc; ++i) {
     if (strcmp(argv[i], "--nb_particles_b0") == 0 && i + 1 < argc) {
       params.nb_particles_b0 = std::stoll(argv[++i]);
     } else if (strcmp(argv[i], "--max_belief_samples") == 0 && i + 1 < argc) {
@@ -489,24 +532,57 @@ CTPParams parseArgs(int argc, char** argv) {
     } else if (strcmp(argv[i], "--max_time_ms") == 0 && i + 1 < argc) {
       params.max_time_ms = std::stoll(argv[++i]);
     } else if (strcmp(argv[i], "--help") == 0) {
-      std::cout
-          << "Usage: " << argv[0] << " [options]\n"
-          << "Options:\n"
-          << "  --nb_particles_b0 <int64_t>      Number of initial belief "
-             "samples\n"
-          << "  --max_belief_samples <int64_t>   Max downsampled belief\n"
-          << "  --max_node_size <int64_t>        Max number of FSC nodes\n"
-          << "  --max_sim_depth <int64_t>        Max trajectory depth\n"
-          << "  --eval_epsilon <double>          Trajectory cumulative "
-             "discount limit\n"
-          << "  --converge_thresh <double>       Convergence threshold (upper "
-             "and lower bound difference)\n"
-          << "  --max_iter <int64_t>             MCVI iterations\n"
-          << "  --max_time_ms <int64_t>          MCVI computation time\n"
-          << "  --help                           Show this help message\n";
+      std::cout << ss.str();
       std::exit(0);
     }
   }
 
   return params;
+}
+
+void ctpGraphFromFile(
+    const std::string& filename, std::vector<int64_t>& CTPNodes,
+    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>& CTPEdges,
+    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>&
+        CTPStochEdges,
+    int64_t& CTPOrigin, int64_t& CTPGoal) {
+  std::ifstream file(filename);
+  std::string line;
+
+  while (std::getline(file, line)) {
+    std::istringstream iss(line);
+    std::string key;
+    iss >> key;
+
+    if (key == "CTPNodes:") {
+      int64_t node;
+      while (iss >> node) {
+        CTPNodes.push_back(node);
+      }
+    } else if (key == "CTPEdges:") {
+      while (std::getline(file, line) && !line.empty() && line[0] != 'C') {
+        std::istringstream edgeStream(line);
+        int64_t from, to;
+        double weight;
+        edgeStream >> from >> to >> weight;
+        CTPEdges[{from, to}] = weight;
+      }
+      iss.clear();
+      iss.str(line);
+    } else if (key == "CTPStochEdges:") {
+      while (std::getline(file, line) && !line.empty() && line[0] != 'C') {
+        std::istringstream edgeStream(line);
+        int64_t from, to;
+        double weight;
+        edgeStream >> from >> to >> weight;
+        CTPStochEdges[{from, to}] = weight;
+      }
+      iss.clear();
+      iss.str(line);
+    } else if (key == "CTPOrigin:") {
+      iss >> CTPOrigin;
+    } else if (key == "CTPGoal:") {
+      iss >> CTPGoal;
+    }
+  }
 }

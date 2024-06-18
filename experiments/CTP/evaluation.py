@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-from CTP_generator import generate_graph, graph_to_cpp, PREAMBLE
+from CTP_generator import generate_graph, ctp_to_file
 import subprocess
 import re
 import pandas as pd
@@ -16,7 +16,6 @@ problem_sizes = list(range(5, 21)) + list(range(20, 51, 5))
 n_repetitions = 5
 
 RESULTS_FOLDER = f"eval_results_{mode}_{timestr}"
-GRAPH_FILE = "experiments/CTP/auto_generated_graph.h"
 
 
 def extract_int(line):
@@ -102,52 +101,52 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
     return instance_result
 
 
-def generate_fan_instance(f, N):
-    print(PREAMBLE, file=f)
-    n_edges = f"#define NUM_FAN_EDGES_CTP {N}"
-    print(n_edges, file=f)
-    c_code = """
-const int64_t CTPOrigin = 0;
-const int64_t CTPGoal = 2;
-std::vector<int64_t> CTPNodes = {0, 1, 2};
-std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPEdges = {
-    {{0, 1}, 1}};
-std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPStochEdges;
-struct CTPDataInitializer {
-  CTPDataInitializer() {
-    double prob_prod = 1.0;
-    const double k = 2.0 / (NUM_FAN_EDGES_CTP + 1);
-    for (int64_t i = 1; i < NUM_FAN_EDGES_CTP; ++i) {
-      const int64_t node = 2 + i;
-      CTPNodes.push_back(node);
-      const double p = 1 - 1.0 / (NUM_FAN_EDGES_CTP * prob_prod);
-      prob_prod *= p;
-      CTPEdges[{1, node}] = k * i;
-      CTPEdges[{2, node}] = 1.0;
-      CTPStochEdges[{1, node}] = p;
-    }
-    CTPEdges[{1, 2 + NUM_FAN_EDGES_CTP}] = k * NUM_FAN_EDGES_CTP;
-    CTPEdges[{2, 2 + NUM_FAN_EDGES_CTP}] = 1.0;
-    CTPNodes.push_back(2 + NUM_FAN_EDGES_CTP);
-  }
-};
-static CTPDataInitializer ctpDataInitializer;
-"""
-    print(c_code, file=f)
+# def generate_fan_instance(f, N):
+#     print(PREAMBLE, file=f)
+#     n_edges = f"#define NUM_FAN_EDGES_CTP {N}"
+#     print(n_edges, file=f)
+#     c_code = """
+# const int64_t CTPOrigin = 0;
+# const int64_t CTPGoal = 2;
+# std::vector<int64_t> CTPNodes = {0, 1, 2};
+# std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPEdges = {
+#     {{0, 1}, 1}};
+# std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> CTPStochEdges;
+# struct CTPDataInitializer {
+#   CTPDataInitializer() {
+#     double prob_prod = 1.0;
+#     const double k = 2.0 / (NUM_FAN_EDGES_CTP + 1);
+#     for (int64_t i = 1; i < NUM_FAN_EDGES_CTP; ++i) {
+#       const int64_t node = 2 + i;
+#       CTPNodes.push_back(node);
+#       const double p = 1 - 1.0 / (NUM_FAN_EDGES_CTP * prob_prod);
+#       prob_prod *= p;
+#       CTPEdges[{1, node}] = k * i;
+#       CTPEdges[{2, node}] = 1.0;
+#       CTPStochEdges[{1, node}] = p;
+#     }
+#     CTPEdges[{1, 2 + NUM_FAN_EDGES_CTP}] = k * NUM_FAN_EDGES_CTP;
+#     CTPEdges[{2, 2 + NUM_FAN_EDGES_CTP}] = 1.0;
+#     CTPNodes.push_back(2 + NUM_FAN_EDGES_CTP);
+#   }
+# };
+# static CTPDataInitializer ctpDataInitializer;
+# """
+#     print(c_code, file=f)
 
 
-def generate_ctp_instance(N, seed):
-    with open(GRAPH_FILE, "w") as f:
+def generate_ctp_instance(N, seed, graph_file):
+    with open(graph_file, "w") as f:
         if mode == "random":
             while True:
                 G, origin, goal, solvable = generate_graph(N, seed, True, 0.4, False)
                 if solvable:
-                    graph_to_cpp(G, origin, goal, f)
+                    ctp_to_file(G, origin, goal, f)
                     break
                 else:
                     seed += 1
-        elif mode == "fan":
-            generate_fan_instance(f, N)
+        # elif mode == "fan":
+        #     generate_fan_instance(f, N)
     return seed
 
 
@@ -221,7 +220,8 @@ if __name__ == "__main__":
 
     for N in problem_sizes:
         for i in range(n_repetitions):
-            seed = generate_ctp_instance(N, seed)
+            graph_file = f"{RESULTS_FOLDER}/ctp_graph_{N}_{i}.txt"
+            seed = generate_ctp_instance(N, seed, graph_file)
 
             outfile, error = run_ctp_instance(N, i)
             if error:

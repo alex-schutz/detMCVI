@@ -107,23 +107,17 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
   return {fsc, root};
 }
 
-void parseCommandLine(int argc, char* argv[], int64_t& runtime_ms) {
-  if (argc > 1) {
-    for (int i = 1; i < argc; ++i) {
-      if (std::string(argv[i]) == "--runtime" && i + 1 < argc) {
-        runtime_ms = std::stoi(argv[i + 1]);
-        break;
-      }
-    }
-  }
-}
-
 int main(int argc, char* argv[]) {
+  const CTPParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
 
-  // Initialise the POMDP
-  std::cout << "Initialising CTP" << std::endl;
-  auto ctp = CTP(rng);
+  std::vector<int64_t> nodes;
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> edges;
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> stoch_edges;
+  int64_t origin;
+  int64_t goal;
+  ctpGraphFromFile(params.filename, nodes, edges, stoch_edges, origin, goal);
+  auto ctp = CTP(rng, nodes, edges, stoch_edges, origin, goal);
   auto pomdp = CTP_Online(ctp);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
@@ -132,26 +126,11 @@ int main(int argc, char* argv[]) {
   pomdp.visualiseGraph(ctp_graph);
   ctp_graph.close();
 
-  // Initial belief parameters
-  const int64_t nb_particles_b0 = 100000;
-  const int64_t max_belief_samples = 2000;
-
-  // MCVI parameters
-  const int64_t max_sim_depth = 100;
-  const int64_t max_node_size = 10000;
-  const int64_t eval_depth = 100;
-  const int64_t eval_epsilon = 0.005;
-  const double converge_thresh = 0.005;
-  const int64_t max_iter = 10;
-  int64_t max_time_ms = 1000 * 30;
-
-  parseCommandLine(argc, argv, max_time_ms);
-
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
-  auto init_belief = SampleInitialBelief(nb_particles_b0, &pomdp);
+  auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
-  init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
+  init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
 
   // Run MCVI
   auto mcvi_ctp = new CTP_Online(pomdp);
@@ -163,19 +142,20 @@ int main(int argc, char* argv[]) {
   std::shared_ptr<BeliefTreeNode> tree_node = nullptr;
   double sum_r = 0.0;
   int64_t nI = -1;
-  AlphaVectorFSC fsc = AlphaVectorFSC(max_node_size);
-  for (int64_t i = 0; i < eval_depth; ++i) {
+  AlphaVectorFSC fsc = AlphaVectorFSC(params.max_node_size);
+  for (int64_t i = 0; i < params.max_sim_depth; ++i) {
     if (nI == -1 || tree_node == nullptr) {
       std::cout << "Reached end of policy. Recalculating." << std::endl;
 
       auto belief =
-          mcvi_ctp->SampleFromBeliefState(nb_particles_b0, belief_state);
-      belief = DownsampleBelief(belief, max_belief_samples, rng);
+          mcvi_ctp->SampleFromBeliefState(params.nb_particles_b0, belief_state);
+      belief = DownsampleBelief(belief, params.max_belief_samples, rng);
       std::cout << "Belief size " << belief.size() << std::endl;
 
-      const auto a = runMCVI(mcvi_ctp, belief, rng, max_sim_depth,
-                             max_node_size, eval_depth, eval_epsilon,
-                             converge_thresh, max_iter, max_time_ms, ptt);
+      const auto a = runMCVI(mcvi_ctp, belief, rng, params.max_sim_depth,
+                             params.max_node_size, params.max_sim_depth,
+                             params.eval_epsilon, params.converge_thresh,
+                             params.max_iter, params.max_time_ms, ptt);
       fsc = a.first;
       nI = fsc.GetStartNodeIndex();
       tree_node = a.second;

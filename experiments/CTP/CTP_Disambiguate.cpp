@@ -71,23 +71,20 @@ void runMCVI(CTP_Disambiguate* pomdp, const BeliefDistribution& init_belief,
   belief_tree.close();
 }
 
-void parseCommandLine(int argc, char* argv[], int64_t& runtime_ms) {
-  if (argc > 1) {
-    for (int i = 1; i < argc; ++i) {
-      if (std::string(argv[i]) == "--runtime" && i + 1 < argc) {
-        runtime_ms = std::stoi(argv[i + 1]);
-        break;
-      }
-    }
-  }
-}
-
 int main(int argc, char* argv[]) {
+  const CTPParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
+
+  std::vector<int64_t> nodes;
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> edges;
+  std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> stoch_edges;
+  int64_t origin;
+  int64_t goal;
+  ctpGraphFromFile(params.filename, nodes, edges, stoch_edges, origin, goal);
 
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;
-  auto pomdp = CTP_Disambiguate(rng);
+  auto pomdp = CTP_Disambiguate(rng, nodes, edges, stoch_edges, origin, goal);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
@@ -95,39 +92,23 @@ int main(int argc, char* argv[]) {
   pomdp.visualiseGraph(ctp_graph);
   ctp_graph.close();
 
-  // Initial belief parameters
-  const int64_t nb_particles_b0 = 100000;
-  const int64_t max_belief_samples = 20000;
-
-  // MCVI parameters
-  const int64_t max_sim_depth = 50;
-  const int64_t max_node_size = 10000;
-  const int64_t eval_depth = 50;
-  const int64_t eval_epsilon = 0.005;
-  const double converge_thresh = 0.005;
-  const int64_t max_iter = 10;
-  int64_t max_time_ms = 600000;
-
-  // Evaluation parameters
-  const int64_t max_eval_steps = 50;
   const int64_t n_eval_trials = 10000;
-
-  parseCommandLine(argc, argv, max_time_ms);
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
-  auto init_belief = SampleInitialBelief(nb_particles_b0, &pomdp);
+  auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
-  if (max_belief_samples < init_belief.size()) {
+  if (params.max_belief_samples < (int64_t)init_belief.size()) {
     std::cout << "Downsampling belief" << std::endl;
-    init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
+    init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
 
   // Run MCVI
   auto mcvi_ctp = new CTP_Disambiguate(pomdp);
-  runMCVI(mcvi_ctp, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
-          eval_epsilon, converge_thresh, max_iter, max_time_ms, max_eval_steps,
-          n_eval_trials, 10 * nb_particles_b0);
+  runMCVI(mcvi_ctp, init_belief, rng, params.max_sim_depth,
+          params.max_node_size, params.max_sim_depth, params.eval_epsilon,
+          params.converge_thresh, params.max_iter, params.max_time_ms,
+          params.max_sim_depth, n_eval_trials, 10 * params.nb_particles_b0);
 
   return 0;
 }
