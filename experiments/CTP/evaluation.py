@@ -170,12 +170,13 @@ def run_ctp_instance(N, i):
 
     with open(outfile, "w") as f:
         # Run solver
-        cmd = f"time build/experiments/CTP/ctp_experiment --runtime {problem_runtime}"
+        cmd = (
+            f"time build/experiments/CTP/ctp_experiment --max_time_ms {problem_runtime}"
+        )
         p = subprocess.run(
             cmd,
             stdout=f,
             stderr=subprocess.PIPE,
-            timeout=TIMEOUT,
             shell=True,
         )
         if p.returncode != 0:
