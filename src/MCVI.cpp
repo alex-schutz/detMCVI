@@ -158,8 +158,6 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
   if (ms_remaining <= 0)
     return {_fsc, Tr_root, precision_before, false, true, false};
   if (iter >= max_nb_iter) {
-    std::cout << "MCVI planning complete, reached the max iterations."
-              << std::endl;
     return {_fsc, Tr_root, precision_before, false, false, true};
   }
   const auto iter_start = std::chrono::steady_clock::now();
@@ -167,14 +165,12 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
   const double precision =
       MCVIIteration(Tr_root, R_lower, ms_remaining, max_depth_sim, eval_depth,
                     eval_epsilon, exit_flag);
-  if (std::abs(precision) < epsilon) {
-    std::cout << "MCVI planning complete, reached the target precision."
-              << std::endl;
-    return {_fsc, Tr_root, precision, true, false, false};
-  }
-  if (MCVITimeExpired(iter_start, ms_remaining))
-    return {_fsc, Tr_root, precision, false, true, false};
-  return {_fsc, Tr_root, precision, false, false, false};
+  return {_fsc,
+          Tr_root,
+          precision,
+          std::abs(precision) < epsilon,
+          MCVITimeExpired(iter_start, ms_remaining),
+          iter >= max_nb_iter - 1};
 }
 
 std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
