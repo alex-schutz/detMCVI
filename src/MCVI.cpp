@@ -373,10 +373,10 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
   return b;
 }
 
-static bool StateHasSolution(const State& state, const PathToTerminal& ptt,
-                             int64_t max_depth) {
-  return ptt.is_terminal(state, max_depth);
-}
+// static bool StateHasSolution(const State& state, const PathToTerminal& ptt,
+//                              int64_t max_depth) {
+//   return ptt.is_terminal(state, max_depth);
+// }
 
 int64_t MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
@@ -392,11 +392,11 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
     int64_t i = 0;
     for (; i < max_steps; ++i) {
       if (nI == -1) {
-        if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-          eval_stats.no_solution_off_policy.update(sum_r);
-        } else {
-          eval_stats.off_policy.update(sum_r);
-        }
+        // if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+        //   eval_stats.no_solution_off_policy.update(sum_r);
+        // } else {
+        eval_stats.off_policy.update(sum_r);
+        // }
         break;
       }
 
@@ -414,11 +414,11 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
       state = sNext;
     }
     if (i == max_steps) {
-      if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-        eval_stats.no_solution_on_policy.update(sum_r);
-      } else {
-        eval_stats.max_iterations.update(sum_r);
-      }
+      //   if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+      //     eval_stats.no_solution_on_policy.update(sum_r);
+      //   } else {
+      eval_stats.max_iterations.update(sum_r);
+      //   }
     }
   }
   PrintStats(eval_stats.complete, "MCVI completed problem");
@@ -442,11 +442,11 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSCFixedDist(
     int64_t i = 0;
     for (; i < max_steps; ++i) {
       if (nI == -1) {
-        if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-          eval_stats.no_solution_off_policy.update(sum_r);
-        } else {
-          eval_stats.off_policy.update(sum_r);
-        }
+        // if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+        //   eval_stats.no_solution_off_policy.update(sum_r);
+        // } else {
+        eval_stats.off_policy.update(sum_r);
+        // }
         break;
       }
 
@@ -464,11 +464,11 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSCFixedDist(
       state = sNext;
     }
     if (i == max_steps) {
-      if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-        eval_stats.no_solution_on_policy.update(sum_r);
-      } else {
-        eval_stats.max_iterations.update(sum_r);
-      }
+      //   if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
+      //     eval_stats.no_solution_on_policy.update(sum_r);
+      //   } else {
+      eval_stats.max_iterations.update(sum_r);
+      //   }
     }
   }
   PrintStats(eval_stats.complete, "MCVI completed problem");
@@ -499,11 +499,11 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
     for (; i < max_steps; ++i) {
       if (node && node->GetBestActUBound() == -1) node = nullptr;
       if (!node) {
-        if (!StateHasSolution(initial_state, ptt, max_steps)) {
-          eval_stats.no_solution_off_policy.update(sum_r);
-        } else {
-          eval_stats.off_policy.update(sum_r);
-        }
+        // if (!StateHasSolution(initial_state, ptt, max_steps)) {
+        //   eval_stats.no_solution_off_policy.update(sum_r);
+        // } else {
+        eval_stats.off_policy.update(sum_r);
+        // }
         break;
       }
       const int64_t action = node->GetBestActUBound();
@@ -521,11 +521,11 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
       state = sNext;
     }
     if (i == max_steps) {
-      if (!StateHasSolution(initial_state, ptt, max_steps)) {
-        eval_stats.no_solution_on_policy.update(sum_r);
-      } else {
-        eval_stats.max_iterations.update(sum_r);
-      }
+      //   if (!StateHasSolution(initial_state, ptt, max_steps)) {
+      //     eval_stats.no_solution_on_policy.update(sum_r);
+      //   } else {
+      eval_stats.max_iterations.update(sum_r);
+      //   }
     }
   }
   PrintStats(eval_stats.complete, alg_name + " completed problem");
