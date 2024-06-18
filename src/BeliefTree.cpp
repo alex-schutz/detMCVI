@@ -227,9 +227,12 @@ std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
           : UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(),
                                  belief_depth, eval_depth);
   const auto L =
-      H_Lval.has_value()
-          ? std::pow(sim->GetDiscount(), belief_depth) * H_Lval.value()
-          : FindRLower(sim, belief, eval_epsilon, eval_depth - belief_depth);
+      (eval_epsilon >= 1)
+          ? -std::numeric_limits<double>::infinity()
+          : H_Lval.has_value()
+                ? std::pow(sim->GetDiscount(), belief_depth) * H_Lval.value()
+                : FindRLower(sim, belief, eval_epsilon,
+                             eval_depth - belief_depth);
   const auto node =
       std::make_shared<BeliefTreeNode>(belief, belief_depth, U, L);
   return node;
