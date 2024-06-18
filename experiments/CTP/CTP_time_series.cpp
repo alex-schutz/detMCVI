@@ -39,24 +39,23 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
 
 void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                          std::mt19937_64& rng, int64_t eval_depth,
-                         int64_t eval_epsilon, int64_t max_time_ms,
-                         int64_t max_eval_steps, int64_t n_eval_trials,
-                         int64_t nb_particles_b0, int64_t eval_interval_ms,
-                         int64_t completion_threshold,
+                         int64_t max_time_ms, int64_t max_eval_steps,
+                         int64_t n_eval_trials, int64_t nb_particles_b0,
+                         int64_t eval_interval_ms, int64_t completion_threshold,
                          int64_t completion_reps) {
   // Initialise heuristic
   PathToTerminal ptt(pomdp);
 
   // Create root belief node
-  std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
-      init_belief, 0, ptt, eval_depth, eval_epsilon, pomdp);
+  std::shared_ptr<BeliefTreeNode> root =
+      CreateBeliefTreeNode(init_belief, 0, ptt, eval_depth, 1, pomdp);
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
   RunAOStarAndEvaluate(root, 100000000000, max_time_ms, ptt, eval_depth,
-                       eval_epsilon, max_eval_steps, n_eval_trials,
-                       nb_particles_b0, eval_interval_ms, completion_threshold,
-                       completion_reps, rng, ptt, pomdp);
+                       max_eval_steps, n_eval_trials, nb_particles_b0,
+                       eval_interval_ms, completion_threshold, completion_reps,
+                       rng, ptt, pomdp);
 }
 
 void parseSeriesArgs(int argc, char** argv, int64_t& n_eval_trials,
@@ -118,8 +117,7 @@ int main(int argc, char* argv[]) {
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
   runAOStarIncrements(aostar_ctp, init_belief, rng, params.max_sim_depth,
-                      params.eval_epsilon, params.max_time_ms,
-                      params.max_sim_depth, n_eval_trials,
+                      params.max_time_ms, params.max_sim_depth, n_eval_trials,
                       10 * params.nb_particles_b0, eval_interval_ms,
                       completion_threshold, completion_reps);
 

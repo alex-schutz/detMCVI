@@ -185,7 +185,7 @@ def generate_delaunay_graph_set(location_count: int, set_size: int, seed: int):
 
 if __name__ == "__main__":
     seed = np.random.randint(0, 9999999)
-    N = 15
+    N = 25
     G, origin, goal, solvable = generate_graph(N, seed, True, plot=True)
     print("seed:", seed, "nodes:", N, "solvable:", solvable)
     graph_to_cpp(G, origin, goal, sys.stdout)

@@ -79,23 +79,21 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
 }
 
 void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
-               std::mt19937_64& rng, int64_t eval_depth, int64_t eval_epsilon,
-               int64_t max_iter, int64_t max_computation_ms,
-               int64_t max_eval_steps, int64_t n_eval_trials,
-               int64_t nb_particles_b0) {
+               std::mt19937_64& rng, int64_t eval_depth, int64_t max_iter,
+               int64_t max_computation_ms, int64_t max_eval_steps,
+               int64_t n_eval_trials, int64_t nb_particles_b0) {
   // Initialise heuristic
   PathToTerminal ptt(pomdp);
 
   // Create root belief node
-  std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
-      init_belief, 0, ptt, eval_depth, eval_epsilon, pomdp);
+  std::shared_ptr<BeliefTreeNode> root =
+      CreateBeliefTreeNode(init_belief, 0, ptt, eval_depth, 1, pomdp);
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
   const std::chrono::steady_clock::time_point ao_begin =
       std::chrono::steady_clock::now();
-  RunAOStar2(root, max_iter, max_computation_ms, ptt, eval_depth, eval_epsilon,
-             rng, pomdp);
+  RunAOStar(root, max_iter, max_computation_ms, ptt, eval_depth, rng, pomdp);
   const std::chrono::steady_clock::time_point ao_end =
       std::chrono::steady_clock::now();
   std::cout << "AO* complete (" << s_time_diff(ao_begin, ao_end) << " seconds)"
@@ -176,8 +174,8 @@ int main(int argc, char* argv[]) {
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
-  runAOStar(aostar_ctp, init_belief, rng, eval_depth, eval_epsilon, max_iter,
-            max_time_ms, max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
+  runAOStar(aostar_ctp, init_belief, rng, eval_depth, max_iter, max_time_ms,
+            max_eval_steps, n_eval_trials, 10 * nb_particles_b0);
 
   return 0;
 }

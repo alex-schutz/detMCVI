@@ -32,57 +32,6 @@ void AOStarFinalise(
   }
 }
 
-void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
-               int64_t max_computation_ms, const PathToTerminal& heuristic,
-               int64_t eval_depth, double eval_epsilon, SimInterface* pomdp) {
-  for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
-    initial_belief->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon,
-                                     pomdp);
-  initial_belief->UpdateBestAction();
-
-  const auto iter_start = std::chrono::steady_clock::now();
-  int64_t iter = 0;
-  while (++iter <= max_iter) {
-    std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {
-        initial_belief};
-    std::vector<std::shared_ptr<BeliefTreeNode>> to_expand;
-
-    size_t i = 0;
-    while (i < traversal_list.size()) {
-      const auto belief_node = traversal_list[i];
-      for (const auto& [obs, obsNode] :
-           belief_node->GetChildren(belief_node->GetBestActUBound())) {
-        if (obsNode.GetBelief()->GetBestActUBound() == -1) {  // Leaf node
-          to_expand.push_back(obsNode.GetBelief());
-          continue;
-        }
-        traversal_list.push_back(obsNode.GetBelief());
-      }
-      ++i;
-    }
-
-    if (to_expand.empty()) {
-      std::cout << "AO* planning complete, reached policy convergence."
-                << std::endl;
-      return;
-    }
-
-    std::vector<std::shared_ptr<BeliefTreeNode>> backup_list = traversal_list;
-    for (const auto& node : to_expand) {
-      for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a)
-        node->GetOrAddChildren(a, heuristic, eval_depth, eval_epsilon, pomdp);
-      backup_list.push_back(node);
-
-      if (AOStarTimeExpired(iter_start, max_computation_ms)) return;
-    }
-
-    AOStarFinalise(backup_list);
-    if (AOStarTimeExpired(iter_start, max_computation_ms)) return;
-  }
-  std::cout << "AO* planning complete, reached maximum iterations."
-            << std::endl;
-}
-
 bool FringeInGraph(
     const std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
                                 std::vector<std::shared_ptr<BeliefTreeNode>>>>&
@@ -124,11 +73,9 @@ ChooseNode(std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
   return *it;
 }
 
-void RunAOStar2(std::shared_ptr<BeliefTreeNode> initial_belief,
-                int64_t max_iter, int64_t max_computation_ms,
-                const PathToTerminal& heuristic, int64_t eval_depth,
-                double eval_epsilon, std::mt19937_64& rng,
-                SimInterface* pomdp) {
+void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
+               int64_t max_computation_ms, const PathToTerminal& heuristic,
+               int64_t eval_depth, std::mt19937_64& rng, SimInterface* pomdp) {
   std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
                         std::vector<std::shared_ptr<BeliefTreeNode>>>>
       fringe = {{initial_belief, {}}};
@@ -151,8 +98,8 @@ void RunAOStar2(std::shared_ptr<BeliefTreeNode> initial_belief,
     auto new_history = history;
     new_history.push_back(belief_node);
     for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
-      const auto actNode = belief_node->GetOrAddChildren(
-          a, heuristic, eval_depth, eval_epsilon, pomdp);
+      const auto actNode =
+          belief_node->GetOrAddChildren(a, heuristic, eval_depth, 1, pomdp);
       for (const auto& [obs, obsNode] : actNode.GetChildren())
         fringe.push_back({obsNode.GetBelief(), new_history});
     }
@@ -185,8 +132,8 @@ void RunAOStar2(std::shared_ptr<BeliefTreeNode> initial_belief,
 std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
     std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
     int64_t max_computation_ms, const PathToTerminal& heuristic,
-    int64_t eval_depth, double eval_epsilon, int64_t max_eval_steps,
-    int64_t n_eval_trials, int64_t nb_particles_b0, int64_t eval_interval_ms,
+    int64_t eval_depth, int64_t max_eval_steps, int64_t n_eval_trials,
+    int64_t nb_particles_b0, int64_t eval_interval_ms,
     int64_t completion_threshold, int64_t completion_reps, std::mt19937_64& rng,
     const PathToTerminal& ptt, SimInterface* pomdp) {
   std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
@@ -215,8 +162,8 @@ std::vector<std::pair<int64_t, std::vector<State>>> RunAOStarAndEvaluate(
     auto new_history = history;
     new_history.push_back(belief_node);
     for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
-      const auto actNode = belief_node->GetOrAddChildren(
-          a, heuristic, eval_depth, eval_epsilon, pomdp);
+      const auto actNode =
+          belief_node->GetOrAddChildren(a, heuristic, eval_depth, 1, pomdp);
       for (const auto& [obs, obsNode] : actNode.GetChildren())
         fringe.push_back({obsNode.GetBelief(), new_history});
     }
