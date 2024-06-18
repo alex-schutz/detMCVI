@@ -53,11 +53,6 @@ void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
   Tr_node->SetBestPolicyNode(nI);
 }
 
-int64_t MCVIPlanner::RandomAction() const {
-  std::uniform_int_distribution<> action_dist(0, _pomdp->GetSizeOfA() - 1);
-  return action_dist(_rng);
-}
-
 static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
                           const std::chrono::steady_clock::time_point& end) {
   return (std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
@@ -142,6 +137,18 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
   return new_precision;
 }
 
+int64_t MCVIPlanner::GetFirstAction(std::shared_ptr<BeliefTreeNode> Tr_node,
+                                    double R_lower, int64_t max_depth_sim,
+                                    int64_t eval_depth, double eval_epsilon) {
+  for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action)
+    Tr_node->GetOrAddChildren(action, _heuristic, eval_depth, eval_epsilon,
+                              _pomdp);
+
+  Tr_node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
+  Tr_node->UpdateBestAction();
+  return Tr_node->GetBestActUBound();
+}
+
 // fsc, root node, precision, converged, timed out, reached max iter
 std::tuple<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>, double, bool, bool,
            bool>
@@ -151,7 +158,9 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
                            int64_t max_nb_iter, int64_t eval_depth,
                            double eval_epsilon, std::atomic<bool>& exit_flag) {
   if (iter == 0) {
-    const auto node = AlphaVectorNode(RandomAction());
+    const auto action = GetFirstAction(Tr_root, R_lower, max_depth_sim,
+                                       eval_depth, eval_epsilon);
+    const auto node = AlphaVectorNode(action);
     _fsc.AddNode(node);
     _fsc.SetStartNodeIndex(0);
   }

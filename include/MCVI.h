@@ -87,6 +87,10 @@ class MCVIPlanner {
       int64_t completion_threshold, int64_t completion_reps);
 
  private:
+  int64_t GetFirstAction(std::shared_ptr<BeliefTreeNode> Tr_node,
+                         double R_lower, int64_t max_depth_sim,
+                         int64_t eval_depth, double eval_epsilon);
+
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
               int64_t max_depth_sim, int64_t eval_depth, double eval_epsilon);
@@ -99,8 +103,6 @@ class MCVIPlanner {
   /// @brief Insert the given node into the fsc
   int64_t InsertNode(const AlphaVectorNode& node,
                      const std::unordered_map<int64_t, int64_t>& edges);
-
-  int64_t RandomAction() const;
 
   void SampleBeliefs(
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
