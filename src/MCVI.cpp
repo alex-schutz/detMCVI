@@ -71,11 +71,12 @@ void MCVIPlanner::SampleBeliefs(
     int64_t max_depth_sim) {
   const auto node = traversal_list.back();
   if (node == nullptr) throw std::logic_error("Invalid node");
+  // Initialise node with all action children if not already done
+  for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action)
+    node->GetOrAddChildren(action, _heuristic, eval_depth, eval_epsilon,
+                           _pomdp);
   node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
   node->UpdateBestAction();
-  BackUp(node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
-
-  // TODO: identify and skip terminal states
 
   try {
     const auto next_node = node->ChooseObservation(target);
