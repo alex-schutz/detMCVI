@@ -547,11 +547,11 @@ void ctpGraphFromFile(
         CTPStochEdges,
     int64_t& CTPOrigin, int64_t& CTPGoal) {
   std::ifstream file(filename);
-  std::string line;
+  std::string line = "";
+  std::string key = "";
 
   while (std::getline(file, line)) {
     std::istringstream iss(line);
-    std::string key;
     iss >> key;
 
     if (key == "CTPNodes:") {
@@ -560,25 +560,33 @@ void ctpGraphFromFile(
         CTPNodes.push_back(node);
       }
     } else if (key == "CTPEdges:") {
-      while (std::getline(file, line) && !line.empty() && line[0] != 'C') {
+      while (true) {
+        const std::streampos oldpos = file.tellg();
+        if (!std::getline(file, line) || line.empty()) break;
+        if (line.find(':') != std::string::npos) {
+          file.seekg(oldpos);
+          break;
+        }
         std::istringstream edgeStream(line);
         int64_t from, to;
         double weight;
         edgeStream >> from >> to >> weight;
         CTPEdges[{from, to}] = weight;
       }
-      iss.clear();
-      iss.str(line);
     } else if (key == "CTPStochEdges:") {
-      while (std::getline(file, line) && !line.empty() && line[0] != 'C') {
+      while (true) {
+        const std::streampos oldpos = file.tellg();
+        if (!std::getline(file, line) || line.empty()) break;
+        if (line.find(':') != std::string::npos) {
+          file.seekg(oldpos);
+          break;
+        }
         std::istringstream edgeStream(line);
         int64_t from, to;
         double weight;
         edgeStream >> from >> to >> weight;
         CTPStochEdges[{from, to}] = weight;
       }
-      iss.clear();
-      iss.str(line);
     } else if (key == "CTPOrigin:") {
       iss >> CTPOrigin;
     } else if (key == "CTPGoal:") {
