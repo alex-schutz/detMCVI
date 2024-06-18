@@ -32,9 +32,10 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Running MCVI" << std::endl;
   auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
   const auto [fsc, root] = planner.PlanAndEvaluate(
-      max_sim_depth, converge_thresh, 100000000000, max_time_ms, eval_depth,
-      eval_epsilon, max_eval_steps, n_eval_trials, nb_particles_b0,
-      eval_interval_ms, completion_threshold, completion_reps, exit_flag);
+      max_sim_depth, converge_thresh, std::numeric_limits<int64_t>::max(),
+      max_time_ms, eval_depth, eval_epsilon, max_eval_steps, n_eval_trials,
+      nb_particles_b0, eval_interval_ms, completion_threshold, completion_reps,
+      exit_flag);
 }
 
 void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
@@ -52,10 +53,10 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
-  RunAOStarAndEvaluate(root, 100000000000, max_time_ms, ptt, eval_depth,
-                       max_eval_steps, n_eval_trials, nb_particles_b0,
-                       eval_interval_ms, completion_threshold, completion_reps,
-                       rng, ptt, pomdp);
+  RunAOStarAndEvaluate(root, std::numeric_limits<int64_t>::max(), max_time_ms,
+                       ptt, eval_depth, max_eval_steps, n_eval_trials,
+                       nb_particles_b0, eval_interval_ms, completion_threshold,
+                       completion_reps, rng, ptt, pomdp);
 }
 
 void parseSeriesArgs(int argc, char** argv, int64_t& n_eval_trials,
