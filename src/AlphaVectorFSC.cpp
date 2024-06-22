@@ -74,8 +74,7 @@ double AlphaVectorFSC::SimulateTrajectory(int64_t nI, const State& state,
   State curr_state = state;
   for (int64_t step = 0; step < max_depth; ++step) {
     if (nI_current == -1) {
-      const double reward = std::pow(gamma, max_depth) * R_lower;
-      V_n_s += std::pow(gamma, step) * reward;
+      V_n_s += std::pow(gamma, step) * R_lower;
       break;
     }
 
