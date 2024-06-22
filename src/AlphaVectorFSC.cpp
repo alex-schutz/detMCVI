@@ -100,6 +100,19 @@ double AlphaVectorFSC::GetNodeAlpha(const State& state, int64_t nI,
   return V;
 }
 
+double AlphaVectorFSC::LowerBoundFromFSC(const BeliefDistribution& b0,
+                                         int64_t belief_depth,
+                                         double R_lower_lim, int64_t max_depth,
+                                         SimInterface* pomdp) {
+  double belief_value = 0.0;
+  for (const auto& [s, prob] : b0) {
+    const auto alpha =
+        GetNodeAlpha(s, GetStartNodeIndex(), R_lower_lim, max_depth, pomdp);
+    belief_value += alpha * prob;
+  }
+  return std::pow(pomdp->GetDiscount(), belief_depth) * belief_value;
+}
+
 AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
                              const BeliefDistribution& initial_belief,
                              int64_t max_depth, int64_t max_node_size,

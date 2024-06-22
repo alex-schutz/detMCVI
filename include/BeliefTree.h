@@ -66,7 +66,8 @@ class ActionNode {
  public:
   ActionNode(int64_t action, const BeliefDistribution& belief,
              int64_t belief_depth, const PathToTerminal& heuristic,
-             int64_t eval_depth, double eval_epsilon, SimInterface* pomdp);
+             int64_t eval_depth, const BoundFunction& lower_bound_func,
+             SimInterface* pomdp);
 
   int64_t GetAction() const { return _action; }
 
@@ -90,7 +91,7 @@ class ActionNode {
   /// obtained by taking `action` in belief.
   void BeliefUpdate(const BeliefDistribution& belief, int64_t belief_depth,
                     const PathToTerminal& heuristic, int64_t eval_depth,
-                    double eval_epsilon, SimInterface* pomdp);
+                    const BoundFunction& lower_bound_func, SimInterface* pomdp);
 
   void CalculateBounds();
 };
@@ -124,10 +125,12 @@ class BeliefTreeNode {
         _index(belief_tree_count++) {}
 
   void AddChild(int64_t action, const PathToTerminal& heuristic,
-                int64_t eval_depth, double eval_epsilon, SimInterface* pomdp);
+                int64_t eval_depth, const BoundFunction& lower_bound_func,
+                SimInterface* pomdp);
   const ActionNode& GetOrAddChildren(int64_t action,
                                      const PathToTerminal& heuristic,
-                                     int64_t eval_depth, double eval_epsilon,
+                                     int64_t eval_depth,
+                                     const BoundFunction& lower_bound_func,
                                      SimInterface* pomdp);
 
   const BeliefDistribution& GetBelief() const { return _belief; }
@@ -168,8 +171,7 @@ class BeliefTreeNode {
 };
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
-    const BeliefDistribution& belief, int64_t belief_depth,
-    const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
-    SimInterface* sim);
+    const BeliefDistribution& belief, int64_t belief_depth, double upper_bound,
+    double lower_bound);
 
 }  // namespace MCVI

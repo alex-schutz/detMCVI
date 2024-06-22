@@ -168,4 +168,23 @@ bool PathToTerminal::is_terminal(const State& source, int64_t max_depth) const {
   }
 }
 
+double CalculateUpperBound(const BeliefDistribution& belief,
+                           int64_t belief_depth, int64_t eval_depth,
+                           const PathToTerminal& heuristic, SimInterface* sim) {
+  const auto H_Uval = sim->GetHeuristicUpper(belief, eval_depth - belief_depth);
+  if (H_Uval.has_value())
+    return std::pow(sim->GetDiscount(), belief_depth) * H_Uval.value();
+  return UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(),
+                              belief_depth, eval_depth);
+}
+
+double CalculateLowerBound(const BeliefDistribution& belief,
+                           int64_t belief_depth, int64_t eval_depth,
+                           const BoundFunction& func, SimInterface* sim) {
+  const auto H_Lval = sim->GetHeuristicLower(belief, eval_depth);
+  if (H_Lval.has_value())
+    return std::pow(sim->GetDiscount(), belief_depth) * H_Lval.value();
+  return func(belief, belief_depth, eval_depth, sim);
+}
+
 }  // namespace MCVI

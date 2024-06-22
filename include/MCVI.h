@@ -57,8 +57,7 @@ class MCVIPlanner {
 
   double MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root, double R_lower,
                        int64_t ms_remaining, int64_t max_depth_sim,
-                       int64_t eval_depth, double eval_epsilon,
-                       std::atomic<bool>& exit_flag);
+                       int64_t eval_depth, std::atomic<bool>& exit_flag);
 
   // run evaluation after each iteration
   std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> PlanAndEvaluate(
@@ -79,13 +78,6 @@ class MCVIPlanner {
   int64_t EvaluationWithSimulationFSCFixedDist(
       int64_t max_steps, std::vector<State> init_dist) const;
 
-  std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> PlanAndEvaluate2(
-      int64_t max_depth_sim, double epsilon, int64_t max_nb_iter,
-      int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
-      int64_t max_eval_steps,
-      const std::vector<std::pair<int64_t, std::vector<State>>>& eval_data,
-      int64_t completion_threshold, int64_t completion_reps);
-
  private:
   int64_t GetFirstAction(std::shared_ptr<BeliefTreeNode> Tr_node,
                          double R_lower, int64_t max_depth_sim,
@@ -93,7 +85,7 @@ class MCVIPlanner {
 
   /// @brief Perform a monte-carlo backup on the given belief node
   void BackUp(std::shared_ptr<BeliefTreeNode> Tr_node, double R_lower,
-              int64_t max_depth_sim, int64_t eval_depth, double eval_epsilon);
+              int64_t max_depth_sim, int64_t eval_depth);
 
   /// @brief Find a node matching the given node and edges, or insert it if it
   /// does not exist
@@ -106,8 +98,7 @@ class MCVIPlanner {
 
   void SampleBeliefs(
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-      int64_t eval_depth, double eval_epsilon, double target, double R_lower,
-      int64_t max_depth_sim);
+      int64_t eval_depth, double target, double R_lower, int64_t max_depth_sim);
 };
 
 std::vector<State> EvaluationWithGreedyTreePolicy(

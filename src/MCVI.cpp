@@ -30,10 +30,16 @@ int64_t MCVIPlanner::FindOrInsertNode(
 
 void MCVIPlanner::BackUp(std::shared_ptr<BeliefTreeNode> Tr_node,
                          double R_lower, int64_t max_depth_sim,
-                         int64_t eval_depth, double eval_epsilon) {
+                         int64_t eval_depth) {
   // Initialise node with all action children if not already done
+  auto boundFunc = [this, R_lower](const BeliefDistribution& belief,
+                                   int64_t belief_depth, int64_t eval_depth,
+                                   SimInterface* sim) {
+    return this->_fsc.LowerBoundFromFSC(belief, belief_depth, R_lower,
+                                        eval_depth, sim);
+  };
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action)
-    Tr_node->GetOrAddChildren(action, _heuristic, eval_depth, eval_epsilon,
+    Tr_node->GetOrAddChildren(action, _heuristic, eval_depth, boundFunc,
                               _pomdp);
 
   Tr_node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
@@ -62,14 +68,18 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 
 void MCVIPlanner::SampleBeliefs(
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-    int64_t eval_depth, double eval_epsilon, double target, double R_lower,
-    int64_t max_depth_sim) {
+    int64_t eval_depth, double target, double R_lower, int64_t max_depth_sim) {
   const auto node = traversal_list.back();
   if (node == nullptr) throw std::logic_error("Invalid node");
   // Initialise node with all action children if not already done
+  auto boundFunc = [this, R_lower](const BeliefDistribution& belief,
+                                   int64_t belief_depth, int64_t eval_depth,
+                                   SimInterface* sim) {
+    return this->_fsc.LowerBoundFromFSC(belief, belief_depth, R_lower,
+                                        eval_depth, sim);
+  };
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action)
-    node->GetOrAddChildren(action, _heuristic, eval_depth, eval_epsilon,
-                           _pomdp);
+    node->GetOrAddChildren(action, _heuristic, eval_depth, boundFunc, _pomdp);
   node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
   node->UpdateBestAction();
 
@@ -98,7 +108,7 @@ static bool MCVITimeExpired(const std::chrono::steady_clock::time_point& begin,
 double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
                                   double R_lower, int64_t ms_remaining,
                                   int64_t max_depth_sim, int64_t eval_depth,
-                                  double eval_epsilon,
+
                                   std::atomic<bool>& exit_flag) {
   std::cout << "Belief Expand Process" << std::flush;
   std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {Tr_root};
@@ -106,8 +116,8 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
 
   auto begin = std::chrono::steady_clock::now();
   for (int64_t depth = 0; depth < max_depth_sim; ++depth) {
-    SampleBeliefs(traversal_list, eval_depth - depth, eval_epsilon, precision,
-                  R_lower, max_depth_sim - depth);
+    SampleBeliefs(traversal_list, eval_depth - depth, precision, R_lower,
+                  max_depth_sim - depth);
     if (exit_flag.load()) break;
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed =
@@ -121,7 +131,7 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
   begin = std::chrono::steady_clock::now();
   while (!traversal_list.empty()) {
     auto tr_node = traversal_list.back();
-    BackUp(tr_node, R_lower, max_depth_sim, eval_depth, eval_epsilon);
+    BackUp(tr_node, R_lower, max_depth_sim, eval_depth);
     traversal_list.pop_back();
     if (exit_flag.load()) break;
   }
@@ -140,8 +150,13 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
 int64_t MCVIPlanner::GetFirstAction(std::shared_ptr<BeliefTreeNode> Tr_node,
                                     double R_lower, int64_t max_depth_sim,
                                     int64_t eval_depth, double eval_epsilon) {
+  auto boundFunc = [eval_epsilon](const BeliefDistribution& belief,
+                                  int64_t belief_depth, int64_t eval_depth,
+                                  SimInterface* sim) {
+    return FindRLower(sim, belief, belief_depth - eval_epsilon, eval_depth);
+  };
   for (int64_t action = 0; action < _pomdp->GetSizeOfA(); ++action)
-    Tr_node->GetOrAddChildren(action, _heuristic, eval_depth, eval_epsilon,
+    Tr_node->GetOrAddChildren(action, _heuristic, eval_depth, boundFunc,
                               _pomdp);
 
   Tr_node->BackUpActions(_fsc, R_lower, max_depth_sim, _pomdp);
@@ -172,9 +187,8 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
   }
   const auto iter_start = std::chrono::steady_clock::now();
   std::cout << "--- Iter " << iter << " ---" << std::endl;
-  const double precision =
-      MCVIIteration(Tr_root, R_lower, ms_remaining, max_depth_sim, eval_depth,
-                    eval_epsilon, exit_flag);
+  const double precision = MCVIIteration(Tr_root, R_lower, ms_remaining,
+                                         max_depth_sim, eval_depth, exit_flag);
   return {_fsc,
           Tr_root,
           precision,
@@ -190,8 +204,10 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
   // Calculate the lower bound
   const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
 
-  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
-      _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
+  const auto init_upper =
+      CalculateUpperBound(_b0, 0, eval_depth, _heuristic, _pomdp);
+  std::shared_ptr<BeliefTreeNode> Tr_root =
+      CreateBeliefTreeNode(_b0, 0, init_upper, R_lower);
 
   const auto iter_start = std::chrono::steady_clock::now();
   int64_t i = 0;
@@ -227,8 +243,10 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
   // Calculate the lower bound
   const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
 
-  std::shared_ptr<BeliefTreeNode> Tr_root = CreateBeliefTreeNode(
-      _b0, 0, _heuristic, eval_depth, eval_epsilon, _pomdp);
+  const auto init_upper =
+      CalculateUpperBound(_b0, 0, eval_depth, _heuristic, _pomdp);
+  std::shared_ptr<BeliefTreeNode> Tr_root =
+      CreateBeliefTreeNode(_b0, 0, init_upper, R_lower);
 
   int64_t i = 0;
   int64_t time_sum = 0;
@@ -493,7 +511,7 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSCFixedDist(
 std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
-    const PathToTerminal& ptt, const std::string& alg_name) {
+    const PathToTerminal& /*ptt*/, const std::string& alg_name) {
   const double gamma = pomdp->GetDiscount();
   EvaluationStats eval_stats;
   std::vector<State> success_states;

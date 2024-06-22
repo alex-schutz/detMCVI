@@ -123,8 +123,10 @@ std::shared_ptr<BeliefTreeNode> runAOStar(
     int64_t eval_depth, int64_t max_computation_ms, PathToTerminal& ptt,
     std::ostream& fs) {
   // Create root belief node
-  std::shared_ptr<BeliefTreeNode> root =
-      CreateBeliefTreeNode(init_belief, 0, ptt, eval_depth, 1, pomdp);
+  const double init_upper =
+      CalculateUpperBound(init_belief, 0, eval_depth, ptt, pomdp);
+  std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
+      init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
 
   // Run AO*
   fs << "Running AO* on belief tree" << std::endl;
@@ -287,7 +289,7 @@ int main(int argc, char* argv[]) {
   const CTPParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
 
-  const int64_t n_trials = 1000;
+  const int64_t n_trials = 10;
 
   std::vector<int64_t> nodes;
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> edges;

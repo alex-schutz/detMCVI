@@ -86,8 +86,10 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
   PathToTerminal ptt(pomdp);
 
   // Create root belief node
-  std::shared_ptr<BeliefTreeNode> root =
-      CreateBeliefTreeNode(init_belief, 0, ptt, eval_depth, 1, pomdp);
+  const double init_upper =
+      CalculateUpperBound(init_belief, 0, eval_depth, ptt, pomdp);
+  std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
+      init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;

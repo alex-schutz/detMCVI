@@ -65,6 +65,12 @@ ChooseNode(std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
   return *it;
 }
 
+static double InfBoundFunc(const BeliefDistribution& /*belief*/,
+                           int64_t /*belief_depth*/, int64_t /*eval_depth*/,
+                           SimInterface* /*sim*/) {
+  return -std::numeric_limits<double>::infinity();
+}
+
 void AOStarIter(
     std::vector<std::shared_ptr<BeliefTreeNode>>& graph,
     std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
@@ -86,8 +92,8 @@ void AOStarIter(
   auto new_history = history;
   new_history.push_back(belief_node);
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
-    const auto actNode =
-        belief_node->GetOrAddChildren(a, heuristic, eval_depth, 1, pomdp);
+    const auto actNode = belief_node->GetOrAddChildren(a, heuristic, eval_depth,
+                                                       InfBoundFunc, pomdp);
     for (const auto& [obs, obsNode] : actNode.GetChildren())
       fringe.push_back({obsNode.GetBelief(), new_history});
   }

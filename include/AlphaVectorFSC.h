@@ -60,6 +60,10 @@ class AlphaVectorFSC {
 
   double GetNodeAlpha(const State& state, int64_t nI, double R_lower,
                       int64_t max_depth_sim, SimInterface* pomdp);
+
+  double LowerBoundFromFSC(const BeliefDistribution& b0, int64_t belief_depth,
+                           double R_lower_lim, int64_t max_depth,
+                           SimInterface* pomdp);
 };
 
 AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,

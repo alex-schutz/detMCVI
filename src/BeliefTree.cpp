@@ -27,10 +27,11 @@ void ObservationNode::BackUpFromNextBelief() {
 
 ActionNode::ActionNode(int64_t action, const BeliefDistribution& belief,
                        int64_t belief_depth, const PathToTerminal& heuristic,
-                       int64_t eval_depth, double eval_epsilon,
+                       int64_t eval_depth,
+                       const BoundFunction& lower_bound_func,
                        SimInterface* pomdp)
     : _action(action) {
-  BeliefUpdate(belief, belief_depth, heuristic, eval_depth, eval_epsilon,
+  BeliefUpdate(belief, belief_depth, heuristic, eval_depth, lower_bound_func,
                pomdp);
   CalculateBounds();
 }
@@ -38,7 +39,8 @@ ActionNode::ActionNode(int64_t action, const BeliefDistribution& belief,
 void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
                               int64_t belief_depth,
                               const PathToTerminal& heuristic,
-                              int64_t eval_depth, double eval_epsilon,
+                              int64_t eval_depth,
+                              const BoundFunction& lower_bound_func,
                               SimInterface* pomdp) {
   std::unordered_map<int64_t, BeliefDistribution> next_beliefs;
   std::unordered_map<int64_t, double> reward_map;
@@ -59,8 +61,12 @@ void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
     auto belief = BeliefDistribution();
     for (const auto& [s, p] : b) belief[s] = p / w;
 
-    const auto belief_node = CreateBeliefTreeNode(
-        belief, belief_depth + 1, heuristic, eval_depth, eval_epsilon, pomdp);
+    const auto belief_upper = CalculateUpperBound(belief, belief_depth + 1,
+                                                  eval_depth, heuristic, pomdp);
+    const auto belief_lower = CalculateLowerBound(
+        belief, belief_depth + 1, eval_depth, lower_bound_func, pomdp);
+    const auto belief_node = CreateBeliefTreeNode(belief, belief_depth + 1,
+                                                  belief_upper, belief_lower);
     const double discounted_reward =
         std::pow(pomdp->GetDiscount(), belief_depth) * reward_map[o] / w;
     _observation_edges.insert(
@@ -119,11 +125,12 @@ void ActionNode::BackUpNoFSC() {
 }
 
 void BeliefTreeNode::AddChild(int64_t action, const PathToTerminal& heuristic,
-                              int64_t eval_depth, double eval_epsilon,
+                              int64_t eval_depth,
+                              const BoundFunction& lower_bound_func,
                               SimInterface* pomdp) {
   _action_edges.insert(
       {action, ActionNode(action, GetBelief(), _belief_depth, heuristic,
-                          eval_depth, eval_epsilon, pomdp)});
+                          eval_depth, lower_bound_func, pomdp)});
 }
 
 void BeliefTreeNode::UpdateBestAction() {
@@ -175,10 +182,10 @@ std::shared_ptr<BeliefTreeNode> BeliefTreeNode::ChooseObservation(
 
 const ActionNode& BeliefTreeNode::GetOrAddChildren(
     int64_t action, const PathToTerminal& heuristic, int64_t eval_depth,
-    double eval_epsilon, SimInterface* pomdp) {
+    const BoundFunction& lower_bound_func, SimInterface* pomdp) {
   const auto it = _action_edges.find(action);
   if (it != _action_edges.cend()) return it->second;
-  AddChild(action, heuristic, eval_depth, eval_epsilon, pomdp);
+  AddChild(action, heuristic, eval_depth, lower_bound_func, pomdp);
   return _action_edges.at(action);
 }
 
@@ -216,25 +223,10 @@ void ObservationNode::BackUpFromPolicyGraph(AlphaVectorFSC& fsc, double R_lower,
 }
 
 std::shared_ptr<BeliefTreeNode> CreateBeliefTreeNode(
-    const BeliefDistribution& belief, int64_t belief_depth,
-    const PathToTerminal& heuristic, int64_t eval_depth, double eval_epsilon,
-    SimInterface* sim) {
-  const auto H_Uval = sim->GetHeuristicUpper(belief, eval_depth);
-  const auto H_Lval = sim->GetHeuristicLower(belief, eval_depth);
-  const auto U =
-      H_Uval.has_value()
-          ? std::pow(sim->GetDiscount(), belief_depth) * H_Uval.value()
-          : UpperBoundEvaluation(belief, heuristic, sim->GetDiscount(),
-                                 belief_depth, eval_depth);
-  const auto L =
-      (eval_epsilon >= 1)
-          ? -std::numeric_limits<double>::infinity()
-          : H_Lval.has_value()
-                ? std::pow(sim->GetDiscount(), belief_depth) * H_Lval.value()
-                : FindRLower(sim, belief, eval_epsilon,
-                             eval_depth - belief_depth);
-  const auto node =
-      std::make_shared<BeliefTreeNode>(belief, belief_depth, U, L);
+    const BeliefDistribution& belief, int64_t belief_depth, double upper_bound,
+    double lower_bound) {
+  const auto node = std::make_shared<BeliefTreeNode>(belief, belief_depth,
+                                                     upper_bound, lower_bound);
   return node;
 }
 

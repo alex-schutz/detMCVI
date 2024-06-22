@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <tuple>
 #include <unordered_map>
@@ -89,5 +90,17 @@ double UpperBoundEvaluation(const BeliefDistribution& belief,
  */
 double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,
                   double epsilon, int64_t max_depth);
+
+double CalculateUpperBound(const BeliefDistribution& belief,
+                           int64_t belief_depth, int64_t eval_depth,
+                           const PathToTerminal& heuristic, SimInterface* sim);
+
+// belief, belief_depth, eval_depth, sim
+using BoundFunction = std::function<double(const BeliefDistribution&, int64_t,
+                                           int64_t, SimInterface*)>;
+
+double CalculateLowerBound(const BeliefDistribution& belief,
+                           int64_t belief_depth, int64_t eval_depth,
+                           const BoundFunction& func, SimInterface* sim);
 
 }  // namespace MCVI
