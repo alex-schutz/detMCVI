@@ -70,7 +70,7 @@ class CTP_Online : public CTP {
   }
 };
 
-using OnlineFuncPtr = std::tuple<double, std::chrono::microseconds> (*)(
+using OnlineFuncPtr = std::tuple<double, std::chrono::microseconds, bool> (*)(
     const CTP_Online&, const BeliefDistribution&, std::mt19937_64&,
     const CTPParams&, std::ostream&);
 
@@ -148,13 +148,15 @@ std::shared_ptr<BeliefTreeNode> runAOStar(
   return root;
 }
 
-std::tuple<double, std::chrono::microseconds> MCVIOnline(
+std::tuple<double, std::chrono::microseconds, bool> MCVIOnline(
     const CTP_Online& pomdp, const BeliefDistribution& init_belief,
     std::mt19937_64& rng, const CTPParams& params, std::ostream& fs) {
   const auto begin = std::chrono::steady_clock::now();
   // Run MCVI
   auto mcvi_ctp = new CTP_Online(pomdp);
   PathToTerminal ptt(mcvi_ctp);
+
+  bool completed = false;
 
   const double gamma = mcvi_ctp->GetDiscount();
   State state = SampleOneState(init_belief, rng);
@@ -199,6 +201,7 @@ std::tuple<double, std::chrono::microseconds> MCVIOnline(
 
     if (done) {
       fs << "Reached terminal state." << std::endl;
+      completed = true;
       break;
     }
     state = sNext;
@@ -207,17 +210,19 @@ std::tuple<double, std::chrono::microseconds> MCVIOnline(
   fs << "sum reward: " << sum_r << std::endl << std::endl;
   const auto end = std::chrono::steady_clock::now();
   return std::make_tuple(
-      sum_r,
-      std::chrono::duration_cast<std::chrono::microseconds>(end - begin));
+      sum_r, std::chrono::duration_cast<std::chrono::microseconds>(end - begin),
+      completed);
 }
 
-std::tuple<double, std::chrono::microseconds> AOStarOnline(
+std::tuple<double, std::chrono::microseconds, bool> AOStarOnline(
     const CTP_Online& pomdp, const BeliefDistribution& init_belief,
     std::mt19937_64& rng, const CTPParams& params, std::ostream& fs) {
   const auto begin = std::chrono::steady_clock::now();
   // Run AO*
   auto ao_ctp = new CTP_Online(pomdp);
   PathToTerminal ptt(ao_ctp);
+
+  bool completed = false;
 
   const double gamma = ao_ctp->GetDiscount();
   State state = SampleOneState(init_belief, rng);
@@ -254,6 +259,7 @@ std::tuple<double, std::chrono::microseconds> AOStarOnline(
 
     if (done) {
       fs << "Reached terminal state." << std::endl;
+      completed = true;
       break;
     }
     state = sNext;
@@ -262,8 +268,8 @@ std::tuple<double, std::chrono::microseconds> AOStarOnline(
   fs << "sum reward: " << sum_r << std::endl << std::endl;
   const auto end = std::chrono::steady_clock::now();
   return std::make_tuple(
-      sum_r,
-      std::chrono::duration_cast<std::chrono::microseconds>(end - begin));
+      sum_r, std::chrono::duration_cast<std::chrono::microseconds>(end - begin),
+      completed);
 }
 
 std::pair<Welford, Welford> RunOnlineTrials(
@@ -277,10 +283,12 @@ std::pair<Welford, Welford> RunOnlineTrials(
   std::ostream null_stream(&null_buffer);
 
   for (int64_t i = 0; i < n_trials; ++i) {
-    const auto [reward, timing] =
+    const auto [reward, timing, completed] =
         func(pomdp, init_belief, rng, params, null_stream);
-    reward_stats.update(reward);
-    time_stats.update(timing.count());
+    if (completed) {
+      reward_stats.update(reward);
+      time_stats.update(timing.count());
+    }
   }
   return std::make_pair(reward_stats, time_stats);
 }
@@ -305,6 +313,9 @@ int main(int argc, char* argv[]) {
   std::fstream ctp_graph("ctp_graph.dot", std::fstream::out);
   pomdp.visualiseGraph(ctp_graph);
   ctp_graph.close();
+
+  std::cerr << "Max planning time per step: " << params.max_time_ms
+            << std::endl;
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
