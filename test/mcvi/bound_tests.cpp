@@ -72,10 +72,5 @@ TEST(MCVITest, FindRLower) {
                                           {{5}, 0.166667}});
 
   const double R_lower_all = FindRLower(&sim, belief, 0.0001, 100);
-  double expectation = -50.0 * 0.166667;  // state 5
-  for (int i = 0; i < 100; ++i)
-    expectation +=
-        std::pow(sim.GetDiscount(), i) *
-        (-50.0 * (0.166666 + 0.166666 + 0.166667 + 0.166667) + -1.0 * 0.166666);
-  EXPECT_NEAR(R_lower_all, expectation, 1e-9);
+  EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
 }

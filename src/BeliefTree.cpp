@@ -143,11 +143,11 @@ void BeliefTreeNode::UpdateBestAction() {
   _bestActUBound = -1;
 
   for (const auto& [action, actNode] : _action_edges) {
-    if (_lower_bound < actNode.GetAvgLower()) {
+    if (_lower_bound <= actNode.GetAvgLower()) {
       _lower_bound = actNode.GetAvgLower();
       _bestActLBound = action;
     }
-    if (_upper_bound < actNode.GetAvgUpper()) {
+    if (_upper_bound <= actNode.GetAvgUpper()) {
       _upper_bound = actNode.GetAvgUpper();
       _bestActUBound = action;
     }
@@ -165,7 +165,8 @@ const std::unordered_map<int64_t, ObservationNode>& BeliefTreeNode::GetChildren(
     int64_t action) const {
   auto it = _action_edges.find(action);
   if (it == _action_edges.cend())
-    throw std::logic_error("No observation nodes");
+    throw std::logic_error("No observation nodes for action " +
+                           std::to_string(action));
   return it->second.GetChildren();
 }
 
