@@ -11,6 +11,12 @@
 
 namespace MCVI {
 
+enum class AOSearchType { none, random, depth_first, breadth_first };
+
+using BeliefTreeNodeHistory =
+    std::pair<std::shared_ptr<BeliefTreeNode>,
+              std::vector<std::shared_ptr<BeliefTreeNode>>>;
+
 bool AOStarTimeExpired(const std::chrono::steady_clock::time_point& begin,
                        int64_t max_computation_ms) {
   const auto now = std::chrono::steady_clock::now();
@@ -24,45 +30,50 @@ bool AOStarTimeExpired(const std::chrono::steady_clock::time_point& begin,
   return false;
 }
 
-bool FringeInGraph(
-    const std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
-                                std::vector<std::shared_ptr<BeliefTreeNode>>>>&
-        fringe,
-    const std::vector<std::shared_ptr<BeliefTreeNode>>& graph) {
+bool FringeInGraph(const std::vector<BeliefTreeNodeHistory>& fringe,
+                   const std::vector<std::shared_ptr<BeliefTreeNode>>& graph) {
   for (const auto& node_ptr : fringe)
     if (std::find(graph.begin(), graph.end(), node_ptr.first) != graph.end())
       return true;
   return false;
 }
 
-std::pair<std::shared_ptr<BeliefTreeNode>,
-          std::vector<std::shared_ptr<BeliefTreeNode>>>
-ChooseNode(std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
-                                 std::vector<std::shared_ptr<BeliefTreeNode>>>>&
-               fringe,
-           const std::vector<std::shared_ptr<BeliefTreeNode>>& graph,
-           std::mt19937_64& rng) {
+bool CmpNodeDepth(const BeliefTreeNodeHistory& n1,
+                  const BeliefTreeNodeHistory& n2) {
+  return n1.first->GetDepth() < n2.first->GetDepth();
+}
+
+BeliefTreeNodeHistory ChooseNode(
+    std::vector<BeliefTreeNodeHistory>& fringe,
+    const std::vector<std::shared_ptr<BeliefTreeNode>>& graph,
+    std::mt19937_64& rng, AOSearchType method) {
   if (fringe.empty()) return {nullptr, {}};
 
   // Create a vector containing nodes that exist in both fringe and graph
-  std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
-                        std::vector<std::shared_ptr<BeliefTreeNode>>>>
-      common_nodes;
-  std::copy_if(
-      fringe.begin(), fringe.end(), std::back_inserter(common_nodes),
-      [&graph](const std::pair<std::shared_ptr<BeliefTreeNode>,
-                               std::vector<std::shared_ptr<BeliefTreeNode>>>&
-                   node_ptr) {
-        return std::find(graph.begin(), graph.end(), node_ptr.first) !=
-               graph.end();
-      });
+  std::vector<BeliefTreeNodeHistory> common_nodes;
+  std::copy_if(fringe.begin(), fringe.end(), std::back_inserter(common_nodes),
+               [&graph](const BeliefTreeNodeHistory& node_ptr) {
+                 return std::find(graph.begin(), graph.end(), node_ptr.first) !=
+                        graph.end();
+               });
   if (common_nodes.empty()) return {nullptr, {}};
 
-  // Randomly select a node
-  std::uniform_int_distribution<size_t> distribution(0,
-                                                     common_nodes.size() - 1);
-  auto it = std::next(common_nodes.begin(), distribution(rng));
-  return *it;
+  switch (method) {
+    case AOSearchType::random: {
+      std::uniform_int_distribution<size_t> distribution(
+          0, common_nodes.size() - 1);
+      return common_nodes.at(distribution(rng));
+    }
+    case AOSearchType::depth_first:
+      return *std::max_element(common_nodes.begin(), common_nodes.end(),
+                               CmpNodeDepth);
+    case AOSearchType::breadth_first:
+      return *std::min_element(common_nodes.begin(), common_nodes.end(),
+                               CmpNodeDepth);
+    default:
+      return common_nodes.at(0);
+  }
+  return common_nodes.at(0);
 }
 
 static double InfBoundFunc(const BeliefDistribution& /*belief*/,
@@ -71,14 +82,12 @@ static double InfBoundFunc(const BeliefDistribution& /*belief*/,
   return -std::numeric_limits<double>::infinity();
 }
 
-void AOStarIter(
-    std::vector<std::shared_ptr<BeliefTreeNode>>& graph,
-    std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
-                          std::vector<std::shared_ptr<BeliefTreeNode>>>>&
-        fringe,
-    const PathToTerminal& heuristic, int64_t eval_depth, std::mt19937_64& rng,
-    SimInterface* pomdp) {
-  const auto [belief_node, history] = ChooseNode(fringe, graph, rng);
+void AOStarIter(std::vector<std::shared_ptr<BeliefTreeNode>>& graph,
+                std::vector<BeliefTreeNodeHistory>& fringe,
+                const PathToTerminal& heuristic, int64_t eval_depth,
+                std::mt19937_64& rng, SimInterface* pomdp,
+                AOSearchType method) {
+  const auto [belief_node, history] = ChooseNode(fringe, graph, rng, method);
 
   // remove node from fringe set
   auto it = std::find(fringe.begin(), fringe.end(),
@@ -116,20 +125,19 @@ void AOStarIter(
     }
     ++i;
   }
-}
+}  // namespace MCVI
 
 void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
                int64_t max_computation_ms, const PathToTerminal& heuristic,
-               int64_t eval_depth, std::mt19937_64& rng, SimInterface* pomdp) {
-  std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
-                        std::vector<std::shared_ptr<BeliefTreeNode>>>>
-      fringe = {{initial_belief, {}}};
+               int64_t eval_depth, std::mt19937_64& rng, SimInterface* pomdp,
+               AOSearchType method = AOSearchType::random) {
+  std::vector<BeliefTreeNodeHistory> fringe = {{initial_belief, {}}};
   std::vector<std::shared_ptr<BeliefTreeNode>> graph = {initial_belief};
 
   const auto ao_start = std::chrono::steady_clock::now();
   int64_t iter = 0;
   while (++iter <= max_iter && FringeInGraph(fringe, graph)) {
-    AOStarIter(graph, fringe, heuristic, eval_depth, rng, pomdp);
+    AOStarIter(graph, fringe, heuristic, eval_depth, rng, pomdp, method);
     if (AOStarTimeExpired(ao_start, max_computation_ms)) {
       std::cout << "AO* planning complete, reached maximum computation time."
                 << std::endl;
@@ -174,7 +182,8 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
                           int64_t nb_particles_b0, int64_t eval_interval_ms,
                           int64_t completion_threshold, int64_t completion_reps,
                           std::mt19937_64& rng, const PathToTerminal& ptt,
-                          SimInterface* pomdp) {
+                          SimInterface* pomdp,
+                          AOSearchType method = AOSearchType::random) {
   std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
                         std::vector<std::shared_ptr<BeliefTreeNode>>>>
       fringe = {{initial_belief, {}}};
@@ -187,7 +196,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
   while (++iter <= max_iter && FringeInGraph(fringe, graph)) {
     const auto iter_start = std::chrono::steady_clock::now();
 
-    AOStarIter(graph, fringe, heuristic, eval_depth, rng, pomdp);
+    AOStarIter(graph, fringe, heuristic, eval_depth, rng, pomdp, method);
 
     const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - iter_start);
