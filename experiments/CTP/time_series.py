@@ -155,7 +155,7 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
 
     fig.update_layout(
         title=title,
-        xaxis_title="Execution time (s)",
+        xaxis_title="Planning time (s)",
         yaxis_title="Reward",
         xaxis_range=[0, df["Timestamp"].max()],
     )
@@ -188,7 +188,7 @@ def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show")
 
     fig.update_layout(
         # title=title,
-        xaxis_title="Execution time (s)",
+        xaxis_title="Planning time (s)",
         yaxis_title=ylabel,
         xaxis_range=[0, df["Timestamp"].max()],
         font=dict(size=32),
