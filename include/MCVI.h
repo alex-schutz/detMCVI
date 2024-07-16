@@ -19,6 +19,9 @@
 
 namespace MCVI {
 
+using StateValueFunction =
+    std::function<std::pair<double, bool>(const State&, int64_t)>;
+
 class MCVIPlanner {
  private:
   SimInterface* _pomdp;
@@ -65,18 +68,17 @@ class MCVIPlanner {
       int64_t max_computation_ms, int64_t eval_depth, double eval_epsilon,
       int64_t max_eval_steps, int64_t n_eval_trials, int64_t nb_particles_b0,
       int64_t eval_interval_ms, int64_t completion_threshold,
-      int64_t completion_reps, std::atomic<bool>& exit_flag);
+      int64_t completion_reps, std::optional<StateValueFunction> valFunc,
+      std::atomic<bool>& exit_flag);
 
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
 
   /// @brief Evaluate the FSC bounds through multiple simulations. Reverts to
   /// greedy policy when policy runs out
-  int64_t EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
-                                      int64_t init_belief_samples) const;
-
-  int64_t EvaluationWithSimulationFSCFixedDist(
-      int64_t max_steps, std::vector<State> init_dist) const;
+  int64_t EvaluationWithSimulationFSC(
+      int64_t max_steps, int64_t num_sims, int64_t init_belief_samples,
+      std::optional<StateValueFunction> valFunc) const;
 
  private:
   int64_t GetFirstAction(std::shared_ptr<BeliefTreeNode> Tr_node,
@@ -104,7 +106,8 @@ class MCVIPlanner {
 std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
-    const PathToTerminal& ptt, const std::string& alg_name);
+    const PathToTerminal& ptt, std::optional<StateValueFunction> valFunc,
+    const std::string& alg_name);
 
 BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp);
 

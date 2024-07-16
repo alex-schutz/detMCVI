@@ -35,6 +35,9 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
       max_sim_depth, converge_thresh, std::numeric_limits<int64_t>::max(),
       max_time_ms, eval_depth, eval_epsilon, max_eval_steps, n_eval_trials,
       nb_particles_b0, eval_interval_ms, completion_threshold, completion_reps,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
       exit_flag);
 }
 
@@ -55,10 +58,14 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
-  RunAOStarAndEvaluate(root, std::numeric_limits<int64_t>::max(), max_time_ms,
-                       ptt, eval_depth, max_eval_steps, n_eval_trials,
-                       nb_particles_b0, eval_interval_ms, completion_threshold,
-                       completion_reps, rng, ptt, pomdp);
+  RunAOStarAndEvaluate(
+      root, std::numeric_limits<int64_t>::max(), max_time_ms, ptt, eval_depth,
+      max_eval_steps, n_eval_trials, nb_particles_b0, eval_interval_ms,
+      completion_threshold, completion_reps, rng, ptt,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
+      pomdp);
 }
 
 void parseSeriesArgs(int argc, char** argv, int64_t& n_eval_trials,

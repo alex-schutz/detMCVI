@@ -163,6 +163,65 @@ class CTP : public MCVI::SimInterface {
     os << "}" << std::endl;
   }
 
+  std::pair<double, bool> get_state_value(const MCVI::State& state,
+                                          int64_t max_depth) const {
+    // find cost to goal
+    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+        state_edges;
+    std::unordered_map<MCVI::State, bool, MCVI::StateHash, MCVI::StateEqual>
+        can_terminate;
+    for (const auto& e : edges) {
+      if (!stoch_edges.contains(e.first) ||
+          state.at(sfIdx(edge2str(e.first))) == 1)
+        state_edges.insert(e);
+    }
+    auto gp = GraphPath(state_edges);
+    const auto [costs, pred] = gp.calculate({goal}, max_depth);
+    const auto loc_idx = sfIdx("loc");
+
+    MCVI::State eval_state = state;
+    if (eval_state.at(loc_idx) == -1) eval_state[loc_idx] = origin;
+
+    // Calculate discounted reward
+    for (const auto& node_no : nodes) {
+      const auto path = gp.reconstructPath({node_no}, pred);
+      const double gamma = GetDiscount();
+      double sum_reward = 0.0;
+      double discount = 1.0;
+      MCVI::State world_state = eval_state;
+      can_terminate[world_state] = true;
+      for (size_t i = path.size() - 1; i >= 1; --i) {
+        const auto node = path.at(i).first;
+        if (node == MCVI::State({goal})) break;
+        if (i == 0 && node != MCVI::State({goal}))
+          can_terminate[world_state] = false;
+
+        world_state[loc_idx] = path.at(i).first.at(0);
+        MCVI::State sNext;
+        const auto action = std::distance(
+            nodes.begin(),
+            std::find(nodes.begin(), nodes.end(), path.at(i - 1).first.at(0)));
+        const double reward = applyActionToState(world_state, action, sNext);
+        assert(sNext.at(loc_idx) == path.at(i - 1).first.at(0));
+
+        sum_reward += discount * reward;
+        discount *= gamma;
+      }
+      world_state[loc_idx] = node_no;
+      state_value[world_state] = sum_reward;
+    }
+
+    if (!can_terminate.at(eval_state)) {
+      std::cerr << "Cannot find solution for state with value "
+                << state_value.at(eval_state) << std::endl;
+      for (const auto& e : stoch_edges)
+        std::cerr << edge2str(e.first) << ": "
+                  << eval_state.at(sfIdx(edge2str(e.first))) << std::endl;
+    }
+
+    return {state_value.at(eval_state), can_terminate.at(eval_state)};
+  }
+
  protected:
   std::string edge2str(std::pair<int64_t, int64_t> e) const {
     return "e" + std::to_string(e.first) + "_" + std::to_string(e.second);
@@ -396,48 +455,6 @@ class CTP : public MCVI::SimInterface {
     return minElement;
   }
 
-  double get_state_value(const MCVI::State& state, int64_t max_depth) const {
-    // find cost to goal
-    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
-        state_edges;
-    for (const auto& e : edges) {
-      if (!stoch_edges.contains(e.first) ||
-          state.at(sfIdx(edge2str(e.first))) == 1)
-        state_edges.insert(e);
-    }
-    auto gp = GraphPath(state_edges);
-    const auto [costs, pred] = gp.calculate({goal}, max_depth);
-    const auto loc_idx = sfIdx("loc");
-
-    // Calculate discounted reward
-    for (const auto& node_no : nodes) {
-      const auto path = gp.reconstructPath({node_no}, pred);
-      const double gamma = GetDiscount();
-      double sum_reward = 0.0;
-      double discount = 1.0;
-      MCVI::State world_state = state;
-      for (size_t i = path.size() - 1; i >= 1; --i) {
-        const auto node = path.at(i).first;
-        if (node == MCVI::State({goal})) break;
-
-        world_state[loc_idx] = path.at(i).first.at(0);
-        MCVI::State sNext;
-        const auto action = std::distance(
-            nodes.begin(),
-            std::find(nodes.begin(), nodes.end(), path.at(i - 1).first.at(0)));
-        const double reward = applyActionToState(world_state, action, sNext);
-        assert(sNext.at(loc_idx) == path.at(i - 1).first.at(0));
-
-        sum_reward += discount * reward;
-        discount *= gamma;
-      }
-      world_state[loc_idx] = node_no;
-      state_value[world_state] = sum_reward;
-    }
-
-    return state_value.at(state);
-  }
-
   // find an upper bound for the value of a belief
   double heuristicUpper(const MCVI::StateMap<double>& belief,
                         int64_t max_depth) const {
@@ -452,7 +469,7 @@ class CTP : public MCVI::SimInterface {
     const auto it = state_value.find(best_case_state);
     if (it != state_value.cend()) return it->second;
 
-    const double val = get_state_value(best_case_state, max_depth);
+    const auto [val, _] = get_state_value(best_case_state, max_depth);
     state_value[best_case_state] = val;
     return val;
   }
@@ -470,7 +487,7 @@ class CTP : public MCVI::SimInterface {
     const auto it = state_value.find(worst_case_state);
     if (it != state_value.cend()) return it->second;
 
-    const double val = get_state_value(worst_case_state, max_depth);
+    const auto [val, _] = get_state_value(worst_case_state, max_depth);
     state_value[worst_case_state] = val;
     return val;
   }

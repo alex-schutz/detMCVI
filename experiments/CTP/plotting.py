@@ -36,8 +36,8 @@ def plot_comparison(df, xlabel, ylabel, title, figname, output="show"):
             "Stochastic edge count",
             "MCVI runtime (s)",
             "AO* runtime (s)",
-            "AO* completed problem Average reward",
-            "MCVI completed problem Average reward",
+            "AO* completed problem Average regret",
+            "MCVI completed problem Average regret",
             "MCVI completed problem Percentage",
             "AO* completed problem Percentage",
         ],
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     )
     df = df.rename(
         columns={
-            "avg_reward_difference": "Difference in average reward from AO*",
+            "avg_regret_difference": "Difference in average regret from AO*",
             "Nodes": "CTP problem nodes",
         }
     )
@@ -80,9 +80,9 @@ if __name__ == "__main__":
     )
     plot_comparison(
         df,
-        "AO* completed problem Average reward",
-        "MCVI completed problem Average reward",
-        "Average reward",
-        "reward",
+        "AO* completed problem Average regret",
+        "MCVI completed problem Average regret",
+        "Average regret",
+        "regret",
         output,
     )

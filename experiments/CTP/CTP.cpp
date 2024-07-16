@@ -66,8 +66,11 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
   // Evaluate the FSC policy
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
             << n_eval_trials << " trials):" << std::endl;
-  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
-                                      nb_particles_b0);
+  planner.EvaluationWithSimulationFSC(
+      max_eval_steps, n_eval_trials, nb_particles_b0,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      });
   std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
             << std::endl;
   std::cout << std::endl;
@@ -110,8 +113,12 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Evaluation of alternative (AO* greedy) policy ("
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials):" << std::endl;
-  EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials,
-                                 nb_particles_b0, pomdp, rng, ptt, "AO*");
+  EvaluationWithGreedyTreePolicy(
+      root, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng, ptt,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
+      "AO*");
   std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
             << std::endl;
 }

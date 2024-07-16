@@ -60,10 +60,10 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
     ]
     data_types = {
         "Count": extract_int,
-        "Average reward": extract_float,
-        "Highest reward": extract_float,
-        "Lowest reward": extract_float,
-        "Reward variance": extract_float,
+        "Average regret": extract_float,
+        "Highest regret": extract_float,
+        "Lowest regret": extract_float,
+        "Regret variance": extract_float,
     }
     for alg in algs:
         for result_type in result_types:
@@ -84,9 +84,9 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
                 instance_result, result_types, i, alg
             )
 
-    instance_result["avg_reward_difference"] = (
-        instance_result["MCVI completed problem Average reward"]
-        - instance_result["AO* completed problem Average reward"]
+    instance_result["avg_regret_difference"] = (
+        instance_result["MCVI completed problem Average regret"]
+        - instance_result["AO* completed problem Average regret"]
     )
     instance_result["percentage_complete_difference"] = (
         instance_result["MCVI completed problem Percentage"]

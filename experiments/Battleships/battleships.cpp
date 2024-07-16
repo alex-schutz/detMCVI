@@ -67,7 +67,7 @@ void runMCVI(Battleships* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
             << n_eval_trials << " trials):" << std::endl;
   planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
-                                      nb_particles_b0);
+                                      nb_particles_b0, std::nullopt);
   std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
             << std::endl;
   std::cout << std::endl;
@@ -111,7 +111,8 @@ void runAOStar(Battleships* pomdp, const BeliefDistribution& init_belief,
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials):" << std::endl;
   EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials,
-                                 nb_particles_b0, pomdp, rng, ptt, "AO*");
+                                 nb_particles_b0, pomdp, rng, ptt, std::nullopt,
+                                 "AO*");
   std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
             << std::endl;
 }

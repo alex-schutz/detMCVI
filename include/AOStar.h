@@ -155,13 +155,14 @@ size_t RunAOEvaluation(std::shared_ptr<BeliefTreeNode> initial_belief,
                        int64_t time_sum, int64_t max_eval_steps,
                        int64_t n_eval_trials, int64_t nb_particles_b0,
                        std::mt19937_64& rng, const PathToTerminal& ptt,
+                       std::optional<StateValueFunction> valFunc,
                        SimInterface* pomdp) {
   std::cout << "Evaluation of alternative (AO* greedy) policy ("
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials) at time " << time_sum / 1e6 << ":" << std::endl;
   const auto completed_states = EvaluationWithGreedyTreePolicy(
       initial_belief, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp,
-      rng, ptt, "AO*");
+      rng, ptt, valFunc, "AO*");
 
   const std::string policy_tree_file =
       "greedy_policy_tree_" + std::to_string(time_sum) + ".dot";
@@ -182,6 +183,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
                           int64_t nb_particles_b0, int64_t eval_interval_ms,
                           int64_t completion_threshold, int64_t completion_reps,
                           std::mt19937_64& rng, const PathToTerminal& ptt,
+                          std::optional<StateValueFunction> valFunc,
                           SimInterface* pomdp,
                           AOSearchType method = AOSearchType::random) {
   std::vector<std::pair<std::shared_ptr<BeliefTreeNode>,
@@ -204,9 +206,9 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
 
     if (time_sum - last_eval >= eval_interval_ms * 1000) {
       last_eval = time_sum;
-      const int64_t completed_count =
-          RunAOEvaluation(initial_belief, time_sum, max_eval_steps,
-                          n_eval_trials, nb_particles_b0, rng, ptt, pomdp);
+      const int64_t completed_count = RunAOEvaluation(
+          initial_belief, time_sum, max_eval_steps, n_eval_trials,
+          nb_particles_b0, rng, ptt, valFunc, pomdp);
       if (completed_count >= completion_threshold)
         completed_times++;
       else
@@ -225,7 +227,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
     std::cout << "AO* planning complete, reached maximum iterations."
               << std::endl;
   RunAOEvaluation(initial_belief, time_sum, max_eval_steps, n_eval_trials,
-                  nb_particles_b0, rng, ptt, pomdp);
+                  nb_particles_b0, rng, ptt, valFunc, pomdp);
   return;
 }
 

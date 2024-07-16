@@ -239,6 +239,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                              int64_t nb_particles_b0, int64_t eval_interval_ms,
                              int64_t completion_threshold,
                              int64_t completion_reps,
+                             std::optional<StateValueFunction> valFunc,
                              std::atomic<bool>& exit_flag) {
   // Calculate the lower bound
   const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
@@ -276,7 +277,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                 << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
                 << std::endl;
       const int64_t completed_count = EvaluationWithSimulationFSC(
-          max_eval_steps, n_eval_trials, nb_particles_b0);
+          max_eval_steps, n_eval_trials, nb_particles_b0, valFunc);
       std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
                 << " nodes." << std::endl;
       if (completed_count >= completion_threshold)
@@ -302,7 +303,8 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
             << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
             << std::endl;
-  EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials, nb_particles_b0);
+  EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials, nb_particles_b0,
+                              valFunc);
   std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes() << " nodes."
             << std::endl;
   return {_fsc, Tr_root};
@@ -401,13 +403,19 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
   return b;
 }
 
-// static bool StateHasSolution(const State& state, const PathToTerminal& ptt,
-//                              int64_t max_depth) {
-//   return ptt.is_terminal(state, max_depth);
-// }
+// Return the shortest path reward and whether a terminal state is reachable
+// from this state
+static std::pair<double, bool> OracleReward(const State& state,
+                                            const PathToTerminal& ptt,
+                                            int64_t max_depth) {
+  const auto [action, sum_reward] = ptt.path(state, max_depth);
+  const bool reaches_terminal = ptt.is_terminal(state, max_depth);
+  return {sum_reward, reaches_terminal};
+}
 
 int64_t MCVIPlanner::EvaluationWithSimulationFSC(
-    int64_t max_steps, int64_t num_sims, int64_t init_belief_samples) const {
+    int64_t max_steps, int64_t num_sims, int64_t init_belief_samples,
+    std::optional<StateValueFunction> valFunc) const {
   const double gamma = _pomdp->GetDiscount();
   EvaluationStats eval_stats;
   const BeliefDistribution init_belief =
@@ -415,16 +423,21 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
   for (int64_t sim = 0; sim < num_sims; ++sim) {
     State state = SampleOneState(init_belief, _rng);
     const State initial_state = state;
+    const auto [optimal, has_soln] =
+        (valFunc.has_value())
+            ? valFunc.value()(initial_state, max_steps)
+            : OracleReward(initial_state, _heuristic, max_steps);
+
     double sum_r = 0.0;
     int64_t nI = _fsc.GetStartNodeIndex();
     int64_t i = 0;
     for (; i < max_steps; ++i) {
       if (nI == -1) {
-        // if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-        //   eval_stats.no_solution_off_policy.update(sum_r);
-        // } else {
-        eval_stats.off_policy.update(sum_r);
-        // }
+        if (!has_soln) {
+          eval_stats.no_solution_off_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.off_policy.update(sum_r - optimal);
+        }
         break;
       }
 
@@ -433,7 +446,7 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
       sum_r += std::pow(gamma, i) * reward;
 
       if (done) {
-        eval_stats.complete.update(sum_r);
+        eval_stats.complete.update(sum_r - optimal);
         break;
       }
 
@@ -442,61 +455,11 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
       state = sNext;
     }
     if (i == max_steps) {
-      //   if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-      //     eval_stats.no_solution_on_policy.update(sum_r);
-      //   } else {
-      eval_stats.max_iterations.update(sum_r);
-      //   }
-    }
-  }
-  PrintStats(eval_stats.complete, "MCVI completed problem");
-  PrintStats(eval_stats.off_policy, "MCVI exited policy");
-  PrintStats(eval_stats.max_iterations, "MCVI max iterations");
-  PrintStats(eval_stats.no_solution_on_policy, "MCVI no solution (on policy)");
-  PrintStats(eval_stats.no_solution_off_policy,
-             "MCVI no solution (exited policy)");
-  return eval_stats.complete.getCount();
-}
-
-int64_t MCVIPlanner::EvaluationWithSimulationFSCFixedDist(
-    int64_t max_steps, std::vector<State> init_dist) const {
-  const double gamma = _pomdp->GetDiscount();
-  EvaluationStats eval_stats;
-
-  for (const auto& initial_state : init_dist) {
-    State state = initial_state;
-    double sum_r = 0.0;
-    int64_t nI = _fsc.GetStartNodeIndex();
-    int64_t i = 0;
-    for (; i < max_steps; ++i) {
-      if (nI == -1) {
-        // if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-        //   eval_stats.no_solution_off_policy.update(sum_r);
-        // } else {
-        eval_stats.off_policy.update(sum_r);
-        // }
-        break;
+      if (!has_soln) {
+        eval_stats.no_solution_on_policy.update(sum_r - optimal);
+      } else {
+        eval_stats.max_iterations.update(sum_r - optimal);
       }
-
-      const int64_t action = _fsc.GetNode(nI).GetBestAction();
-      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
-      sum_r += std::pow(gamma, i) * reward;
-
-      if (done) {
-        eval_stats.complete.update(sum_r);
-        break;
-      }
-
-      nI = _fsc.GetEdgeValue(nI, obs);
-
-      state = sNext;
-    }
-    if (i == max_steps) {
-      //   if (!StateHasSolution(initial_state, _heuristic, max_steps)) {
-      //     eval_stats.no_solution_on_policy.update(sum_r);
-      //   } else {
-      eval_stats.max_iterations.update(sum_r);
-      //   }
     }
   }
   PrintStats(eval_stats.complete, "MCVI completed problem");
@@ -511,7 +474,8 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSCFixedDist(
 std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
-    const PathToTerminal& /*ptt*/, const std::string& alg_name) {
+    const PathToTerminal& ptt, std::optional<StateValueFunction> valFunc,
+    const std::string& alg_name) {
   const double gamma = pomdp->GetDiscount();
   EvaluationStats eval_stats;
   std::vector<State> success_states;
@@ -521,17 +485,20 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
   for (int64_t sim = 0; sim < num_sims; ++sim) {
     State state = SampleOneState(init_belief, rng);
     initial_state = state;
+    const auto [optimal, has_soln] =
+        (valFunc.has_value()) ? valFunc.value()(initial_state, max_steps)
+                              : OracleReward(initial_state, ptt, max_steps);
     double sum_r = 0.0;
     auto node = root;
     int64_t i = 0;
     for (; i < max_steps; ++i) {
       if (node && node->GetBestActUBound() == -1) node = nullptr;
       if (!node) {
-        // if (!StateHasSolution(initial_state, ptt, max_steps)) {
-        //   eval_stats.no_solution_off_policy.update(sum_r);
-        // } else {
-        eval_stats.off_policy.update(sum_r);
-        // }
+        if (!has_soln) {
+          eval_stats.no_solution_off_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.off_policy.update(sum_r - optimal);
+        }
         break;
       }
       const int64_t action = node->GetBestActUBound();
@@ -539,7 +506,7 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
       sum_r += std::pow(gamma, i) * reward;
 
       if (done) {
-        eval_stats.complete.update(sum_r);
+        eval_stats.complete.update(sum_r - optimal);
         success_states.push_back(initial_state);
         break;
       }
@@ -549,11 +516,11 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
       state = sNext;
     }
     if (i == max_steps) {
-      //   if (!StateHasSolution(initial_state, ptt, max_steps)) {
-      //     eval_stats.no_solution_on_policy.update(sum_r);
-      //   } else {
-      eval_stats.max_iterations.update(sum_r);
-      //   }
+      if (!has_soln) {
+        eval_stats.no_solution_on_policy.update(sum_r - optimal);
+      } else {
+        eval_stats.max_iterations.update(sum_r - optimal);
+      }
     }
   }
   PrintStats(eval_stats.complete, alg_name + " completed problem");

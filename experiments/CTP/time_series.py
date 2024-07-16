@@ -33,10 +33,10 @@ def parse_evaluation(lines: list[str]) -> dict[str, float | int]:
     ]
     data_types = {
         "Count": extract_int,
-        "Average reward": extract_float,
-        "Highest reward": extract_float,
-        "Lowest reward": extract_float,
-        "Reward variance": extract_float,
+        "Average regret": extract_float,
+        "Highest regret": extract_float,
+        "Lowest regret": extract_float,
+        "Regret variance": extract_float,
     }
     patterns = []
     for result_type in result_types:
@@ -54,7 +54,7 @@ def parse_evaluation(lines: list[str]) -> dict[str, float | int]:
 
     for i, res in enumerate(result_types):
         if result[f"{res} Count"] == 0:
-            result[f"{res} Average reward"] = np.nan
+            result[f"{res} Average regret"] = np.nan
         result[f"{res} Percentage"] = percentage_by_type(result, result_types, i)
 
     return result
@@ -111,52 +111,52 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
         data_info = data[
             [
-                "completed problem Highest reward",
-                "completed problem Lowest reward",
+                "completed problem Highest regret",
+                "completed problem Lowest regret",
                 "completed problem Percentage",
             ]
         ]
         fig.add_trace(
             go.Scatter(
                 x=data["Timestamp"],
-                y=data["completed problem Average reward"],
+                y=data["completed problem Average regret"],
                 mode="lines+markers",
                 line_shape="hv",
                 line=dict(color=colours[i]),
                 name=alg,
                 customdata=data_info,
-                hovertemplate="Computation time: %{x:.2f}s<br>Average reward: %{y:.2f}<br>Highest reward: %{customdata[0]:.2f}<br>Lowest reward: %{customdata[1]:.2f}<br>Percentage completed: %{customdata[2]:.2f}%",
+                hovertemplate="Computation time: %{x:.2f}s<br>Average regret: %{y:.2f}<br>Highest regret: %{customdata[0]:.2f}<br>Lowest regret: %{customdata[1]:.2f}<br>Percentage completed: %{customdata[2]:.2f}%",
             )
         )
         fig.add_trace(
             go.Scatter(
                 x=data["Timestamp"],
-                y=data["completed problem Highest reward"],
+                y=data["completed problem Highest regret"],
                 fill="tonexty",
                 fillcolor=lighten_colour(colours[i], 0.2),
                 mode="lines",
                 line=dict(color=lighten_colour(colours[i], 0.2)),
                 line_shape="hv",
-                name="Highest reward",
+                name="Highest regret",
             )
         )
         fig.add_trace(
             go.Scatter(
                 x=data["Timestamp"],
-                y=data["completed problem Lowest reward"],
+                y=data["completed problem Lowest regret"],
                 fill="tonexty",
                 fillcolor=lighten_colour(colours[i], 0.2),
                 mode="lines",
                 line=dict(color=lighten_colour(colours[i], 0.2)),
                 line_shape="hv",
-                name="Lowest reward",
+                name="Lowest regret",
             )
         )
 
     fig.update_layout(
         title=title,
         xaxis_title="Planning time (s)",
-        yaxis_title="Reward",
+        yaxis_title="Regret",
         xaxis_range=[0, df["Timestamp"].max()],
     )
 
@@ -208,25 +208,18 @@ if __name__ == "__main__":
     # output="png"
     # output="html"
 
-    # series_file1 = "timeseries_10_516847623.txt"
-    # series_file = "timeseries_14_516847623_2.txt"
-    series_file1 = "timeseries_40_9117029.txt"
-    series_file2 = "timeseries_40_9117029_AO3.txt"
-    # generate_graph(40, 9117029, True, 0.4, True)
+    series_file = "timeseries4.txt"
 
-    df = parse_file(series_file1)
-    df = df[df["Algorithm"] == "MCVI"]
-    df2 = parse_file(series_file2)
-    df = pd.concat([df, df2], ignore_index=True, sort=False)
+    df = parse_file(series_file)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-    plot_timeseries(df, "Policy value", "timeseries_14_value", output)
+    plot_timeseries(df, "Policy value", "timeseries_5_value", output)
     plot_data(
         df,
         "completed problem Percentage",
         "Goal reached %",
         "Policy completion",
-        "timeseries_14_comp",
+        "timeseries_5_comp",
         output,
     )
     plot_data(
@@ -234,6 +227,6 @@ if __name__ == "__main__":
         "policy nodes",
         "Policy nodes",
         "Policy size",
-        "timeseries_14_nodes",
+        "timeseries_5_nodes",
         output,
     )
