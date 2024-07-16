@@ -92,14 +92,14 @@ class CTP_Optimism : public CTP {
         if (!ptt.is_terminal(init_state, max_depth)) {
           eval_stats.no_solution_on_policy.update(sum_r);
         } else {
-          eval_stats.max_iterations.update(sum_r);
+          eval_stats.max_depth.update(sum_r);
         }
       }
     }
 
     PrintStats(eval_stats.complete, "Optimism completed problem");
     PrintStats(eval_stats.off_policy, "Optimism exited policy");
-    PrintStats(eval_stats.max_iterations, "Optimism max iterations");
+    PrintStats(eval_stats.max_depth, "Optimism max depth");
     PrintStats(eval_stats.no_solution_on_policy,
                "Optimism no solution (on policy)");
     PrintStats(eval_stats.no_solution_off_policy,

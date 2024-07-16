@@ -169,7 +169,7 @@ size_t RunAOEvaluation(std::shared_ptr<BeliefTreeNode> initial_belief,
   std::fstream policy_tree(policy_tree_file, std::fstream::out);
   const int64_t n_greedy_nodes = initial_belief->DrawPolicyTree(policy_tree);
   policy_tree.close();
-  std::remove(policy_tree_file.c_str());
+  //   std::remove(policy_tree_file.c_str());
   std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
             << std::endl;
 

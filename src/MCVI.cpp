@@ -273,6 +273,10 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
 
     if (time_sum - last_eval >= eval_interval_ms * 1000) {
       last_eval = time_sum;
+      std::fstream fsc_graph("fsc_" + std::to_string(time_sum) + ".dot",
+                             std::fstream::out);
+      fsc.GenerateGraphviz(fsc_graph);
+      fsc_graph.close();
       std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
                 << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
                 << std::endl;
@@ -458,13 +462,13 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
       if (!has_soln) {
         eval_stats.no_solution_on_policy.update(sum_r - optimal);
       } else {
-        eval_stats.max_iterations.update(sum_r - optimal);
+        eval_stats.max_depth.update(sum_r - optimal);
       }
     }
   }
   PrintStats(eval_stats.complete, "MCVI completed problem");
   PrintStats(eval_stats.off_policy, "MCVI exited policy");
-  PrintStats(eval_stats.max_iterations, "MCVI max iterations");
+  PrintStats(eval_stats.max_depth, "MCVI max depth");
   PrintStats(eval_stats.no_solution_on_policy, "MCVI no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,
              "MCVI no solution (exited policy)");
@@ -519,13 +523,13 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
       if (!has_soln) {
         eval_stats.no_solution_on_policy.update(sum_r - optimal);
       } else {
-        eval_stats.max_iterations.update(sum_r - optimal);
+        eval_stats.max_depth.update(sum_r - optimal);
       }
     }
   }
   PrintStats(eval_stats.complete, alg_name + " completed problem");
   PrintStats(eval_stats.off_policy, alg_name + " exited policy");
-  PrintStats(eval_stats.max_iterations, alg_name + " max iterations");
+  PrintStats(eval_stats.max_depth, alg_name + " max depth");
   PrintStats(eval_stats.no_solution_on_policy,
              alg_name + " no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,

@@ -54,7 +54,7 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
     result_types = [
         "completed problem",
         "exited policy",
-        "max iterations",
+        "max depth",
         "no solution (on policy)",
         "no solution (exited policy)",
     ]

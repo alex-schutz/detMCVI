@@ -27,7 +27,7 @@ def parse_evaluation(lines: list[str]) -> dict[str, float | int]:
     result_types = [
         "completed problem",
         "exited policy",
-        "max iterations",
+        "max depth",
         "no solution (on policy)",
         "no solution (exited policy)",
     ]
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     # output="png"
     # output="html"
 
-    series_file = "timeseries4.txt"
+    series_file = "timeseries5.txt"
 
     df = parse_file(series_file)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)

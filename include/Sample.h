@@ -58,7 +58,7 @@ class Welford {
 typedef struct {
   Welford complete;
   Welford off_policy;
-  Welford max_iterations;
+  Welford max_depth;
   Welford no_solution_on_policy;
   Welford no_solution_off_policy;
 } EvaluationStats;
