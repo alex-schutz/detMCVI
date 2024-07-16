@@ -218,6 +218,8 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
     if (time_sum >= max_computation_ms * 1000) {
       std::cout << "AO* planning complete, reached computation time."
                 << std::endl;
+      RunAOEvaluation(initial_belief, time_sum, max_eval_steps, n_eval_trials,
+                      nb_particles_b0, rng, ptt, valFunc, pomdp);
       return;
     }
   }
