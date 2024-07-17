@@ -25,7 +25,8 @@ namespace MCVI {
  */
 class PathToTerminal : public MaximiseReward {
  public:
-  PathToTerminal(SimInterface* pomdp) : pomdp(pomdp) {}
+  PathToTerminal(SimInterface* pomdp)
+      : MaximiseReward(pomdp->GetDiscount()), pomdp(pomdp) {}
 
   bool hasPathToTerminal(const State& source, int64_t max_depth) const;
 

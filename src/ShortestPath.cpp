@@ -74,9 +74,20 @@ static bool CmpPair(const std::pair<State, double>& p1,
   return p1.second < p2.second;
 }
 
+std::optional<
+    std::unordered_map<int64_t, std::pair<int64_t, State>>::const_iterator>
+MaximiseReward::stateInCache(const State& state, int64_t depth_to_go) const {
+  const auto state_cache = cache.find(state);
+  if (state_cache == cache.end()) return std::nullopt;
+
+  const auto pos = state_cache->second.find(depth_to_go);
+  if (pos == state_cache->second.end()) return std::nullopt;
+
+  return pos;
+}
+
 std::pair<double, std::vector<std::pair<int64_t, State>>>
-MaximiseReward::getMaxReward(const State& init_state, int64_t max_depth,
-                             double discount_factor) const {
+MaximiseReward::getMaxReward(const State& init_state, int64_t max_depth) const {
   std::unordered_map<State, double, StateHash, StateEqual> rewards;
   std::unordered_map<State, std::vector<std::pair<int64_t, State>>, StateHash,
                      StateEqual>
@@ -101,6 +112,13 @@ MaximiseReward::getMaxReward(const State& init_state, int64_t max_depth,
           }
         } else {
           all_terminal = false;
+
+          const auto cached_val = stateInCache(state, max_depth - depth);
+          if (cached_val.has_value()) {
+            const auto& [act, sNext] = cached_val.value()->second;
+            if (action != act || next_state != sNext) continue;
+          }
+
           const double new_reward =
               rw + std::pow(discount_factor, depth) * immediate_rw;
           if (next_rewards.find(next_state) == next_rewards.end() ||
@@ -121,8 +139,17 @@ MaximiseReward::getMaxReward(const State& init_state, int64_t max_depth,
       std::max_element(rewards.begin(), rewards.end(), CmpPair);
   if (best_final_state_ptr == rewards.end())
     throw std::logic_error("Could not find maximal path");
-  return std::make_pair(best_final_state_ptr->second,
-                        paths.at(best_final_state_ptr->first));
+  const auto best_path = paths.at(best_final_state_ptr->first);
+
+  State path_state = init_state;
+  for (int64_t depth = 0; depth < max_depth; ++depth) {
+    if ((size_t)depth >= best_path.size()) break;
+    auto& state_cache = cache[path_state];
+    state_cache[max_depth - depth] = best_path.at(depth);
+    path_state = best_path.at(depth).second;
+  }
+
+  return std::make_pair(best_final_state_ptr->second, best_path);
 }
 
 }  // namespace MCVI

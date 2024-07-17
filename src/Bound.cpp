@@ -11,7 +11,7 @@ double UpperBoundEvaluation(const BeliefDistribution& belief,
                             int64_t belief_depth, int64_t max_depth) {
   double V_upper_bound = 0.0;
   for (const auto& [state, prob] : belief) {
-    const auto [reward, path] = solver.getMaxReward(state, max_depth, gamma);
+    const auto [reward, path] = solver.getMaxReward(state, max_depth);
     V_upper_bound += std::pow(gamma, belief_depth) * reward * prob;
   }
 
@@ -53,8 +53,7 @@ PathToTerminal::getSuccessors(const State& state) const {
 
 bool PathToTerminal::hasPathToTerminal(const State& source,
                                        int64_t max_depth) const {
-  const auto [reward, path] =
-      getMaxReward(source, max_depth, pomdp->GetDiscount());
+  const auto [reward, path] = getMaxReward(source, max_depth);
   State state = source;
   for (const auto& [action, state] : path)
     if (pomdp->IsTerminal(state)) return true;

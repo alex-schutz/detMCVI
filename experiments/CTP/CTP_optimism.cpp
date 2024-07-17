@@ -136,8 +136,7 @@ class CTP_Optimism : public CTP {
   }
 
   int64_t GetBestAction(const State& state, int64_t max_depth) const {
-    const auto [reward, path] =
-        ptt.getMaxReward(state, max_depth, GetDiscount());
+    const auto [reward, path] = ptt.getMaxReward(state, max_depth);
     return path.at(0).first;
   }
 
