@@ -1,6 +1,7 @@
 #include <ShortestPath.h>
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <iostream>
 
 using namespace MCVI;
@@ -110,4 +111,86 @@ TEST(ShortestPathFasterAlgorithmTest, ReconstructPath) {
   EXPECT_EQ(path[1].second, 3);
   EXPECT_EQ(path[2].first, State({3}));
   EXPECT_EQ(path[2].second, -1);
+}
+
+class MockMaximiseReward : public MaximiseReward {
+ public:
+  MockMaximiseReward() = default;
+
+  std::vector<std::tuple<int64_t, State, double>> getSuccessors(
+      const State& node) const override {
+    if (node.at(0) == 1) {
+      return {{2, {2}, 3.0}, {3, {3}, -2.0}, {4, {4}, 5.0}, {7, {7}, 2.0}};
+    } else if (node.at(0) == 2) {
+      return {{3, {3}, 2.0}, {5, {5}, 1.0}, {6, {6}, -1.0}};
+    } else if (node.at(0) == 3) {
+      return {{4, {4}, 2.0}, {6, {6}, 3.0}};
+    } else if (node.at(0) == 4) {
+      return {{4, {5}, -1.0}, {7, {7}, 4.0}, {9, {9}, 3.0}, {3, {3}, 2.0}};
+    } else if (node.at(0) == 5) {
+      return {{6, {6}, 2.0}, {8, {8}, -2.0}, {9, {9}, 1.0}, {2, {2}, -1.0}};
+    } else if (node.at(0) == 6) {
+      return {{7, {7}, 1.0}, {9, {9}, 3.0}};
+    } else if (node.at(0) == 7) {
+      return {{8, {8}, 1.0}, {10, {10}, 2.0}, {1, {1}, 2.0}};
+    } else if (node.at(0) == 8) {
+      return {{9, {9}, 4.0}, {10, {10}, 3.0}};
+    } else if (node.at(0) == 9) {
+      return {{10, {10}, 2.0}, {4, {4}, 3.0}};
+    } else if (node.at(0) == 10) {
+      return {{1, {1}, 2.0}, {2, {2}, 1.0}, {6, {6}, -1.0}};
+    } else if (node.at(0) == 11) {
+      return {{12, {12}, -20.0}, {11, {11}, 1.0}};
+    } else if (node.at(0) == 12) {
+      return {{12, {12}, 2.0}};
+    }
+    return {};
+  }
+};
+
+TEST(MaximiseRewardTest, GetMaxRewardTest) {
+  auto mockMaximiseReward = MockMaximiseReward();
+  {
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({1}, 1, 0.9);
+    EXPECT_DOUBLE_EQ(reward, 5.0);
+    std::vector<std::pair<int64_t, State>> expectedPath = {{4, {4}}};
+    EXPECT_EQ(path, expectedPath);
+  }
+  {
+    const double g = 0.9;
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({1}, 10, g);
+    EXPECT_DOUBLE_EQ(reward,
+                     (1 + std::pow(g, 3) + std::pow(g, 6)) *
+                             (std::pow(g, 0) * 5.0 + std::pow(g, 1) * 4.0 +
+                              std::pow(g, 2) * 2.0) +
+                         std::pow(g, 9) * 5.0);
+    std::vector<std::pair<int64_t, State>> expectedPath = {
+        {4, {4}}, {7, {7}}, {1, {1}}, {4, {4}}, {7, {7}},
+        {1, {1}}, {4, {4}}, {7, {7}}, {1, {1}}, {4, {4}}};
+    EXPECT_EQ(path, expectedPath);
+  }
+  {
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({11}, 1, 0.9);
+    EXPECT_DOUBLE_EQ(reward, 1.0);
+    std::vector<std::pair<int64_t, State>> expectedPath = {{11, {11}}};
+    EXPECT_EQ(path, expectedPath);
+  }
+  {
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({11}, 30, 0.9);
+    double e_rw = 0.0;
+    for (int i = 0; i < 30; ++i) e_rw += 1.0 * std::pow(0.9, i);
+    EXPECT_DOUBLE_EQ(reward, e_rw);
+    std::vector<std::pair<int64_t, State>> expectedPath;
+    for (int i = 0; i < 30; ++i) expectedPath.push_back({11, {11}});
+    EXPECT_EQ(path, expectedPath);
+  }
+  {
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({11}, 30, 0.99);
+    double e_rw = -20.0;
+    for (int i = 1; i < 30; ++i) e_rw += 2.0 * std::pow(0.99, i);
+    EXPECT_DOUBLE_EQ(reward, e_rw);
+    std::vector<std::pair<int64_t, State>> expectedPath;
+    for (int i = 0; i < 30; ++i) expectedPath.push_back({12, {12}});
+    EXPECT_EQ(path, expectedPath);
+  }
 }

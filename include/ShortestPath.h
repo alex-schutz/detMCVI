@@ -82,4 +82,20 @@ class ShortestPathFasterAlgorithm {
       const StateMap<std::pair<State, int64_t>>& pred) const;
 };
 
+class MaximiseReward {
+ private:
+ public:
+  MaximiseReward() {}
+
+  // Available successors <action, state, reward> tuples
+  virtual std::vector<std::tuple<int64_t, State, double>> getSuccessors(
+      const State& state) const = 0;
+
+  // Return the maximum reward that can be obtained starting in `state`
+  // up to `max_depth`, alongside the path of <action, next state>
+  // pairs
+  std::pair<double, std::vector<std::pair<int64_t, State>>> getMaxReward(
+      const State& state, int64_t max_depth, double discount_factor) const;
+};
+
 }  // namespace MCVI
