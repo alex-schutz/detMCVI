@@ -23,48 +23,18 @@ namespace MCVI {
  * @brief Method to calculate the shortest path in a deterministic POMDP from a
  * given state to a terminal state.
  */
-class PathToTerminal : public ShortestPathFasterAlgorithm {
+class PathToTerminal : public MaximiseReward {
  public:
-  PathToTerminal(SimInterface* pomdp)
-      : pomdp(pomdp), terminalStates({State({})}) {}
+  PathToTerminal(SimInterface* pomdp) : pomdp(pomdp), terminalStates() {}
 
-  /// @brief Return the first action and associated total reward for the end
-  /// state reachable from source within max_depth steps.
-  std::tuple<int64_t, double> path(const State& source,
-                                   int64_t max_depth) const;
+  bool hasPathToTerminal(const State& source, int64_t max_depth) const;
 
-  bool is_terminal(const State& source, int64_t max_depth) const;
-
-  std::vector<std::tuple<State, double, int64_t>> getEdges(
+  std::vector<std::tuple<int64_t, State, double>> getSuccessors(
       const State& state) const override;
-
-  struct PathNode {
-    int64_t id;
-    int64_t action;
-    std::unordered_set<State, StateHash, StateEqual> states;
-    std::shared_ptr<PathNode> nextNode;
-    std::vector<std::shared_ptr<PathNode>> prevNodes;
-  };
-
-  /// @brief Return the starting action node for each previously calculated path
-  /// leading to a sequence of action nodes, where common sub-paths have been
-  /// combined
-  StateMap<std::shared_ptr<PathNode>> buildPathTree() const;
 
  private:
   SimInterface* pomdp;
   mutable std::unordered_set<State, StateHash, StateEqual> terminalStates;
-  mutable StateMap<std::pair<int64_t, State>> paths;  // node: action, next node
-
-  std::shared_ptr<PathNode> createPathNode(
-      int64_t& id, int64_t action,
-      const std::unordered_set<State, StateHash, StateEqual>& states) const;
-
-  std::shared_ptr<PathNode> findActionChild(std::shared_ptr<PathNode> node,
-                                            int64_t action) const;
-
-  std::shared_ptr<PathNode> findOrCreateNode(std::shared_ptr<PathNode> nextNode,
-                                             int64_t& id, int64_t action) const;
 };
 
 /**

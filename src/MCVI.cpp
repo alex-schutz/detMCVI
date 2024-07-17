@@ -403,7 +403,7 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
 
 // static bool StateHasSolution(const State& state, const PathToTerminal& ptt,
 //                              int64_t max_depth) {
-//   return ptt.is_terminal(state, max_depth);
+//   return ptt.hasPathToTerminal(state, max_depth);
 // }
 
 int64_t MCVIPlanner::EvaluationWithSimulationFSC(

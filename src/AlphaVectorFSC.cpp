@@ -112,43 +112,4 @@ double AlphaVectorFSC::LowerBoundFromFSC(const BeliefDistribution& b0,
   return std::pow(pomdp->GetDiscount(), belief_depth) * belief_value;
 }
 
-AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
-                             const BeliefDistribution& initial_belief,
-                             int64_t max_depth, int64_t max_node_size,
-                             SimInterface* pomdp) {
-  for (const auto& [s, p] : initial_belief) (void)ptt.path(s, max_depth);
-
-  const auto path_tree = ptt.buildPathTree();
-
-  AlphaVectorFSC fsc(max_node_size);
-  std::unordered_map<int64_t, int64_t> node_map;
-  for (const auto& [s, node] : path_tree) {
-    auto curr_node = node;
-    while (curr_node != nullptr && curr_node->action != -1) {
-      if (!node_map.contains(curr_node->id)) {
-        node_map[curr_node->id] =
-            fsc.AddNode(AlphaVectorNode(curr_node->action));
-        curr_node = curr_node->nextNode;
-      } else {
-        break;
-      }
-    }
-  }
-
-  std::unordered_map<int64_t, std::unordered_map<int64_t, int64_t>> edge_map;
-  for (const auto& [s, node] : path_tree) {
-    auto state = s;
-    auto curr_node = node;
-    while (curr_node != nullptr && curr_node->action != -1) {
-      const auto [sNext, obs, reward, done] = pomdp->Step(state, node->action);
-      edge_map[node_map[curr_node->id]][obs] = node_map[node->nextNode->id];
-      curr_node = curr_node->nextNode;
-      state = sNext;
-    }
-  }
-  for (const auto& [nI, edges] : edge_map) fsc.UpdateEdge(nI, edges);
-
-  return fsc;
-}
-
 }  // namespace MCVI
