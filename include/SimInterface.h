@@ -37,6 +37,9 @@ class SimInterface {
   virtual int64_t GetNbAgent() const = 0;
   virtual bool IsTerminal(const State& sI) const = 0;
 
+  virtual double applyActionToState(const MCVI::State& state, int64_t action,
+                                    MCVI::State& sNext) const = 0;
+
   // --------------------------------------------------------
 
   virtual std::optional<double> GetHeuristicUpper(

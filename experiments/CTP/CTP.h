@@ -164,7 +164,7 @@ class CTP : public MCVI::SimInterface {
   }
 
   double applyActionToState(const MCVI::State& state, int64_t action,
-                            MCVI::State& sNext) const {
+                            MCVI::State& sNext) const override {
     sNext = state;
     const int64_t loc_idx = sfIdx("loc");
     const int64_t loc = state.at(loc_idx);
@@ -286,7 +286,7 @@ class CTP : public MCVI::SimInterface {
     return state.at(sfIdx(edge2str(edge))) == 1;  // traversable
   }
 
-    int64_t observeState(const MCVI::State& state) const {
+  int64_t observeState(const MCVI::State& state) const {
     int64_t observation = 0;
 
     int64_t loc = state.at(sfIdx("loc"));

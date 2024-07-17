@@ -20,6 +20,11 @@ class TestPOMDP : public SimInterface {
   int64_t GetSizeOfObs() const override { return observations.size(); }
   State SampleStartState() override { return {0}; }
   bool IsTerminal(const State& sI) const override { return sI.at(0) == 5; }
+  double applyActionToState(const State& sI, int64_t /*aI*/,
+                            State& state) const override {
+    state = sI;
+    return 0;
+  }
   std::tuple<State, int64_t, double, bool> Step(const State& sI,
                                                 int64_t aI) override {
     if (aI == 9) return {sI, 0, -13.0, false};

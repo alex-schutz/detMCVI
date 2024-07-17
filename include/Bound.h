@@ -25,7 +25,7 @@ namespace MCVI {
  */
 class PathToTerminal : public MaximiseReward {
  public:
-  PathToTerminal(SimInterface* pomdp) : pomdp(pomdp), terminalStates() {}
+  PathToTerminal(SimInterface* pomdp) : pomdp(pomdp) {}
 
   bool hasPathToTerminal(const State& source, int64_t max_depth) const;
 
@@ -34,7 +34,6 @@ class PathToTerminal : public MaximiseReward {
 
  private:
   SimInterface* pomdp;
-  mutable std::unordered_set<State, StateHash, StateEqual> terminalStates;
 };
 
 /**
