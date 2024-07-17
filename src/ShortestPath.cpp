@@ -88,21 +88,33 @@ MaximiseReward::getMaxReward(const State& init_state, int64_t max_depth,
     std::unordered_map<State, std::vector<std::pair<int64_t, State>>, StateHash,
                        StateEqual>
         next_paths;
+    bool all_terminal = true;
+
     for (const auto& [state, rw] : rewards) {
-      for (const auto& [action, next_state, immediate_rw] :
+      for (const auto& [action, next_state, immediate_rw, state_terminal] :
            getSuccessors(state)) {
-        const double new_reward =
-            rw + std::pow(discount_factor, depth) * immediate_rw;
-        if (next_rewards.find(next_state) == next_rewards.end() ||
-            new_reward > next_rewards[next_state]) {
-          next_rewards[next_state] = new_reward;
-          next_paths[next_state] = paths[state];
-          next_paths[next_state].push_back({action, next_state});
+        if (state_terminal) {
+          if (next_rewards.find(state) == next_rewards.end() ||
+              rw > next_rewards[state]) {
+            next_rewards[state] = rw;
+            next_paths[state] = paths[state];  // Path remains the same
+          }
+        } else {
+          all_terminal = false;
+          const double new_reward =
+              rw + std::pow(discount_factor, depth) * immediate_rw;
+          if (next_rewards.find(next_state) == next_rewards.end() ||
+              new_reward > next_rewards[next_state]) {
+            next_rewards[next_state] = new_reward;
+            next_paths[next_state] = paths[state];
+            next_paths[next_state].push_back({action, next_state});
+          }
         }
       }
     }
     rewards = next_rewards;
     paths = next_paths;
+    if (all_terminal) break;
   }
 
   const auto best_final_state_ptr =

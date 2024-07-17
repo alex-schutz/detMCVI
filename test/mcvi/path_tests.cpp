@@ -117,32 +117,50 @@ class MockMaximiseReward : public MaximiseReward {
  public:
   MockMaximiseReward() = default;
 
-  std::vector<std::tuple<int64_t, State, double>> getSuccessors(
+  std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
       const State& node) const override {
     if (node.at(0) == 1) {
-      return {{2, {2}, 3.0}, {3, {3}, -2.0}, {4, {4}, 5.0}, {7, {7}, 2.0}};
+      return {{2, {2}, 3.0, false},
+              {3, {3}, -2.0, false},
+              {4, {4}, 5.0, false},
+              {7, {7}, 2.0, false}};
     } else if (node.at(0) == 2) {
-      return {{3, {3}, 2.0}, {5, {5}, 1.0}, {6, {6}, -1.0}};
+      return {
+          {3, {3}, 2.0, false}, {5, {5}, 1.0, false}, {6, {6}, -1.0, false}};
     } else if (node.at(0) == 3) {
-      return {{4, {4}, 2.0}, {6, {6}, 3.0}};
+      return {{4, {4}, 2.0, false}, {6, {6}, 3.0, false}};
     } else if (node.at(0) == 4) {
-      return {{4, {5}, -1.0}, {7, {7}, 4.0}, {9, {9}, 3.0}, {3, {3}, 2.0}};
+      return {{4, {5}, -1.0, false},
+              {7, {7}, 4.0, false},
+              {9, {9}, 3.0, false},
+              {3, {3}, 2.0, false}};
     } else if (node.at(0) == 5) {
-      return {{6, {6}, 2.0}, {8, {8}, -2.0}, {9, {9}, 1.0}, {2, {2}, -1.0}};
+      return {{6, {6}, 2.0, false},
+              {8, {8}, -2.0, false},
+              {9, {9}, 1.0, false},
+              {2, {2}, -1.0, false}};
     } else if (node.at(0) == 6) {
-      return {{7, {7}, 1.0}, {9, {9}, 3.0}};
+      return {{7, {7}, 1.0, false}, {9, {9}, 3.0, false}};
     } else if (node.at(0) == 7) {
-      return {{8, {8}, 1.0}, {10, {10}, 2.0}, {1, {1}, 2.0}};
+      return {
+          {8, {8}, 1.0, false}, {10, {10}, 2.0, false}, {1, {1}, 2.0, false}};
     } else if (node.at(0) == 8) {
-      return {{9, {9}, 4.0}, {10, {10}, 3.0}};
+      return {{9, {9}, 4.0, false}, {10, {10}, 3.0, false}};
     } else if (node.at(0) == 9) {
-      return {{10, {10}, 2.0}, {4, {4}, 3.0}};
+      return {{10, {10}, 2.0, false}, {4, {4}, 3.0, false}};
     } else if (node.at(0) == 10) {
-      return {{1, {1}, 2.0}, {2, {2}, 1.0}, {6, {6}, -1.0}};
+      return {
+          {1, {1}, 2.0, false}, {2, {2}, 1.0, false}, {6, {6}, -1.0, false}};
     } else if (node.at(0) == 11) {
-      return {{12, {12}, -20.0}, {11, {11}, 1.0}};
+      return {{12, {12}, -20.0, false}, {11, {11}, 1.0, false}};
     } else if (node.at(0) == 12) {
-      return {{12, {12}, 2.0}};
+      return {{12, {12}, 2.0, false}};
+    } else if (node.at(0) == 13) {
+      return {{14, {14}, -10.0, false}, {15, {15}, -1.0, false}};
+    } else if (node.at(0) == 14) {
+      return {{14, {14}, 0, true}};
+    } else if (node.at(0) == 15) {
+      return {{15, {15}, -1.0, false}};
     }
     return {};
   }
@@ -191,6 +209,22 @@ TEST(MaximiseRewardTest, GetMaxRewardTest) {
     EXPECT_DOUBLE_EQ(reward, e_rw);
     std::vector<std::pair<int64_t, State>> expectedPath;
     for (int i = 0; i < 30; ++i) expectedPath.push_back({12, {12}});
+    EXPECT_EQ(path, expectedPath);
+  }
+  {
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({13}, 10, 0.99);
+    double e_rw = 0.0;
+    for (int i = 0; i < 10; ++i) e_rw += -1.0 * std::pow(0.99, i);
+    EXPECT_DOUBLE_EQ(reward, e_rw);
+    std::vector<std::pair<int64_t, State>> expectedPath;
+    for (int i = 0; i < 10; ++i) expectedPath.push_back({15, {15}});
+    EXPECT_EQ(path, expectedPath);
+  }
+  {
+    const auto [reward, path] = mockMaximiseReward.getMaxReward({13}, 11, 0.99);
+    double e_rw = -10.0;
+    EXPECT_DOUBLE_EQ(reward, e_rw);
+    std::vector<std::pair<int64_t, State>> expectedPath = {{14, {14}}};
     EXPECT_EQ(path, expectedPath);
   }
 }

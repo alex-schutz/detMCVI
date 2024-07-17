@@ -29,7 +29,7 @@ class PathToTerminal : public MaximiseReward {
 
   bool hasPathToTerminal(const State& source, int64_t max_depth) const;
 
-  std::vector<std::tuple<int64_t, State, double>> getSuccessors(
+  std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
       const State& state) const override;
 
  private:

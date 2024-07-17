@@ -88,7 +88,7 @@ class MaximiseReward {
   MaximiseReward() {}
 
   // Available successors <action, state, reward> tuples
-  virtual std::vector<std::tuple<int64_t, State, double>> getSuccessors(
+  virtual std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
       const State& state) const = 0;
 
   // Return the maximum reward that can be obtained starting in `state`

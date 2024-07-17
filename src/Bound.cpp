@@ -52,13 +52,13 @@ double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,
   return max_min_reward / (1 - pomdp->GetDiscount());
 }
 
-std::vector<std::tuple<int64_t, State, double>> PathToTerminal::getSuccessors(
-    const State& state) const {
-  if (terminalStates.contains(state)) return {{-1, state, 0.0}};
-  std::vector<std::tuple<int64_t, State, double>> successors;
+std::vector<std::tuple<int64_t, State, double, bool>>
+PathToTerminal::getSuccessors(const State& state) const {
+  if (terminalStates.contains(state)) return {{-1, state, 0.0, true}};
+  std::vector<std::tuple<int64_t, State, double, bool>> successors;
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
     const auto& [sNext, o, reward, done] = pomdp->Step(state, a);
-    successors.push_back({a, sNext, reward});
+    successors.push_back({a, sNext, reward, false});
     if (done) terminalStates.insert(sNext);
   }
   return successors;
