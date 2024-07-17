@@ -135,6 +135,8 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
   for (int64_t n = 0; n < nb_particles_b0 / 10; ++n)
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
+  std::cerr << "Running POMCP offline" << std::endl;
+  POMCP::TreeNode* root_node = pomcp.SearchOffline(init_belief);
 
   std::cerr << "Generating evaluation set" << std::endl;
   const BeliefDistribution init_belief_eval =
@@ -144,22 +146,30 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
     State state = SampleOneState(init_belief_eval, rng);
     initial_state = state;
     double sum_r = 0.0;
-    POMCP::BeliefParticles curr_belief = init_belief;
     int64_t i = 0;
-    std::cerr << "Running trial " << sim << std::endl;
+    // std::cerr << "Running trial " << sim << std::endl;
+    POMCP::TreeNode* tr_node = root_node;
     for (; i < max_eval_steps; ++i) {
-      const int64_t action = pomcp.Search(curr_belief);
+      const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
+      if (!tr_node || action == -1) {
+        // if (!StateHasSolution(initial_state, ptt, max_steps)) {
+        //   eval_stats.no_solution_off_policy.update(sum_r);
+        // } else {
+        eval_stats.off_policy.update(sum_r);
+        // }
+        break;
+      }
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
 
-      std::cout << "---------" << std::endl;
-      std::cout << "step: " << i << std::endl;
-      std::cout << "state: <";
-      for (const auto& state_elem : state) std::cout << state_elem << ", ";
-      std::cout << ">" << std::endl;
-      std::cout << "perform action: " << action << std::endl;
-      std::cout << "receive obs: " << obs << std::endl;
-      std::cout << "reward: " << reward << std::endl;
+      //   std::cout << "---------" << std::endl;
+      //   std::cout << "step: " << i << std::endl;
+      //   std::cout << "state: <";
+      //   for (const auto& state_elem : state) std::cout << state_elem << ", ";
+      //   std::cout << ">" << std::endl;
+      //   std::cout << "perform action: " << action << std::endl;
+      //   std::cout << "receive obs: " << obs << std::endl;
+      //   std::cout << "reward: " << reward << std::endl;
 
       if (done) {
         eval_stats.complete.update(sum_r);
@@ -167,14 +177,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
       }
 
       state = sNext;
-
-      std::vector<State> new_belief_p;
-      for (const auto& s : curr_belief.getParticles()) {
-        State sNext;
-        pomdp->applyActionToState(s, action, sNext);
-        new_belief_p.push_back(sNext);
-      }
-      curr_belief = POMCP::BeliefParticles(new_belief_p);
+      tr_node = tr_node->GetChildNode(action, obs);
     }
     if (i == max_eval_steps) {
       //   if (!StateHasSolution(initial_state, ptt, max_steps)) {
@@ -246,8 +249,8 @@ int main(int argc, char* argv[]) {
   auto pomcp_ctp = new CTP(pomdp);
   const double pomcp_c = 2.0;
   const int64_t pomcp_nb_rollout = 200;
-  const std::chrono::microseconds pomcp_time_out = std::chrono::microseconds(
-      params.max_time_ms * 1000 / params.max_sim_depth);
+  const std::chrono::microseconds pomcp_time_out =
+      std::chrono::milliseconds(params.max_time_ms);
   const double pomcp_epsilon = 0.01;
   const int64_t pomcp_depth = params.max_sim_depth;
   runPOMCP(pomcp_ctp, rng, pomcp_c, pomcp_nb_rollout, pomcp_time_out,

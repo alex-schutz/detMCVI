@@ -198,7 +198,7 @@ TreeNode *PomcpPlanner::SearchOffline(const BeliefParticles &b) {
   TreeNode *new_node = new TreeNode(0);
 
   this->rootnode = new_node;
-  while (PlanSpentTime < this->timeout) {
+  while (PlanSpentTime.count() < this->timeout.count()) {
     const State sampled_sI = b.SampleOneState();
     this->Simulate(sampled_sI, this->rootnode, 0);
     PlanEndTime = std::chrono::steady_clock::now();

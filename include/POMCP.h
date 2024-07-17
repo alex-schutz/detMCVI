@@ -102,7 +102,7 @@ class PomcpPlanner {
   double Simulate(const State &sampled_sI, TreeNode *node, int64_t depth);
   TreeNode *CreateNewNode(TreeNode *parent_node, int64_t aI, int64_t oI);
   int64_t UcbActionSelection(TreeNode *node) const;
-  POMCP::TreeNode *PomcpPlanner::SearchOffline(const BeliefParticles &b);
+  POMCP::TreeNode *SearchOffline(const BeliefParticles &b);
 };
 
 }  // namespace POMCP
