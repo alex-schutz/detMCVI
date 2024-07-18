@@ -27,13 +27,13 @@ class MCVIPlanner {
   SimInterface* _pomdp;
   AlphaVectorFSC _fsc;
   BeliefDistribution _b0;
-  PathToTerminal _heuristic;
+  OptimalPath _heuristic;
   std::mt19937_64& _rng;
 
  public:
   MCVIPlanner(SimInterface* pomdp, const AlphaVectorFSC& init_fsc,
               const BeliefDistribution& init_belief,
-              const PathToTerminal& heuristic, std::mt19937_64& rng)
+              const OptimalPath& heuristic, std::mt19937_64& rng)
       : _pomdp(pomdp),
         _fsc(init_fsc),
         _b0(init_belief),
@@ -106,7 +106,7 @@ class MCVIPlanner {
 std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
-    const PathToTerminal& ptt, std::optional<StateValueFunction> valFunc,
+    const OptimalPath& solver, std::optional<StateValueFunction> valFunc,
     const std::string& alg_name);
 
 BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp);

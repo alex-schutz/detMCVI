@@ -85,7 +85,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
     CTP* pomdp, const BeliefDistribution& init_belief, std::mt19937_64& rng,
     int64_t max_sim_depth, int64_t max_node_size, int64_t eval_depth,
     int64_t eval_epsilon, double converge_thresh, int64_t max_computation_ms,
-    const PathToTerminal& ptt, std::ostream& fs) {
+    const OptimalPath& solver, std::ostream& fs) {
   // Initialise the FSC
   const auto init_fsc = AlphaVectorFSC(max_node_size);
 
@@ -93,7 +93,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
   fs << "Running MCVI" << std::endl;
   const std::chrono::steady_clock::time_point mcvi_begin =
       std::chrono::steady_clock::now();
-  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
+  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, solver, rng);
   const auto [fsc, root] = planner.Plan(
       max_sim_depth, converge_thresh, std::numeric_limits<int64_t>::max(),
       max_computation_ms, eval_depth, eval_epsilon, exit_flag);
@@ -120,11 +120,11 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
 
 std::shared_ptr<BeliefTreeNode> runAOStar(
     CTP* pomdp, const BeliefDistribution& init_belief, std::mt19937_64& rng,
-    int64_t eval_depth, int64_t max_computation_ms, PathToTerminal& ptt,
+    int64_t eval_depth, int64_t max_computation_ms, OptimalPath& solver,
     std::ostream& fs) {
   // Create root belief node
   const double init_upper =
-      CalculateUpperBound(init_belief, 0, eval_depth, ptt, pomdp);
+      CalculateUpperBound(init_belief, 0, eval_depth, solver, pomdp);
   std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
       init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
 
@@ -132,8 +132,8 @@ std::shared_ptr<BeliefTreeNode> runAOStar(
   fs << "Running AO* on belief tree" << std::endl;
   const std::chrono::steady_clock::time_point ao_begin =
       std::chrono::steady_clock::now();
-  RunAOStar(root, std::numeric_limits<int64_t>::max(), max_computation_ms, ptt,
-            eval_depth, rng, pomdp);
+  RunAOStar(root, std::numeric_limits<int64_t>::max(), max_computation_ms,
+            solver, eval_depth, rng, pomdp);
   const std::chrono::steady_clock::time_point ao_end =
       std::chrono::steady_clock::now();
   fs << "AO* complete (" << s_time_diff(ao_begin, ao_end) << " seconds)"
@@ -154,7 +154,7 @@ std::tuple<double, std::chrono::microseconds, bool> MCVIOnline(
   const auto begin = std::chrono::steady_clock::now();
   // Run MCVI
   auto mcvi_ctp = new CTP_Online(pomdp);
-  PathToTerminal ptt(mcvi_ctp);
+  OptimalPath solver(mcvi_ctp);
 
   bool completed = false;
 
@@ -177,7 +177,7 @@ std::tuple<double, std::chrono::microseconds, bool> MCVIOnline(
       const auto a = runMCVI(mcvi_ctp, belief, rng, params.max_sim_depth,
                              params.max_node_size, params.max_sim_depth,
                              params.eval_epsilon, params.converge_thresh,
-                             params.max_time_ms, ptt, fs);
+                             params.max_time_ms, solver, fs);
       fsc = a.first;
       nI = fsc.GetStartNodeIndex();
       tree_node = a.second;
@@ -220,7 +220,7 @@ std::tuple<double, std::chrono::microseconds, bool> AOStarOnline(
   const auto begin = std::chrono::steady_clock::now();
   // Run AO*
   auto ao_ctp = new CTP_Online(pomdp);
-  PathToTerminal ptt(ao_ctp);
+  OptimalPath solver(ao_ctp);
 
   bool completed = false;
 
@@ -240,7 +240,7 @@ std::tuple<double, std::chrono::microseconds, bool> AOStarOnline(
       fs << "Belief size " << belief.size() << std::endl;
 
       tree_node = runAOStar(ao_ctp, init_belief, rng, params.max_sim_depth,
-                            params.max_time_ms, ptt, fs);
+                            params.max_time_ms, solver, fs);
     }
     const int64_t action = tree_node->GetBestActUBound();
     fs << "---------" << std::endl;

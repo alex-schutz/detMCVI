@@ -26,7 +26,7 @@ void runMCVI(CTP_Disambiguate* pomdp, const BeliefDistribution& init_belief,
              int64_t max_eval_steps, int64_t n_eval_trials,
              int64_t nb_particles_b0) {
   // Initialise heuristic
-  PathToTerminal ptt(pomdp);
+  OptimalPath solver(pomdp);
 
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
@@ -36,7 +36,7 @@ void runMCVI(CTP_Disambiguate* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Running MCVI" << std::endl;
   const std::chrono::steady_clock::time_point mcvi_begin =
       std::chrono::steady_clock::now();
-  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
+  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, solver, rng);
   const auto [fsc, root] =
       planner.Plan(max_sim_depth, converge_thresh, max_iter, max_computation_ms,
                    eval_depth, eval_epsilon, exit_flag);

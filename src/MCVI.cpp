@@ -407,14 +407,15 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
   return b;
 }
 
-// Return the shortest path reward and whether a terminal state is reachable
-// from this state
+// Return the shortest path reward and whether any terminal state is reachable
+// from this state (assumed false, user must implement StateValueFunction to
+// access this functionality)
 static std::pair<double, bool> OracleReward(const State& state,
-                                            const PathToTerminal& ptt,
+                                            const OptimalPath& solver,
                                             int64_t max_depth) {
-  const auto [sum_reward, path] = ptt.getMaxReward(state, max_depth);
-  const bool reaches_terminal = ptt.hasPathToTerminal(state, path);
-  return {sum_reward, reaches_terminal};
+  const auto [sum_reward, path] = solver.getMaxReward(state, max_depth);
+  const bool can_reach_terminal = false;
+  return {sum_reward, can_reach_terminal};
 }
 
 int64_t MCVIPlanner::EvaluationWithSimulationFSC(
@@ -478,7 +479,7 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
 std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,
     int64_t init_belief_samples, SimInterface* pomdp, std::mt19937_64& rng,
-    const PathToTerminal& ptt, std::optional<StateValueFunction> valFunc,
+    const OptimalPath& solver, std::optional<StateValueFunction> valFunc,
     const std::string& alg_name) {
   const double gamma = pomdp->GetDiscount();
   EvaluationStats eval_stats;
@@ -491,7 +492,7 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
     initial_state = state;
     const auto [optimal, has_soln] =
         (valFunc.has_value()) ? valFunc.value()(initial_state, max_steps)
-                              : OracleReward(initial_state, ptt, max_steps);
+                              : OracleReward(initial_state, solver, max_steps);
     double sum_r = 0.0;
     auto node = root;
     int64_t i = 0;

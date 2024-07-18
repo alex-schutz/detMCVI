@@ -187,10 +187,10 @@ class CTP : public MCVI::SimInterface {
     const double gamma = GetDiscount();
     double sum_reward = 0.0;
     double discount = 1.0;
-    bool can_terminate = false;
+    bool reaches_goal = false;
     for (const auto& [loc, action] : path) {
       if (loc == MCVI::State({goal})) {
-        can_terminate = true;
+        reaches_goal = true;
         break;
       }
 
@@ -205,13 +205,13 @@ class CTP : public MCVI::SimInterface {
       discount *= gamma;
     }
 
-    if (!can_terminate) {  // cannot reach goal
+    if (!reaches_goal) {  // cannot reach goal
       state_value[eval_state] = 0;
       return {0, true};
     }
 
     state_value[eval_state] = sum_reward;
-    return {sum_reward, can_terminate};
+    return {sum_reward, reaches_goal};
   }
 
   double applyActionToState(const MCVI::State& state, int64_t action,
@@ -283,6 +283,29 @@ class CTP : public MCVI::SimInterface {
     std::sort(edges.begin(), edges.end(), compareEdges);
 
     return edges;
+  }
+
+  bool goalUnreachable(const MCVI::State& state) const {
+    // check if goal is reachable from the origin (cached)
+    MCVI::State origin_state = state;
+    origin_state[sfIdx("loc")] = origin;
+    const auto ret = goal_reachable.find(origin_state);
+    if (ret != goal_reachable.end()) return !ret->second;
+
+    // find shortest path to goal, return true if none exists
+    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
+        state_edges;
+    for (const auto& e : edges) {
+      if (!stoch_edges.contains(e.first) ||
+          state.at(sfIdx(edge2str(e.first))) == 1)
+        state_edges.insert(e);
+    }
+    auto gp = GraphPath(state_edges);
+    const auto [costs, pred] = gp.calculate({origin}, state_edges.size() + 1);
+    const bool reaches_goal = costs.contains({goal});
+    goal_reachable[origin_state] = reaches_goal;
+
+    return !reaches_goal;
   }
 
  private:
@@ -366,30 +389,7 @@ class CTP : public MCVI::SimInterface {
     return sNext.at(loc_idx) == goal;
   }
 
-  bool goalUnreachable(const MCVI::State& state) const {
-    // check if goal is reachable from the origin (cached)
-    MCVI::State origin_state = state;
-    origin_state[sfIdx("loc")] = origin;
-    const auto ret = goal_reachable.find(origin_state);
-    if (ret != goal_reachable.end()) return !ret->second;
-
-    // find shortest path to goal, return true if none exists
-    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
-        state_edges;
-    for (const auto& e : edges) {
-      if (!stoch_edges.contains(e.first) ||
-          state.at(sfIdx(edge2str(e.first))) == 1)
-        state_edges.insert(e);
-    }
-    auto gp = GraphPath(state_edges);
-    const auto [costs, pred] = gp.calculate({origin}, state_edges.size() + 1);
-    const bool reaches_goal = costs.contains({goal});
-    goal_reachable[origin_state] = reaches_goal;
-
-    return !reaches_goal;
-  }
-
-  double initIdleReward() const {
+    double initIdleReward() const {
     const double max_edge =
         std::max_element(edges.begin(), edges.end(), CmpPair)->second;
     return -5 * max_edge;

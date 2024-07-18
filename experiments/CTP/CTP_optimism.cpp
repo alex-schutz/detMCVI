@@ -10,7 +10,7 @@ using namespace MCVI;
 
 class CTP_Optimism : public CTP {
  public:
-  CTP_Optimism(CTP& ctp) : CTP(ctp), ptt(&ctp) {}
+  CTP_Optimism(CTP& ctp) : CTP(ctp), solver(&ctp) {}
 
   void SimulateRun(int64_t max_depth) {
     const double gamma = GetDiscount();
@@ -75,6 +75,7 @@ class CTP_Optimism : public CTP {
       State state_optimistic = InitialiseState();
 
       double sum_r = 0.0;
+      const auto [optimal, reachable] = get_state_value(init_state, max_depth);
       int64_t i = 0;
       while (i++ < max_depth) {
         const int64_t action = GetBestAction(state_optimistic, max_depth);
@@ -89,11 +90,10 @@ class CTP_Optimism : public CTP {
         state_true = sNext;
       }
       if (i == max_depth) {
-        const auto [sum_reward, path] = ptt.getMaxReward(init_state, max_depth);
-        if (!ptt.hasPathToTerminal(init_state, path)) {
-          eval_stats.no_solution_on_policy.update(sum_r);
+        if (goalUnreachable(init_state)) {
+          eval_stats.no_solution_on_policy.update(sum_r - optimal);
         } else {
-          eval_stats.max_depth.update(sum_r);
+          eval_stats.max_depth.update(sum_r - optimal);
         }
       }
     }
@@ -108,7 +108,7 @@ class CTP_Optimism : public CTP {
   }
 
  private:
-  PathToTerminal ptt;
+  OptimalPath solver;
 
   // Update the state to set location and blocked edges according to the given
   // observation
@@ -137,7 +137,7 @@ class CTP_Optimism : public CTP {
   }
 
   int64_t GetBestAction(const State& state, int64_t max_depth) const {
-    const auto [reward, path] = ptt.getMaxReward(state, max_depth);
+    const auto [reward, path] = solver.getMaxReward(state, max_depth);
     return path.at(0).first;
   }
 

@@ -26,7 +26,7 @@ void ObservationNode::BackUpFromNextBelief() {
 }
 
 ActionNode::ActionNode(int64_t action, const BeliefDistribution& belief,
-                       int64_t belief_depth, const PathToTerminal& heuristic,
+                       int64_t belief_depth, const OptimalPath& heuristic,
                        int64_t eval_depth,
                        const BoundFunction& lower_bound_func,
                        SimInterface* pomdp)
@@ -38,8 +38,7 @@ ActionNode::ActionNode(int64_t action, const BeliefDistribution& belief,
 
 void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
                               int64_t belief_depth,
-                              const PathToTerminal& heuristic,
-                              int64_t eval_depth,
+                              const OptimalPath& heuristic, int64_t eval_depth,
                               const BoundFunction& lower_bound_func,
                               SimInterface* pomdp) {
   std::unordered_map<int64_t, BeliefDistribution> next_beliefs;
@@ -124,7 +123,7 @@ void ActionNode::BackUpNoFSC() {
   CalculateBounds();
 }
 
-void BeliefTreeNode::AddChild(int64_t action, const PathToTerminal& heuristic,
+void BeliefTreeNode::AddChild(int64_t action, const OptimalPath& heuristic,
                               int64_t eval_depth,
                               const BoundFunction& lower_bound_func,
                               SimInterface* pomdp) {
@@ -182,7 +181,7 @@ std::shared_ptr<BeliefTreeNode> BeliefTreeNode::ChooseObservation(
 }
 
 const ActionNode& BeliefTreeNode::GetOrAddChildren(
-    int64_t action, const PathToTerminal& heuristic, int64_t eval_depth,
+    int64_t action, const OptimalPath& heuristic, int64_t eval_depth,
     const BoundFunction& lower_bound_func, SimInterface* pomdp) {
   const auto it = _action_edges.find(action);
   if (it != _action_edges.cend()) return it->second;

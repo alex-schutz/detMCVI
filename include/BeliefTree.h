@@ -65,7 +65,7 @@ class ActionNode {
 
  public:
   ActionNode(int64_t action, const BeliefDistribution& belief,
-             int64_t belief_depth, const PathToTerminal& heuristic,
+             int64_t belief_depth, const OptimalPath& heuristic,
              int64_t eval_depth, const BoundFunction& lower_bound_func,
              SimInterface* pomdp);
 
@@ -90,7 +90,7 @@ class ActionNode {
   /// @brief Generate a set of next beliefs mapped by observation,
   /// obtained by taking `action` in belief.
   void BeliefUpdate(const BeliefDistribution& belief, int64_t belief_depth,
-                    const PathToTerminal& heuristic, int64_t eval_depth,
+                    const OptimalPath& heuristic, int64_t eval_depth,
                     const BoundFunction& lower_bound_func, SimInterface* pomdp);
 
   void CalculateBounds();
@@ -124,11 +124,11 @@ class BeliefTreeNode {
         _lower_bound(lower_bound),
         _index(belief_tree_count++) {}
 
-  void AddChild(int64_t action, const PathToTerminal& heuristic,
+  void AddChild(int64_t action, const OptimalPath& heuristic,
                 int64_t eval_depth, const BoundFunction& lower_bound_func,
                 SimInterface* pomdp);
   const ActionNode& GetOrAddChildren(int64_t action,
-                                     const PathToTerminal& heuristic,
+                                     const OptimalPath& heuristic,
                                      int64_t eval_depth,
                                      const BoundFunction& lower_bound_func,
                                      SimInterface* pomdp);

@@ -19,18 +19,10 @@
 
 namespace MCVI {
 
-/**
- * @brief Method to calculate the shortest path in a deterministic POMDP from a
- * given state to a terminal state.
- */
-class PathToTerminal : public MaximiseReward {
+class OptimalPath : public MaximiseReward {
  public:
-  PathToTerminal(SimInterface* pomdp)
+  OptimalPath(SimInterface* pomdp)
       : MaximiseReward(pomdp->GetDiscount()), pomdp(pomdp) {}
-
-  bool hasPathToTerminal(
-      const State& source,
-      const std::vector<std::pair<int64_t, State>>& path) const;
 
   std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
       const State& state) const override;
@@ -47,7 +39,7 @@ class PathToTerminal : public MaximiseReward {
  * state's MDP value
  */
 double UpperBoundEvaluation(const BeliefDistribution& belief,
-                            const PathToTerminal& solver, double gamma,
+                            const OptimalPath& solver, double gamma,
                             int64_t belief_depth, int64_t max_depth);
 
 /**
@@ -65,7 +57,7 @@ double FindRLower(SimInterface* pomdp, const BeliefDistribution& b0,
 
 double CalculateUpperBound(const BeliefDistribution& belief,
                            int64_t belief_depth, int64_t eval_depth,
-                           const PathToTerminal& heuristic, SimInterface* sim);
+                           const OptimalPath& heuristic, SimInterface* sim);
 
 // belief, belief_depth, eval_depth, sim
 using BoundFunction = std::function<double(const BeliefDistribution&, int64_t,

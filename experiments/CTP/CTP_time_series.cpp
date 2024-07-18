@@ -23,14 +23,14 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                        int64_t eval_interval_ms, int64_t completion_threshold,
                        int64_t completion_reps) {
   // Initialise heuristic
-  PathToTerminal ptt(pomdp);
+  OptimalPath solver(pomdp);
 
   // Initialise the FSC
   const auto init_fsc = AlphaVectorFSC(max_node_size);
 
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
-  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
+  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, solver, rng);
   const auto [fsc, root] = planner.PlanAndEvaluate(
       max_sim_depth, converge_thresh, std::numeric_limits<int64_t>::max(),
       max_time_ms, eval_depth, eval_epsilon, max_eval_steps, n_eval_trials,
@@ -48,20 +48,20 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                          int64_t eval_interval_ms, int64_t completion_threshold,
                          int64_t completion_reps) {
   // Initialise heuristic
-  PathToTerminal ptt(pomdp);
+  OptimalPath solver(pomdp);
 
   // Create root belief node
   const double init_upper =
-      CalculateUpperBound(init_belief, 0, eval_depth, ptt, pomdp);
+      CalculateUpperBound(init_belief, 0, eval_depth, solver, pomdp);
   std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
       init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
   RunAOStarAndEvaluate(
-      root, std::numeric_limits<int64_t>::max(), max_time_ms, ptt, eval_depth,
-      max_eval_steps, n_eval_trials, nb_particles_b0, eval_interval_ms,
-      completion_threshold, completion_reps, rng, ptt,
+      root, std::numeric_limits<int64_t>::max(), max_time_ms, solver,
+      eval_depth, max_eval_steps, n_eval_trials, nb_particles_b0,
+      eval_interval_ms, completion_threshold, completion_reps, rng, solver,
       [&pomdp](const State& state, int64_t value) {
         return pomdp->get_state_value(state, value);
       },

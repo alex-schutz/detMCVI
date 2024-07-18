@@ -30,13 +30,13 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
              int64_t max_eval_steps, int64_t n_eval_trials,
              int64_t nb_particles_b0) {
   // Initialise heuristic
-  PathToTerminal ptt(pomdp);
+  OptimalPath solver(pomdp);
 
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
   const auto init_fsc = AlphaVectorFSC(max_node_size);
   //   const auto init_fsc =
-  //       InitialiseFSC(ptt, init_belief, max_sim_depth, max_node_size,
+  //       InitialiseFSC(solver, init_belief, max_sim_depth, max_node_size,
   //       &pomdp);
   //   init_fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
@@ -44,7 +44,7 @@ void runMCVI(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Running MCVI" << std::endl;
   const std::chrono::steady_clock::time_point mcvi_begin =
       std::chrono::steady_clock::now();
-  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, ptt, rng);
+  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, solver, rng);
   const auto [fsc, root] =
       planner.Plan(max_sim_depth, converge_thresh, max_iter, max_computation_ms,
                    eval_depth, eval_epsilon, exit_flag);
@@ -87,11 +87,11 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
                int64_t max_computation_ms, int64_t max_eval_steps,
                int64_t n_eval_trials, int64_t nb_particles_b0) {
   // Initialise heuristic
-  PathToTerminal ptt(pomdp);
+  OptimalPath solver(pomdp);
 
   // Create root belief node
   const double init_upper =
-      CalculateUpperBound(init_belief, 0, eval_depth, ptt, pomdp);
+      CalculateUpperBound(init_belief, 0, eval_depth, solver, pomdp);
   std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
       init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
 
@@ -99,7 +99,7 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Running AO* on belief tree" << std::endl;
   const std::chrono::steady_clock::time_point ao_begin =
       std::chrono::steady_clock::now();
-  RunAOStar(root, max_iter, max_computation_ms, ptt, eval_depth, rng, pomdp);
+  RunAOStar(root, max_iter, max_computation_ms, solver, eval_depth, rng, pomdp);
   const std::chrono::steady_clock::time_point ao_end =
       std::chrono::steady_clock::now();
   std::cout << "AO* complete (" << s_time_diff(ao_begin, ao_end) << " seconds)"
@@ -115,7 +115,7 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials):" << std::endl;
   EvaluationWithGreedyTreePolicy(
-      root, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng, ptt,
+      root, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng, solver,
       [&pomdp](const State& state, int64_t value) {
         return pomdp->get_state_value(state, value);
       },
@@ -154,16 +154,18 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
     initial_state = state;
     double sum_r = 0.0;
     int64_t i = 0;
+    const auto [optimal, has_soln] =
+        pomdp->get_state_value(initial_state, max_eval_steps);
     // std::cerr << "Running trial " << sim << std::endl;
     POMCP::TreeNode* tr_node = root_node;
     for (; i < max_eval_steps; ++i) {
       const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
       if (!tr_node || action == -1) {
-        // if (!StateHasSolution(initial_state, ptt, max_steps)) {
-        //   eval_stats.no_solution_off_policy.update(sum_r);
-        // } else {
-        eval_stats.off_policy.update(sum_r);
-        // }
+        if (!has_soln) {
+          eval_stats.no_solution_off_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.off_policy.update(sum_r);
+        }
         break;
       }
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
@@ -187,11 +189,11 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
       tr_node = tr_node->GetChildNode(action, obs);
     }
     if (i == max_eval_steps) {
-      //   if (!StateHasSolution(initial_state, ptt, max_steps)) {
-      //     eval_stats.no_solution_on_policy.update(sum_r);
-      //   } else {
-      eval_stats.max_iterations.update(sum_r);
-      //   }
+      if (!has_soln) {
+        eval_stats.no_solution_on_policy.update(sum_r - optimal);
+      } else {
+        eval_stats.max_depth.update(sum_r - optimal);
+      }
     }
   }
   std::cout << "Evaluation of POMCP (online) policy (" << max_eval_steps
@@ -199,7 +201,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
   const std::string alg_name = "POMCP";
   PrintStats(eval_stats.complete, alg_name + " completed problem");
   PrintStats(eval_stats.off_policy, alg_name + " exited policy");
-  PrintStats(eval_stats.max_iterations, alg_name + " max iterations");
+  PrintStats(eval_stats.max_depth, alg_name + " max depth");
   PrintStats(eval_stats.no_solution_on_policy,
              alg_name + " no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,
