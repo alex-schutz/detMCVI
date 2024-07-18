@@ -121,11 +121,15 @@ class CTP_Disambiguate : public MCVI::SimInterface {
 
   std::pair<double, bool> get_state_value(const MCVI::State& state,
                                           int64_t max_depth) const {
-    // find cost to goal
+    const auto loc_idx = sfIdx("loc");
+    MCVI::State eval_state = state;
+    if (eval_state.at(loc_idx) == -1) eval_state[loc_idx] = origin;
+    if (state_value.contains(eval_state))
+      return {state_value.at(eval_state), true};
+
+    // find cost to goal in this realisation of the graph
     std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
         state_edges;
-    std::unordered_map<MCVI::State, bool, MCVI::StateHash, MCVI::StateEqual>
-        can_terminate;
     for (const auto& e : edges) {
       if (!stoch_edges.contains(e.first) ||
           state.at(sfIdx(edge2str(e.first))) == 1)
@@ -133,49 +137,37 @@ class CTP_Disambiguate : public MCVI::SimInterface {
     }
     auto gp = GraphPath(state_edges);
     const auto [costs, pred] = gp.calculate({goal}, max_depth);
-    const auto loc_idx = sfIdx("loc");
 
-    MCVI::State eval_state = state;
-    if (eval_state.at(loc_idx) == -1) eval_state[loc_idx] = origin;
-
-    // Calculate discounted reward
-    for (const auto& node_no : nodes) {
-      const auto path = gp.reconstructPath({node_no}, pred);
-      const double gamma = GetDiscount();
-      double sum_reward = 0.0;
-      double discount = 1.0;
-      MCVI::State world_state = eval_state;
-      can_terminate[world_state] = true;
-      for (size_t i = path.size() - 1; i >= 1; --i) {
-        const auto node = path.at(i).first;
-        if (node == MCVI::State({goal})) break;
-        if (i == 0 && node != MCVI::State({goal}))
-          can_terminate[world_state] = false;
-
-        world_state[loc_idx] = path.at(i).first.at(0);
-        MCVI::State sNext;
-        const auto action = std::distance(
-            nodes.begin(),
-            std::find(nodes.begin(), nodes.end(), path.at(i - 1).first.at(0)));
-        const double reward = applyActionToState(world_state, action, sNext);
-        assert(sNext.at(loc_idx) == path.at(i - 1).first.at(0));
-
-        sum_reward += discount * reward;
-        discount *= gamma;
+    // Calculate discounted reward by following path
+    const auto path = gp.reconstructPath({eval_state[loc_idx]}, pred);
+    const double gamma = GetDiscount();
+    double sum_reward = 0.0;
+    double discount = 1.0;
+    bool can_terminate = false;
+    for (const auto& [loc, action] : path) {
+      if (loc == MCVI::State({goal})) {
+        can_terminate = true;
+        break;
       }
-      world_state[loc_idx] = node_no;
-      state_value[world_state] = sum_reward;
+
+      MCVI::State world_state = eval_state;
+      world_state[loc_idx] = loc.at(0);
+      MCVI::State sNext;
+      const auto state_action = std::distance(
+          nodes.begin(), std::find(nodes.begin(), nodes.end(), action));
+      const double reward =
+          applyActionToState(world_state, state_action, sNext);
+      sum_reward += discount * reward;
+      discount *= gamma;
     }
 
-    if (!can_terminate.at(eval_state)) {
-      std::cerr << "Cannot find solution for state with value "
-                << state_value.at(eval_state) << std::endl;
-      for (const auto& e : stoch_edges)
-        std::cerr << edge2str(e.first) << ": "
-                  << eval_state.at(sfIdx(edge2str(e.first))) << std::endl;
+    if (!can_terminate) {  // cannot reach goal
+      state_value[eval_state] = 0;
+      return {0, true};
     }
 
-    return {state_value.at(eval_state), can_terminate.at(eval_state)};
+    state_value[eval_state] = sum_reward;
+    return {sum_reward, can_terminate};
   }
 
  protected:
