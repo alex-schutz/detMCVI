@@ -76,6 +76,41 @@ class Battleships : public MCVI::SimInterface {
     return names2state(state_factors);
   }
 
+  std::pair<double, bool> get_state_value(const MCVI::State& state,
+                                          int64_t max_depth) const {
+    int64_t unhit_ship_tiles = 0;
+    for (const auto& ship_sz : ship_sizes) {
+      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
+        for (int i = 0; i < ship_sz; ++i) {
+          const int64_t sf_loc =
+              sfIdx(ship2str(ship_sz, n) + "_" + std::to_string(i));
+          if (state.at(sf_loc) == 0) unhit_ship_tiles += 1;
+        }
+      }
+    }
+    double r = 0.0;
+    for (int i = 0; i < std::min(unhit_ship_tiles, max_depth); ++i)
+      r += std::pow(GetDiscount(), i) * _hit_reward;
+    return {r, true};
+  }
+
+  double applyActionToState(const MCVI::State& sI, int64_t aI,
+                            MCVI::State& sNext) const {
+    sNext = sI;
+    const auto [row, col] = decompose_action(aI);
+    for (const auto& ship_sz : ship_sizes) {
+      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
+        if (ship_present(sI, ship_sz, n, row, col)) {
+          sNext = hit_ship(sI, ship_sz, n, row, col);
+          if (sNext == sI) return _bad_action_reward;  // already hit
+          return _hit_reward;
+        }
+      }
+    }
+
+    return _miss_reward;
+  }
+
  private:
   std::string coord2str(int64_t i, int64_t j) const {
     return std::to_string(i) + "_" + std::to_string(j);
@@ -180,23 +215,6 @@ class Battleships : public MCVI::SimInterface {
       }
     }
     return 0;
-  }
-
-  double applyActionToState(const MCVI::State& sI, int64_t aI,
-                            MCVI::State& sNext) const {
-    sNext = sI;
-    const auto [row, col] = decompose_action(aI);
-    for (const auto& ship_sz : ship_sizes) {
-      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        if (ship_present(sI, ship_sz, n, row, col)) {
-          sNext = hit_ship(sI, ship_sz, n, row, col);
-          if (sNext == sI) return _bad_action_reward;  // already hit
-          return _hit_reward;
-        }
-      }
-    }
-
-    return _miss_reward;
   }
 
   // No ships may be adjacent or diagonally adjacent in a valid configuration
