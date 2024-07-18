@@ -12,11 +12,12 @@ class CTP_Optimism : public CTP {
  public:
   CTP_Optimism(CTP& ctp) : CTP(ctp), solver(&ctp) {}
 
-  void SimulateRun(int64_t max_depth) {
+  void SimulateRun(int64_t max_depth, bool thompson = false) {
     const double gamma = GetDiscount();
     State state_true = SampleStartState();
     PrintState(state_true);
-    State state_optimistic = InitialiseState();
+    State state_optimistic =
+        (thompson) ? SampleStartState() : InitialiseState();
     const int64_t loc_idx = sfIdx("loc");
 
     double sum_r = 0.0;
@@ -65,14 +66,16 @@ class CTP_Optimism : public CTP {
     std::cout << "sum reward: " << sum_r << std::endl;
   }
 
-  void EvaluatePolicy(int64_t num_sims, int64_t max_depth) {
+  void EvaluatePolicy(int64_t num_sims, int64_t max_depth,
+                      bool thompson = false) {
     EvaluationStats eval_stats;
     const double gamma = GetDiscount();
 
     for (int64_t sim = 0; sim < num_sims; ++sim) {
       State state_true = SampleStartState();
       const State init_state = state_true;
-      State state_optimistic = InitialiseState();
+      State state_optimistic =
+          (thompson) ? SampleStartState() : InitialiseState();
 
       double sum_r = 0.0;
       const auto [optimal, reachable] = get_state_value(init_state, max_depth);
@@ -173,9 +176,14 @@ int main(int argc, char* argv[]) {
   const int64_t max_eval_steps = 30;
   const int64_t n_eval_trials = 10000;
 
-  optimism.SimulateRun(max_eval_steps);
+  std::cout << "Pure optimism: " << std::endl;
+  optimism.SimulateRun(max_eval_steps, false);
+  optimism.EvaluatePolicy(n_eval_trials, max_eval_steps, false);
 
-  optimism.EvaluatePolicy(n_eval_trials, max_eval_steps);
+  std::cout << std::endl;
+  std::cout << "Thompson sampling: " << std::endl;
+  optimism.SimulateRun(max_eval_steps, true);
+  optimism.EvaluatePolicy(n_eval_trials, max_eval_steps, true);
 
   return 0;
 }
