@@ -8,6 +8,7 @@
 
 #include "AOStar.h"
 #include "MCVI.h"
+#include "POMCP.h"
 
 #define RANDOM_SEED (42)
 
@@ -123,6 +124,88 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
             << std::endl;
 }
 
+void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
+              int64_t pomcp_nb_rollout,
+              std::chrono::microseconds pomcp_time_out, double pomcp_epsilon,
+              int64_t pomcp_depth, int64_t max_eval_steps,
+              int64_t n_eval_trials, int64_t nb_particles_b0) {
+  const double gamma = pomdp->GetDiscount();
+  std::cerr << "Initialising POMCP" << std::endl;
+  auto pomcp = POMCP::PomcpPlanner(pomdp, gamma);
+  pomcp.Init(pomcp_c, pomcp_nb_rollout, pomcp_time_out, pomcp_epsilon,
+             pomcp_depth);
+  std::cerr << "POMCP initialised" << std::endl;
+
+  EvaluationStats eval_stats;
+  std::cerr << "Generating belief particles" << std::endl;
+  std::vector<State> init_belief_p;
+  for (int64_t n = 0; n < nb_particles_b0 / 10; ++n)
+    init_belief_p.push_back(pomdp->SampleStartState());
+  POMCP::BeliefParticles init_belief(init_belief_p);
+  std::cerr << "Running POMCP offline" << std::endl;
+  POMCP::TreeNode* root_node = pomcp.SearchOffline(init_belief);
+
+  std::cerr << "Generating evaluation set" << std::endl;
+  const BeliefDistribution init_belief_eval =
+      SampleInitialBelief(nb_particles_b0, pomdp);
+  State initial_state = {};
+  for (int64_t sim = 0; sim < n_eval_trials; ++sim) {
+    State state = SampleOneState(init_belief_eval, rng);
+    initial_state = state;
+    double sum_r = 0.0;
+    int64_t i = 0;
+    // std::cerr << "Running trial " << sim << std::endl;
+    POMCP::TreeNode* tr_node = root_node;
+    for (; i < max_eval_steps; ++i) {
+      const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
+      if (!tr_node || action == -1) {
+        // if (!StateHasSolution(initial_state, ptt, max_steps)) {
+        //   eval_stats.no_solution_off_policy.update(sum_r);
+        // } else {
+        eval_stats.off_policy.update(sum_r);
+        // }
+        break;
+      }
+      const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+      sum_r += std::pow(gamma, i) * reward;
+
+      //   std::cout << "---------" << std::endl;
+      //   std::cout << "step: " << i << std::endl;
+      //   std::cout << "state: <";
+      //   for (const auto& state_elem : state) std::cout << state_elem << ", ";
+      //   std::cout << ">" << std::endl;
+      //   std::cout << "perform action: " << action << std::endl;
+      //   std::cout << "receive obs: " << obs << std::endl;
+      //   std::cout << "reward: " << reward << std::endl;
+
+      if (done) {
+        eval_stats.complete.update(sum_r);
+        break;
+      }
+
+      state = sNext;
+      tr_node = tr_node->GetChildNode(action, obs);
+    }
+    if (i == max_eval_steps) {
+      //   if (!StateHasSolution(initial_state, ptt, max_steps)) {
+      //     eval_stats.no_solution_on_policy.update(sum_r);
+      //   } else {
+      eval_stats.max_iterations.update(sum_r);
+      //   }
+    }
+  }
+  std::cout << "Evaluation of POMCP (online) policy (" << max_eval_steps
+            << " steps, " << n_eval_trials << " trials):" << std::endl;
+  const std::string alg_name = "POMCP";
+  PrintStats(eval_stats.complete, alg_name + " completed problem");
+  PrintStats(eval_stats.off_policy, alg_name + " exited policy");
+  PrintStats(eval_stats.max_iterations, alg_name + " max iterations");
+  PrintStats(eval_stats.no_solution_on_policy,
+             alg_name + " no solution (on policy)");
+  PrintStats(eval_stats.no_solution_off_policy,
+             alg_name + " no solution (exited policy)");
+}
+
 int main(int argc, char* argv[]) {
   const CTPParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
@@ -169,6 +252,17 @@ int main(int argc, char* argv[]) {
   runAOStar(aostar_ctp, init_belief, rng, params.max_sim_depth, params.max_iter,
             params.max_time_ms, params.max_sim_depth, n_eval_trials,
             10 * params.nb_particles_b0);
+
+  auto pomcp_ctp = new CTP(pomdp);
+  const double pomcp_c = 2.0;
+  const int64_t pomcp_nb_rollout = 200;
+  const std::chrono::microseconds pomcp_time_out =
+      std::chrono::milliseconds(params.max_time_ms);
+  const double pomcp_epsilon = 0.01;
+  const int64_t pomcp_depth = params.max_sim_depth;
+  runPOMCP(pomcp_ctp, rng, pomcp_c, pomcp_nb_rollout, pomcp_time_out,
+           pomcp_epsilon, pomcp_depth, params.max_sim_depth, n_eval_trials,
+           10 * params.nb_particles_b0);
 
   return 0;
 }

@@ -89,7 +89,8 @@ class CTP_Optimism : public CTP {
         state_true = sNext;
       }
       if (i == max_depth) {
-        if (!ptt.is_terminal(init_state, max_depth)) {
+        const auto [sum_reward, path] = ptt.getMaxReward(init_state, max_depth);
+        if (!ptt.hasPathToTerminal(init_state, path)) {
           eval_stats.no_solution_on_policy.update(sum_r);
         } else {
           eval_stats.max_depth.update(sum_r);
@@ -135,17 +136,9 @@ class CTP_Optimism : public CTP {
     return names2state(state);
   }
 
-  // Choose best action based on shortest path to goal
-  // If no path to goal, take exit action
   int64_t GetBestAction(const State& state, int64_t max_depth) const {
-    if (!ptt.is_terminal(state, max_depth)) {
-      for (int64_t i = (int64_t)actions.size() - 1; i >= 0; --i) {
-        if (actions.at(i) == "decide_goal_unreachable") return i;
-      }
-      throw std::logic_error("No action to decide goal unreachable");
-    }
-    const auto [action, reward] = ptt.path(state, max_depth);
-    return action;
+    const auto [reward, path] = ptt.getMaxReward(state, max_depth);
+    return path.at(0).first;
   }
 
   void PrintState(const State& state) const {

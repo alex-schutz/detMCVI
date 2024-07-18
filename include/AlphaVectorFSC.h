@@ -66,9 +66,4 @@ class AlphaVectorFSC {
                            SimInterface* pomdp);
 };
 
-AlphaVectorFSC InitialiseFSC(const PathToTerminal& ptt,
-                             const BeliefDistribution& initial_belief,
-                             int64_t max_depth, int64_t max_node_size,
-                             SimInterface* pomdp);
-
 }  // namespace MCVI

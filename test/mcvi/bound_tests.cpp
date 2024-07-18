@@ -20,6 +20,11 @@ class TestPOMDP : public SimInterface {
   int64_t GetSizeOfObs() const override { return observations.size(); }
   State SampleStartState() override { return {0}; }
   bool IsTerminal(const State& sI) const override { return sI.at(0) == 5; }
+  double applyActionToState(const State& sI, int64_t /*aI*/,
+                            State& state) const override {
+    state = sI;
+    return 0;
+  }
   std::tuple<State, int64_t, double, bool> Step(const State& sI,
                                                 int64_t aI) override {
     if (aI == 9) return {sI, 0, -13.0, false};
@@ -72,5 +77,10 @@ TEST(MCVITest, FindRLower) {
                                           {{5}, 0.166667}});
 
   const double R_lower_all = FindRLower(&sim, belief, 0.0001, 100);
-  EXPECT_NEAR(R_lower_all, -50 / 0.01, 1e-9);
+  double expectation = -50.0 * 0.166667;  // state 5
+  for (int i = 0; i < 100; ++i)
+    expectation +=
+        std::pow(sim.GetDiscount(), i) *
+        (-50.0 * (0.166666 + 0.166666 + 0.166667 + 0.166667) + -1.0 * 0.166666);
+  EXPECT_NEAR(R_lower_all, expectation, 1e-9);
 }

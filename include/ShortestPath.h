@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -80,6 +81,32 @@ class ShortestPathFasterAlgorithm {
   std::vector<std::pair<State, int64_t>> reconstructPath(
       const State& target,
       const StateMap<std::pair<State, int64_t>>& pred) const;
+};
+
+class MaximiseReward {
+ private:
+  double discount_factor;
+  mutable std::unordered_map<
+      State, std::unordered_map<int64_t, std::pair<int64_t, State>>, StateHash,
+      StateEqual>
+      cache;
+
+  std::optional<
+      std::unordered_map<int64_t, std::pair<int64_t, State>>::const_iterator>
+  stateInCache(const State& state, int64_t depth_to_go) const;
+
+ public:
+  MaximiseReward(double discount_factor) : discount_factor(discount_factor) {}
+
+  // Available successors <action, state, reward> tuples
+  virtual std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
+      const State& state) const = 0;
+
+  // Return the maximum reward that can be obtained starting in `state`
+  // up to `max_depth`, alongside the path of <action, next state>
+  // pairs
+  std::pair<double, std::vector<std::pair<int64_t, State>>> getMaxReward(
+      const State& state, int64_t max_depth) const;
 };
 
 }  // namespace MCVI

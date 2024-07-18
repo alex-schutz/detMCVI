@@ -412,8 +412,8 @@ BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
 static std::pair<double, bool> OracleReward(const State& state,
                                             const PathToTerminal& ptt,
                                             int64_t max_depth) {
-  const auto [action, sum_reward] = ptt.path(state, max_depth);
-  const bool reaches_terminal = ptt.is_terminal(state, max_depth);
+  const auto [sum_reward, path] = ptt.getMaxReward(state, max_depth);
+  const bool reaches_terminal = ptt.hasPathToTerminal(state, path);
   return {sum_reward, reaches_terminal};
 }
 

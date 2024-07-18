@@ -214,6 +214,32 @@ class CTP : public MCVI::SimInterface {
     return {sum_reward, can_terminate};
   }
 
+  double applyActionToState(const MCVI::State& state, int64_t action,
+                            MCVI::State& sNext) const override {
+    sNext = state;
+    const int64_t loc_idx = sfIdx("loc");
+    const int64_t loc = state.at(loc_idx);
+    if (loc == -1) {  // special initial state
+      sNext[loc_idx] = origin;
+      return 0;
+    }
+    if (loc == goal) return 0;  // goal is absorbing
+
+    if (actions.at(action) == "decide_goal_unreachable")
+      return goalUnreachable(state) ? 0 : _bad_action_reward;
+
+    const int64_t dest_loc = nodes.at(action);
+    if (loc == dest_loc) return _idle_reward;  // idling
+
+    // invalid move
+    if (!nodesAdjacent(loc, dest_loc, state)) return _bad_action_reward;
+
+    // moving
+    sNext[loc_idx] = dest_loc;
+    return dest_loc < loc ? -edges.at({dest_loc, loc})
+                          : -edges.at({loc, dest_loc});
+  }
+
  protected:
   std::string edge2str(std::pair<int64_t, int64_t> e) const {
     return "e" + std::to_string(e.first) + "_" + std::to_string(e.second);
@@ -309,32 +335,6 @@ class CTP : public MCVI::SimInterface {
 
     // check if edge is unblocked
     return state.at(sfIdx(edge2str(edge))) == 1;  // traversable
-  }
-
-  double applyActionToState(const MCVI::State& state, int64_t action,
-                            MCVI::State& sNext) const {
-    sNext = state;
-    const int64_t loc_idx = sfIdx("loc");
-    const int64_t loc = state.at(loc_idx);
-    if (loc == -1) {  // special initial state
-      sNext[loc_idx] = origin;
-      return 0;
-    }
-    if (loc == goal) return 0;  // goal is absorbing
-
-    if (actions.at(action) == "decide_goal_unreachable")
-      return goalUnreachable(state) ? 0 : _bad_action_reward;
-
-    const int64_t dest_loc = nodes.at(action);
-    if (loc == dest_loc) return _idle_reward;  // idling
-
-    // invalid move
-    if (!nodesAdjacent(loc, dest_loc, state)) return _bad_action_reward;
-
-    // moving
-    sNext[loc_idx] = dest_loc;
-    return dest_loc < loc ? -edges.at({dest_loc, loc})
-                          : -edges.at({loc, dest_loc});
   }
 
   int64_t observeState(const MCVI::State& state) const {
