@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Cache.h"
 #include "StateVector.h"
 
 namespace MCVI {
@@ -86,7 +87,7 @@ class ShortestPathFasterAlgorithm {
 class MaximiseReward {
  private:
   double discount_factor;
-  mutable std::unordered_map<
+  mutable LRUCache<
       State, std::unordered_map<int64_t, std::tuple<int64_t, State, double>>,
       StateHash, StateEqual>
       cache;
@@ -98,7 +99,8 @@ class MaximiseReward {
       const State& state, int64_t depth_to_go) const;
 
  public:
-  MaximiseReward(double discount_factor) : discount_factor(discount_factor) {}
+  MaximiseReward(double discount_factor, size_t cache_capacity = 25000)
+      : discount_factor(discount_factor), cache(cache_capacity) {}
 
   // Available successors <action, state, reward> tuples
   virtual std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(

@@ -21,8 +21,8 @@ namespace MCVI {
 
 class OptimalPath : public MaximiseReward {
  public:
-  OptimalPath(SimInterface* pomdp)
-      : MaximiseReward(pomdp->GetDiscount()), pomdp(pomdp) {}
+  OptimalPath(SimInterface* pomdp, size_t cache_capacity = 250000)
+      : MaximiseReward(pomdp->GetDiscount(), cache_capacity), pomdp(pomdp) {}
 
   std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
       const State& state) const override;

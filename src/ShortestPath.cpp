@@ -89,8 +89,8 @@ MaximiseReward::GetCachedOrSearch(const State& state,
   const auto state_cache = cache.find(state);
   if (state_cache == cache.end()) return Search(state, depth_to_go);
 
-  const auto pos = state_cache->second.find(depth_to_go);
-  if (pos == state_cache->second.end()) return Search(state, depth_to_go);
+  const auto pos = state_cache->second.first.find(depth_to_go);
+  if (pos == state_cache->second.first.end()) return Search(state, depth_to_go);
 
   // follow the path to reconstruct
   const auto& [action, successor, immediate_rw] = pos->second;
