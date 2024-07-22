@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Cache.h"
 #include "StateVector.h"
 
 namespace MCVI {
@@ -20,8 +21,9 @@ namespace MCVI {
 class AlphaVectorNode {
  private:
   int64_t _best_action;
-  StateMap<double> _alpha;  // expected total reward of executing policy from
-                            // this node with initial state
+  LRUCache<State, double, StateHash, StateEqual>
+      _alpha;  // expected total reward of executing policy from
+               // this node with initial state
 
  public:
   AlphaVectorNode(int64_t init_best_action);

@@ -11,10 +11,10 @@ template <typename T1, typename T2, typename T1Hash = std::hash<T1>,
 class LRUCache {
  private:
   size_t capacity;
-  std::unordered_map<T1, std::pair<T2, typename std::list<T1>::iterator>,
-                     T1Hash, T1Equal>
+  mutable std::unordered_map<
+      T1, std::pair<T2, typename std::list<T1>::iterator>, T1Hash, T1Equal>
       cacheMap;
-  std::list<T1> lruList;
+  mutable std::list<T1> lruList;
 
  public:
   LRUCache(size_t capacity) : capacity(capacity) {}
@@ -45,7 +45,7 @@ class LRUCache {
     return cacheMap.find(key) != cacheMap.end();
   }
 
-  const T2& at(const T1& key) {
+  const T2& at(const T1& key) const {
     auto it = cacheMap.find(key);
     if (it != cacheMap.end()) {
       // Key exists, move it to the front of the cache list and return the value
@@ -84,6 +84,13 @@ class LRUCache {
 
   typename std::unordered_map<T1,
                               std::pair<T2, typename std::list<T1>::iterator>,
+                              T1Hash, T1Equal>::const_iterator
+  find(const T1& key) const {
+    return cacheMap.find(key);
+  }
+
+  typename std::unordered_map<T1,
+                              std::pair<T2, typename std::list<T1>::iterator>,
                               T1Hash, T1Equal>::iterator
   find(const T1& key) {
     return cacheMap.find(key);
@@ -92,8 +99,29 @@ class LRUCache {
   typename std::unordered_map<T1,
                               std::pair<T2, typename std::list<T1>::iterator>,
                               T1Hash, T1Equal>::iterator
+  begin() {
+    return cacheMap.begin();
+  }
+
+  typename std::unordered_map<T1,
+                              std::pair<T2, typename std::list<T1>::iterator>,
+                              T1Hash, T1Equal>::const_iterator
+  cbegin() const {
+    return cacheMap.cbegin();
+  }
+
+  typename std::unordered_map<T1,
+                              std::pair<T2, typename std::list<T1>::iterator>,
+                              T1Hash, T1Equal>::iterator
   end() {
     return cacheMap.end();
+  }
+
+  typename std::unordered_map<T1,
+                              std::pair<T2, typename std::list<T1>::iterator>,
+                              T1Hash, T1Equal>::const_iterator
+  cend() const {
+    return cacheMap.cend();
   }
 };
 

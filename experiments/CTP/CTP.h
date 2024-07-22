@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "Cache.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
 
@@ -69,8 +70,10 @@ class CTP : public MCVI::SimInterface {
   std::vector<std::string> observations;
   double _idle_reward;
   double _bad_action_reward;
-  mutable MCVI::StateMap<bool> goal_reachable;
-  mutable MCVI::StateMap<double> state_value;
+  mutable MCVI::LRUCache<MCVI::State, bool, MCVI::StateHash, MCVI::StateEqual>
+      goal_reachable;
+  mutable MCVI::LRUCache<MCVI::State, double, MCVI::StateHash, MCVI::StateEqual>
+      state_value;
 
  public:
   CTP(std::mt19937_64& rng, const std::vector<int64_t>& nodes,
@@ -90,7 +93,9 @@ class CTP : public MCVI::SimInterface {
         actions(initActions()),
         observations(initObs()),
         _idle_reward(initIdleReward()),
-        _bad_action_reward(initBadReward()) {}
+        _bad_action_reward(initBadReward()),
+        goal_reachable(250000),
+        state_value(250000) {}
 
   int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
   int64_t GetSizeOfA() const override { return actions.size(); }
@@ -290,7 +295,7 @@ class CTP : public MCVI::SimInterface {
     MCVI::State origin_state = state;
     origin_state[sfIdx("loc")] = origin;
     const auto ret = goal_reachable.find(origin_state);
-    if (ret != goal_reachable.end()) return !ret->second;
+    if (ret != goal_reachable.end()) return !ret->second.first;
 
     // find shortest path to goal, return true if none exists
     std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
@@ -389,7 +394,7 @@ class CTP : public MCVI::SimInterface {
     return sNext.at(loc_idx) == goal;
   }
 
-    double initIdleReward() const {
+  double initIdleReward() const {
     const double max_edge =
         std::max_element(edges.begin(), edges.end(), CmpPair)->second;
     return -5 * max_edge;
@@ -459,7 +464,7 @@ class CTP : public MCVI::SimInterface {
       best_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(best_case_state);
-    if (it != state_value.cend()) return it->second;
+    if (it != state_value.end()) return it->second.first;
 
     const auto [val, _] = get_state_value(best_case_state, max_depth);
     state_value[best_case_state] = val;
@@ -477,7 +482,7 @@ class CTP : public MCVI::SimInterface {
       worst_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(worst_case_state);
-    if (it != state_value.cend()) return it->second;
+    if (it != state_value.end()) return it->second.first;
 
     const auto [val, _] = get_state_value(worst_case_state, max_depth);
     state_value[worst_case_state] = val;
