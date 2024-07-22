@@ -148,8 +148,36 @@ def ctp_to_file(G: nx.Graph, origin: int, goal: int, f: TextIO):
 
 
 if __name__ == "__main__":
-    seed = np.random.randint(0, 9999999)
-    N = 25
-    G, origin, goal, solvable = generate_graph(N, seed, True, plot=True)
-    print("seed:", seed, "nodes:", N, "solvable:", solvable)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate a CTp problem example")
+    parser.add_argument(
+        "-n", "--nodes", help="Number of nodes", required=True, type=int
+    )
+    parser.add_argument(
+        "-p",
+        "--perc-stoch-edges",
+        help="Percentage of stochastic edges",
+        default=0.4,
+        type=float,
+    )
+    parser.add_argument(
+        "-s",
+        "--seed",
+        help="Random seed",
+        default=np.random.randint(0, 9999999),
+        type=int,
+    )
+    args = parser.parse_args()
+    seed = args.seed
+
+    N = args.nodes
+    perc_stoch = args.perc_stoch_edges
+    G, origin, goal, solvable = generate_graph(
+        N, seed, True, prop_stoch=perc_stoch, plot=False
+    )
+    print("seed:", seed, "nodes:", N, "solvable:", solvable, file=sys.stderr)
     ctp_to_file(G, origin, goal, sys.stdout)
+    G, origin, goal, solvable = generate_graph(
+        N, seed, True, prop_stoch=perc_stoch, plot=True
+    )
