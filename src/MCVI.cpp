@@ -68,7 +68,8 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 
 void MCVIPlanner::SampleBeliefs(
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-    int64_t eval_depth, double target, double R_lower, int64_t max_depth_sim) {
+    int64_t eval_depth, double target, double& excessUncertainty,
+    double R_lower, int64_t max_depth_sim) {
   const auto node = traversal_list.back();
   if (node == nullptr) throw std::logic_error("Invalid node");
   // Initialise node with all action children if not already done
@@ -84,7 +85,7 @@ void MCVIPlanner::SampleBeliefs(
   node->UpdateBestAction();
 
   try {
-    const auto next_node = node->ChooseObservation(target);
+    const auto next_node = node->ChooseObservation(target, excessUncertainty);
     traversal_list.push_back(next_node);
   } catch (std::logic_error& e) {
     if (std::string(e.what()) == "Failed to find best observation") return;
@@ -115,10 +116,12 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
   const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
 
   auto begin = std::chrono::steady_clock::now();
+  double excessUncertainty = 0.0;
   for (int64_t depth = 0; depth < max_depth_sim; ++depth) {
-    SampleBeliefs(traversal_list, eval_depth - depth, precision, R_lower,
-                  max_depth_sim - depth);
+    SampleBeliefs(traversal_list, eval_depth - depth, precision,
+                  excessUncertainty, R_lower, max_depth_sim - depth);
     if (exit_flag.load()) break;
+    if (excessUncertainty <= 0) break;
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed =
         std::chrono::duration_cast<std::chrono::microseconds>(now - begin);

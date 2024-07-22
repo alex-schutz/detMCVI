@@ -91,14 +91,16 @@ std::shared_ptr<BeliefTreeNode> ActionNode::GetChild(
 }
 
 std::shared_ptr<BeliefTreeNode> ActionNode::ChooseObservation(
-    double target) const {
+    double target, double& excessUncertainty) const {
   double best_gap = -std::numeric_limits<double>::infinity();
   int64_t best_obs = -1;
   for (const auto& [obs, obs_node] : _observation_edges) {
-    const double gap = (obs_node.GetUpper() - obs_node.GetLower()) - target;
-    if (gap > best_gap) {
-      best_gap = gap;
+    const double diff = (obs_node.GetUpper() - obs_node.GetLower()) - target;
+    const double weighted_diff = diff * obs_node.GetWeight();
+    if (weighted_diff > best_gap) {
+      best_gap = weighted_diff;
       best_obs = obs;
+      excessUncertainty = diff;
     }
   }
   if (best_obs == -1) throw std::logic_error("Failed to find best observation");
@@ -167,14 +169,14 @@ const std::unordered_map<int64_t, ObservationNode>& BeliefTreeNode::GetChildren(
 }
 
 std::shared_ptr<BeliefTreeNode> BeliefTreeNode::ChooseObservation(
-    double target) {
+    double target, double& excessUncertainty) {
   auto it = _action_edges.find(_bestActUBound);
   if (it == _action_edges.cend()) UpdateBestAction();
   it = _action_edges.find(_bestActUBound);
   if (it == _action_edges.cend())
     throw std::logic_error("Could not find best action");
 
-  return it->second.ChooseObservation(target);
+  return it->second.ChooseObservation(target, excessUncertainty);
 }
 
 const ActionNode& BeliefTreeNode::GetOrAddChildren(

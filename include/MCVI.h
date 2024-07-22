@@ -100,7 +100,8 @@ class MCVIPlanner {
 
   void SampleBeliefs(
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-      int64_t eval_depth, double target, double R_lower, int64_t max_depth_sim);
+      int64_t eval_depth, double target, double& excessUncertainty,
+      double R_lower, int64_t max_depth_sim);
 };
 
 std::vector<State> EvaluationWithGreedyTreePolicy(

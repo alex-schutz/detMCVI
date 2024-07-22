@@ -79,7 +79,8 @@ class ActionNode {
     return _observation_edges;
   }
 
-  std::shared_ptr<BeliefTreeNode> ChooseObservation(double target) const;
+  std::shared_ptr<BeliefTreeNode> ChooseObservation(
+      double target, double& excessUncertainty) const;
 
   void BackUp(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
               SimInterface* pomdp);
@@ -151,7 +152,8 @@ class BeliefTreeNode {
   const std::unordered_map<int64_t, ObservationNode>& GetChildren(
       int64_t action) const;
 
-  std::shared_ptr<BeliefTreeNode> ChooseObservation(double target);
+  std::shared_ptr<BeliefTreeNode> ChooseObservation(double target,
+                                                    double& excessUncertainty);
 
   void BackUpActions(AlphaVectorFSC& fsc, double R_lower, int64_t max_depth_sim,
                      SimInterface* pomdp);
