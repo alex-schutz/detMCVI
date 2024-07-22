@@ -129,7 +129,8 @@ void parseCommandLine(int argc, char* argv[], int64_t& runtime_ms) {
   }
 }
 
-void runPOMCP(Battleships* pomdp, std::mt19937_64& rng, double pomcp_c,
+void runPOMCP(Battleships* pomdp, std::mt19937_64& rng,
+              int64_t init_belief_size, double pomcp_c,
               int64_t pomcp_nb_rollout,
               std::chrono::microseconds pomcp_time_out, double pomcp_epsilon,
               int64_t pomcp_depth, int64_t max_eval_steps,
@@ -144,7 +145,7 @@ void runPOMCP(Battleships* pomdp, std::mt19937_64& rng, double pomcp_c,
   EvaluationStats eval_stats;
   std::cerr << "Generating belief particles" << std::endl;
   std::vector<State> init_belief_p;
-  for (int64_t n = 0; n < nb_particles_b0 / 10; ++n)
+  for (int64_t n = 0; n < init_belief_size / 10; ++n)
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
   std::cerr << "Running POMCP offline" << std::endl;
@@ -244,11 +245,12 @@ int main(int argc, char* argv[]) {
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
   auto init_belief = SampleInitialBelief(nb_particles_b0, &pomdp);
-  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
   if (max_belief_samples < init_belief.size()) {
+    std::cout << "Initial belief size: " << init_belief.size() << std::endl;
     std::cout << "Downsampling belief" << std::endl;
     init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
   }
+  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
 
   // Run POMCP
   auto pomcp = new Battleships(pomdp);
@@ -258,8 +260,9 @@ int main(int argc, char* argv[]) {
       std::chrono::milliseconds(max_time_ms);
   const double pomcp_epsilon = 0.01;
   const int64_t pomcp_depth = max_sim_depth;
-  runPOMCP(pomcp, rng, pomcp_c, pomcp_nb_rollout, pomcp_time_out, pomcp_epsilon,
-           pomcp_depth, max_sim_depth, n_eval_trials, nb_particles_b0);
+  runPOMCP(pomcp, rng, max_belief_samples, pomcp_c, pomcp_nb_rollout,
+           pomcp_time_out, pomcp_epsilon, pomcp_depth, max_sim_depth,
+           n_eval_trials, 10 * nb_particles_b0);
 
   // Run MCVI
   auto mcvi = new Battleships(pomdp);

@@ -124,8 +124,8 @@ void runAOStar(CTP* pomdp, const BeliefDistribution& init_belief,
             << std::endl;
 }
 
-void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
-              int64_t pomcp_nb_rollout,
+void runPOMCP(CTP* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
+              double pomcp_c, int64_t pomcp_nb_rollout,
               std::chrono::microseconds pomcp_time_out, double pomcp_epsilon,
               int64_t pomcp_depth, int64_t max_eval_steps,
               int64_t n_eval_trials, int64_t nb_particles_b0) {
@@ -139,7 +139,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, double pomcp_c,
   EvaluationStats eval_stats;
   std::cerr << "Generating belief particles" << std::endl;
   std::vector<State> init_belief_p;
-  for (int64_t n = 0; n < nb_particles_b0 / 10; ++n)
+  for (int64_t n = 0; n < init_belief_size / 10; ++n)
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
   std::cerr << "Running POMCP offline" << std::endl;
@@ -235,8 +235,8 @@ int main(int argc, char* argv[]) {
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
   auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
-  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
   if (params.max_belief_samples < (int64_t)init_belief.size()) {
+    std::cout << "Initial belief size: " << init_belief.size() << std::endl;
     std::cout << "Downsampling belief" << std::endl;
     init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
@@ -262,9 +262,9 @@ int main(int argc, char* argv[]) {
       std::chrono::milliseconds(params.max_time_ms);
   const double pomcp_epsilon = 0.01;
   const int64_t pomcp_depth = params.max_sim_depth;
-  runPOMCP(pomcp_ctp, rng, pomcp_c, pomcp_nb_rollout, pomcp_time_out,
-           pomcp_epsilon, pomcp_depth, params.max_sim_depth, n_eval_trials,
-           10 * params.nb_particles_b0);
+  runPOMCP(pomcp_ctp, rng, params.max_belief_samples, pomcp_c, pomcp_nb_rollout,
+           pomcp_time_out, pomcp_epsilon, pomcp_depth, params.max_sim_depth,
+           n_eval_trials, 10 * params.nb_particles_b0);
 
   return 0;
 }
