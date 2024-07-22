@@ -141,7 +141,7 @@ class CTP_Optimism : public CTP {
 
   int64_t GetBestAction(const State& state, int64_t max_depth) const {
     const auto [reward, path] = solver.getMaxReward(state, max_depth);
-    return path.at(0).first;
+    return std::get<0>(path.at(0));
   }
 
   void PrintState(const State& state) const {

@@ -115,7 +115,7 @@ TEST(ShortestPathFasterAlgorithmTest, ReconstructPath) {
 
 class MockMaximiseReward : public MaximiseReward {
  public:
-  MockMaximiseReward(double discount) : MaximiseReward(discount){};
+  MockMaximiseReward(double discount) : MaximiseReward(discount) {};
 
   std::vector<std::tuple<int64_t, State, double, bool>> getSuccessors(
       const State& node) const override {
@@ -172,7 +172,8 @@ TEST(MaximiseRewardTest, GetMaxRewardTest) {
   {
     const auto [reward, path] = mockMaximiseReward.getMaxReward({1}, 1);
     EXPECT_DOUBLE_EQ(reward, 5.0);
-    std::vector<std::pair<int64_t, State>> expectedPath = {{4, {4}}};
+    std::vector<std::tuple<int64_t, State, double>> expectedPath = {
+        {4, {4}, 5.0}};
     EXPECT_EQ(path, expectedPath);
   }
   {
@@ -182,15 +183,17 @@ TEST(MaximiseRewardTest, GetMaxRewardTest) {
                              (std::pow(g, 0) * 5.0 + std::pow(g, 1) * 4.0 +
                               std::pow(g, 2) * 2.0) +
                          std::pow(g, 9) * 5.0);
-    std::vector<std::pair<int64_t, State>> expectedPath = {
-        {4, {4}}, {7, {7}}, {1, {1}}, {4, {4}}, {7, {7}},
-        {1, {1}}, {4, {4}}, {7, {7}}, {1, {1}}, {4, {4}}};
+    std::vector<std::tuple<int64_t, State, double>> expectedPath = {
+        {4, {4}, 5}, {7, {7}, 4}, {1, {1}, 2}, {4, {4}, 5}, {7, {7}, 4},
+        {1, {1}, 2}, {4, {4}, 5}, {7, {7}, 4}, {1, {1}, 2}, {4, {4}, 5},
+    };
     EXPECT_EQ(path, expectedPath);
   }
   {
     const auto [reward, path] = mockMaximiseReward.getMaxReward({11}, 1);
     EXPECT_DOUBLE_EQ(reward, 1.0);
-    std::vector<std::pair<int64_t, State>> expectedPath = {{11, {11}}};
+    std::vector<std::tuple<int64_t, State, double>> expectedPath = {
+        {11, {11}, 1}};
     EXPECT_EQ(path, expectedPath);
   }
   {
@@ -198,8 +201,8 @@ TEST(MaximiseRewardTest, GetMaxRewardTest) {
     double e_rw = 0.0;
     for (int i = 0; i < 8; ++i) e_rw += 1.0 * std::pow(g, i);
     EXPECT_DOUBLE_EQ(reward, e_rw);
-    std::vector<std::pair<int64_t, State>> expectedPath;
-    for (int i = 0; i < 8; ++i) expectedPath.push_back({11, {11}});
+    std::vector<std::tuple<int64_t, State, double>> expectedPath;
+    for (int i = 0; i < 8; ++i) expectedPath.push_back({11, {11}, 1});
     EXPECT_EQ(path, expectedPath);
   }
   {
@@ -207,8 +210,9 @@ TEST(MaximiseRewardTest, GetMaxRewardTest) {
     double e_rw = -10.0;
     for (int i = 1; i < 30; ++i) e_rw += 3.0 * std::pow(g, i);
     EXPECT_DOUBLE_EQ(reward, e_rw);
-    std::vector<std::pair<int64_t, State>> expectedPath;
-    for (int i = 0; i < 30; ++i) expectedPath.push_back({12, {12}});
+    std::vector<std::tuple<int64_t, State, double>> expectedPath = {
+        {12, {12}, -10}};
+    for (int i = 1; i < 30; ++i) expectedPath.push_back({12, {12}, 3});
     EXPECT_EQ(path, expectedPath);
   }
   {
@@ -216,15 +220,16 @@ TEST(MaximiseRewardTest, GetMaxRewardTest) {
     double e_rw = 0.0;
     for (int i = 0; i < 10; ++i) e_rw += -1.0 * std::pow(g, i);
     EXPECT_DOUBLE_EQ(reward, e_rw);
-    std::vector<std::pair<int64_t, State>> expectedPath;
-    for (int i = 0; i < 10; ++i) expectedPath.push_back({15, {15}});
+    std::vector<std::tuple<int64_t, State, double>> expectedPath;
+    for (int i = 0; i < 10; ++i) expectedPath.push_back({15, {15}, -1});
     EXPECT_EQ(path, expectedPath);
   }
   {
     const auto [reward, path] = mockMaximiseReward.getMaxReward({13}, 200);
     double e_rw = -9.0;
     EXPECT_DOUBLE_EQ(reward, e_rw);
-    std::vector<std::pair<int64_t, State>> expectedPath = {{14, {14}}};
+    std::vector<std::tuple<int64_t, State, double>> expectedPath = {
+        {14, {14}, -9}};
     EXPECT_EQ(path, expectedPath);
   }
 }

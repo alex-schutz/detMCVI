@@ -87,13 +87,15 @@ class MaximiseReward {
  private:
   double discount_factor;
   mutable std::unordered_map<
-      State, std::unordered_map<int64_t, std::pair<int64_t, State>>, StateHash,
-      StateEqual>
+      State, std::unordered_map<int64_t, std::tuple<int64_t, State, double>>,
+      StateHash, StateEqual>
       cache;
 
-  std::optional<
-      std::unordered_map<int64_t, std::pair<int64_t, State>>::const_iterator>
-  stateInCache(const State& state, int64_t depth_to_go) const;
+  std::pair<double, std::vector<std::tuple<int64_t, State, double>>>
+  GetCachedOrSearch(const State& state, int64_t depth_to_go) const;
+
+  std::pair<double, std::vector<std::tuple<int64_t, State, double>>> Search(
+      const State& state, int64_t depth_to_go) const;
 
  public:
   MaximiseReward(double discount_factor) : discount_factor(discount_factor) {}
@@ -103,10 +105,10 @@ class MaximiseReward {
       const State& state) const = 0;
 
   // Return the maximum reward that can be obtained starting in `state`
-  // up to `max_depth`, alongside the path of <action, next state>
-  // pairs
-  std::pair<double, std::vector<std::pair<int64_t, State>>> getMaxReward(
-      const State& state, int64_t max_depth) const;
+  // up to `max_depth`, alongside the path of <action, next state,
+  // immediate_reward> pairs
+  std::pair<double, std::vector<std::tuple<int64_t, State, double>>>
+  getMaxReward(const State& state, int64_t max_depth) const;
 };
 
 }  // namespace MCVI
