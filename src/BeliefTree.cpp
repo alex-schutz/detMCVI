@@ -48,17 +48,14 @@ void ActionNode::BeliefUpdate(const BeliefDistribution& belief,
     if (pomdp->IsTerminal(state)) continue;
     auto [sNext, obs, reward, done] = pomdp->Step(state, GetAction());
     reward_map[obs] += reward * prob;
-    auto& obs_belief = next_beliefs[obs];
-    obs_belief[sNext] += prob;
+    next_beliefs[obs][sNext] += prob;
   }
 
-  // Set weight based on likelihood of observations
-  for (const auto& [o, b] : next_beliefs) {
+  for (auto& [o, belief] : next_beliefs) {
     double w = 0.0;
-    for (const auto& [s, p] : b) w += p;
-    // Renormalise next probabilities
-    auto belief = BeliefDistribution();
-    for (const auto& [s, p] : b) belief[s] = p / w;
+    for (const auto& [s, p] : belief) w += p;
+    // Renormalize next probabilities
+    for (auto& [s, p] : belief) p /= w;
 
     const auto belief_upper = CalculateUpperBound(belief, belief_depth + 1,
                                                   eval_depth, heuristic, pomdp);
