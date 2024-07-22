@@ -143,7 +143,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
   std::cerr << "Running POMCP offline" << std::endl;
-  POMCP::TreeNode* root_node = pomcp.SearchOffline(init_belief);
+  POMCP::TreeNodePtr root_node = pomcp.SearchOffline(init_belief);
 
   std::cerr << "Generating evaluation set" << std::endl;
   const BeliefDistribution init_belief_eval =
@@ -157,7 +157,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
     const auto [optimal, has_soln] =
         pomdp->get_state_value(initial_state, max_eval_steps);
     // std::cerr << "Running trial " << sim << std::endl;
-    POMCP::TreeNode* tr_node = root_node;
+    POMCP::TreeNodePtr tr_node = root_node;
     for (; i < max_eval_steps; ++i) {
       const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
       if (!tr_node || action == -1) {

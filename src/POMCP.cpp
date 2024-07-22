@@ -29,18 +29,6 @@ int64_t TreeNode::GetActionCount(int64_t aI) const {
   }
 }
 
-// delete all child
-TreeNode::~TreeNode() {
-  std::map<int64_t, std::map<int64_t, TreeNode *>>::iterator
-      it;  // aI, oI -> n_new
-  for (it = ChildNodes_.begin(); it != ChildNodes_.end(); it++) {
-    std::map<int64_t, TreeNode *>::iterator it_node;
-    for (it_node = it->second.begin(); it_node != it->second.end(); it_node++) {
-      delete it_node->second;
-    }
-  }
-};
-
 double TreeNode::GetActionQ(int64_t aI) const {
   if (this->all_action_Q.count(aI)) {
     return this->all_action_Q.find(aI)->second;
@@ -86,7 +74,7 @@ int64_t PomcpPlanner::Search(const BeliefParticles &b) {
   std::chrono::microseconds PlanSpentTime =
       std::chrono::duration_cast<std::chrono::microseconds>(PlanEndTime -
                                                             PlanStartTime);
-  TreeNode *new_node = new TreeNode(0);
+  TreeNodePtr new_node = std::make_shared<TreeNode>(0);
 
   this->rootnode = new_node;
   while (PlanSpentTime < this->timeout) {
@@ -96,20 +84,10 @@ int64_t PomcpPlanner::Search(const BeliefParticles &b) {
     PlanSpentTime = std::chrono::duration_cast<std::chrono::microseconds>(
         PlanEndTime - PlanStartTime);
   }
-  int64_t best_aI = BestAction(this->rootnode);
-
-  this->Root_best_action_possible_obs.clear();
-  int64_t size_obs = this->simulator->GetSizeOfObs();
-  for (int64_t oI = 0; oI < size_obs; oI++) {
-    this->Root_best_action_possible_obs[oI] =
-        this->rootnode->CheckChildNodeExist(best_aI, oI);
-  }
-  delete this->rootnode;
-
-  return best_aI;
+  return BestAction(this->rootnode);
 }
 
-double PomcpPlanner::Simulate(const State &sampled_sI, TreeNode *node,
+double PomcpPlanner::Simulate(const State &sampled_sI, TreeNodePtr node,
                               int64_t depth) {
   double esti_V = 0;
   node->AddVisit();
@@ -130,7 +108,7 @@ double PomcpPlanner::Simulate(const State &sampled_sI, TreeNode *node,
 
   // check if have child node with this new history "hao"
   if (node->CheckChildNodeExist(aI, oI)) {
-    TreeNode *child_node = node->GetChildNode(aI, oI);
+    TreeNodePtr child_node = node->GetChildNode(aI, oI);
     esti_V = reward + this->discount * Simulate(next_sI, child_node, depth + 1);
   } else {
     CreateNewNode(node, aI, oI);
@@ -156,16 +134,16 @@ void PomcpPlanner::Init(double c, int64_t pomcp_nb_rollout,
   this->nb_restarts_simulation = pomcp_nb_rollout;
 }
 
-TreeNode *PomcpPlanner::CreateNewNode(TreeNode *parent_node, int64_t aI,
-                                      int64_t oI) {
+TreeNodePtr PomcpPlanner::CreateNewNode(TreeNodePtr parent_node, int64_t aI,
+                                        int64_t oI) {
   int64_t parent_depth = parent_node->GetDepth();
-  TreeNode *child_node = new TreeNode(parent_depth + 1);
+  TreeNodePtr child_node = std::make_shared<TreeNode>(parent_depth + 1);
   child_node->AddParentNode(parent_node);
   parent_node->AddChildNode(aI, oI, child_node);
   return child_node;
 }
 
-int64_t PomcpPlanner::UcbActionSelection(TreeNode *node) const {
+int64_t PomcpPlanner::UcbActionSelection(TreeNodePtr node) const {
   int64_t num_node_visit = node->GetVisitNumber();
   double max_value = -std::numeric_limits<double>::infinity();
   int64_t selected_aI = -1;
@@ -189,13 +167,13 @@ int64_t PomcpPlanner::UcbActionSelection(TreeNode *node) const {
   return selected_aI;
 }
 
-TreeNode *PomcpPlanner::SearchOffline(const BeliefParticles &b) {
+TreeNodePtr PomcpPlanner::SearchOffline(const BeliefParticles &b) {
   const auto PlanStartTime = std::chrono::steady_clock::now();
   auto PlanEndTime = std::chrono::steady_clock::now();
   std::chrono::microseconds PlanSpentTime =
       std::chrono::duration_cast<std::chrono::microseconds>(PlanEndTime -
                                                             PlanStartTime);
-  TreeNode *new_node = new TreeNode(0);
+  TreeNodePtr new_node = std::make_shared<TreeNode>(0);
 
   this->rootnode = new_node;
   while (PlanSpentTime.count() < this->timeout.count()) {
@@ -209,7 +187,7 @@ TreeNode *PomcpPlanner::SearchOffline(const BeliefParticles &b) {
   return this->rootnode;
 }
 
-int64_t BestAction(const TreeNode *node) {
+int64_t BestAction(const TreeNodePtr node) {
   const auto actionQ = node->GetAllActionQ();
   if (actionQ.empty()) return -1;
   return std::max_element(actionQ.begin(), actionQ.end(), CmpPair)->first;
