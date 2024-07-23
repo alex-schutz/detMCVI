@@ -11,25 +11,26 @@ class Battleships : public MCVI::SimInterface {
   std::vector<std::string> actions;
   std::vector<std::string> observations;
 
-  int ship_count_multiplier;
-  std::vector<int> ship_sizes = {2, 3, 4, 5};
+  std::vector<int> ship_sizes;
   std::map<std::string, size_t> state_factor_sizes;
 
   std::mt19937_64& rng;
 
-  double _hit_reward = 1;
-  double _miss_reward = 0;
-  double _bad_action_reward = -10;
+  double _hit_reward = -1;
+  double _miss_reward = -1;
+  double _terminal_reward;
+  double _bad_action_reward;
 
  public:
-  Battleships(int32_t grid_size, int ship_count_multiplier,
-              std::mt19937_64& rng)
+  Battleships(int32_t grid_size, int ship_count, std::mt19937_64& rng)
       : grid_size(grid_size),
         actions(initActions()),
         observations(initObs()),
-        ship_count_multiplier(ship_count_multiplier),
+        ship_sizes(initShipSizes(ship_count)),
         state_factor_sizes(initStateSpace()),
-        rng(rng) {}
+        rng(rng),
+        _terminal_reward(grid_size * grid_size),
+        _bad_action_reward(-_terminal_reward) {}
 
   int64_t GetSizeOfObs() const override { return observations.size(); }
   int64_t GetSizeOfA() const override { return actions.size(); }
@@ -39,11 +40,9 @@ class Battleships : public MCVI::SimInterface {
   const std::vector<std::string>& getObs() const { return observations; }
   bool IsTerminal(const MCVI::State& sI) const override {
     for (const auto& ship_sz : ship_sizes) {
-      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        for (int i = 0; i < ship_sz; ++i) {
-          if (sI.at(sfIdx(ship2str(ship_sz, n) + "_" + std::to_string(i))) == 0)
-            return false;
-        }
+      for (int i = 0; i < ship_sz; ++i) {
+        if (sI.at(sfIdx(ship2str(ship_sz) + "_" + std::to_string(i))) == 0)
+          return false;
       }
     }
     return true;
@@ -64,12 +63,12 @@ class Battleships : public MCVI::SimInterface {
     std::map<std::string, int64_t> state_factors;
     const auto ship_locs = generateBattleshipConfig();
 
-    for (const auto& [ship_sz, n, row, col, ori] : ship_locs) {
-      state_factors[ship2str(ship_sz, n) + "_row"] = row;
-      state_factors[ship2str(ship_sz, n) + "_col"] = col;
-      state_factors[ship2str(ship_sz, n) + "_ori"] = ori;
+    for (const auto& [ship_sz, row, col, ori] : ship_locs) {
+      state_factors[ship2str(ship_sz) + "_row"] = row;
+      state_factors[ship2str(ship_sz) + "_col"] = col;
+      state_factors[ship2str(ship_sz) + "_ori"] = ori;
       for (int i = 0; i < ship_sz; ++i) {
-        state_factors[ship2str(ship_sz, n) + "_" + std::to_string(i)] = 0;
+        state_factors[ship2str(ship_sz) + "_" + std::to_string(i)] = 0;
       }
     }
 
@@ -80,18 +79,20 @@ class Battleships : public MCVI::SimInterface {
                                           int64_t max_depth) const {
     int64_t unhit_ship_tiles = 0;
     for (const auto& ship_sz : ship_sizes) {
-      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        for (int i = 0; i < ship_sz; ++i) {
-          const int64_t sf_loc =
-              sfIdx(ship2str(ship_sz, n) + "_" + std::to_string(i));
-          if (state.at(sf_loc) == 0) unhit_ship_tiles += 1;
-        }
+      for (int i = 0; i < ship_sz; ++i) {
+        const int64_t sf_loc =
+            sfIdx(ship2str(ship_sz) + "_" + std::to_string(i));
+        if (state.at(sf_loc) == 0) unhit_ship_tiles += 1;
       }
     }
     double r = 0.0;
-    for (int i = 0; i < std::min(unhit_ship_tiles, max_depth); ++i)
-      r += std::pow(GetDiscount(), i) * _hit_reward;
-    return {r, true};
+    for (int i = 0; i < std::min(unhit_ship_tiles, max_depth); ++i) {
+      if (i == unhit_ship_tiles - 1)
+        r += std::pow(GetDiscount(), i) * _terminal_reward;
+      else
+        r += std::pow(GetDiscount(), i) * _hit_reward;
+    }
+    return {r, unhit_ship_tiles <= max_depth};
   }
 
   double applyActionToState(const MCVI::State& sI, int64_t aI,
@@ -99,12 +100,11 @@ class Battleships : public MCVI::SimInterface {
     sNext = sI;
     const auto [row, col] = decompose_action(aI);
     for (const auto& ship_sz : ship_sizes) {
-      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        if (ship_present(sI, ship_sz, n, row, col)) {
-          sNext = hit_ship(sI, ship_sz, n, row, col);
-          if (sNext == sI) return _bad_action_reward;  // already hit
-          return _hit_reward;
-        }
+      if (ship_present(sI, ship_sz, row, col)) {
+        sNext = hit_ship(sI, ship_sz, row, col);
+        if (sNext == sI) return _bad_action_reward;  // already hit
+        if (IsTerminal(sNext)) return _terminal_reward;
+        return _hit_reward;
       }
     }
 
@@ -116,9 +116,7 @@ class Battleships : public MCVI::SimInterface {
     return std::to_string(i) + "_" + std::to_string(j);
   }
 
-  std::string ship2str(int64_t sz, int64_t rep) const {
-    return std::to_string(sz) + "_" + std::to_string(rep);
-  }
+  inline std::string ship2str(int64_t sz) const { return std::to_string(sz); }
 
   MCVI::State names2state(const std::map<std::string, int64_t>& names) const {
     assert(names.size() == state_factor_sizes.size());
@@ -145,6 +143,12 @@ class Battleships : public MCVI::SimInterface {
     return acts;
   }
 
+  std::vector<int> initShipSizes(int ship_count) const {
+    std::vector<int> v;
+    for (int i = 0; i < ship_count; ++i) v.push_back(i + 2);
+    return v;
+  }
+
   std::pair<int64_t, int64_t> decompose_action(int64_t aI) const {
     return {aI / grid_size, aI % grid_size};
   }
@@ -155,15 +159,12 @@ class Battleships : public MCVI::SimInterface {
     for (int64_t i = 0; i < grid_size; ++i) grid_coords.push_back(i);
     // ship location and orientation
     for (const auto& ship_sz : ship_sizes) {
-      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        state_factors[ship2str(ship_sz, n) + "_row"] = grid_coords.size();
-        state_factors[ship2str(ship_sz, n) + "_col"] = grid_coords.size();
-        state_factors[ship2str(ship_sz, n) + "_ori"] =
-            2;  // vertical, horizontal
-        for (int i = 0; i < ship_sz; ++i) {
-          state_factors[ship2str(ship_sz, n) + "_" + std::to_string(i)] =
-              2;  // unhit, hit
-        }
+      state_factors[ship2str(ship_sz) + "_row"] = grid_coords.size();
+      state_factors[ship2str(ship_sz) + "_col"] = grid_coords.size();
+      state_factors[ship2str(ship_sz) + "_ori"] = 2;  // vertical, horizontal
+      for (int i = 0; i < ship_sz; ++i) {
+        state_factors[ship2str(ship_sz) + "_" + std::to_string(i)] =
+            2;  // unhit, hit
       }
     }
 
@@ -174,11 +175,11 @@ class Battleships : public MCVI::SimInterface {
     return state_factors;
   }
 
-  bool ship_present(const MCVI::State& sI, int ship_sz, int64_t ship_n,
-                    int64_t row, int64_t col) const {
-    const int64_t R = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_row"));
-    const int64_t C = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_col"));
-    const bool is_horiz = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_ori"));
+  bool ship_present(const MCVI::State& sI, int ship_sz, int64_t row,
+                    int64_t col) const {
+    const int64_t R = sI.at(sfIdx(ship2str(ship_sz) + "_row"));
+    const int64_t C = sI.at(sfIdx(ship2str(ship_sz) + "_col"));
+    const bool is_horiz = sI.at(sfIdx(ship2str(ship_sz) + "_ori"));
 
     if (is_horiz) {
       return (R == row && C <= col && C + ship_sz - 1 >= col);
@@ -187,18 +188,17 @@ class Battleships : public MCVI::SimInterface {
     }
   }
 
-  MCVI::State hit_ship(const MCVI::State& sI, int ship_sz, int64_t ship_n,
-                       int64_t row, int64_t col) const {
-    const int64_t R = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_row"));
-    const int64_t C = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_col"));
-    const bool is_horiz = sI.at(sfIdx(ship2str(ship_sz, ship_n) + "_ori"));
+  MCVI::State hit_ship(const MCVI::State& sI, int ship_sz, int64_t row,
+                       int64_t col) const {
+    const int64_t R = sI.at(sfIdx(ship2str(ship_sz) + "_row"));
+    const int64_t C = sI.at(sfIdx(ship2str(ship_sz) + "_col"));
+    const bool is_horiz = sI.at(sfIdx(ship2str(ship_sz) + "_ori"));
 
     const int64_t hit_no = (is_horiz) ? col - C : row - R;
     if (hit_no < 0 || hit_no >= ship_sz)
       throw std::runtime_error("Invalid hit");
     MCVI::State out_state = sI;
-    out_state[sfIdx(ship2str(ship_sz, ship_n) + "_" + std::to_string(hit_no))] =
-        1;
+    out_state[sfIdx(ship2str(ship_sz) + "_" + std::to_string(hit_no))] = 1;
     return out_state;
   }
 
@@ -209,11 +209,9 @@ class Battleships : public MCVI::SimInterface {
 
   int64_t observeState(const MCVI::State& sI, int64_t aI) const {
     const auto [row, col] = decompose_action(aI);
-    for (const auto& ship_sz : ship_sizes) {
-      for (int64_t n = 0; n < ship_count_multiplier; ++n) {
-        if (ship_present(sI, ship_sz, n, row, col)) return 1;
-      }
-    }
+    for (const auto& ship_sz : ship_sizes)
+      if (ship_present(sI, ship_sz, row, col)) return 1;
+
     return 0;
   }
 
@@ -274,18 +272,16 @@ class Battleships : public MCVI::SimInterface {
   }
 
   bool generate_config(
-      std::vector<std::tuple<int, int, int64_t, int64_t, bool>>& config) const {
+      std::vector<std::tuple<int, int64_t, int64_t, bool>>& config) const {
     std::map<std::string, int64_t> grid;
     for (int i = 0; i < grid_size; ++i)
       for (int j = 0; j < grid_size; ++j) grid[coord2str(i, j)] = 0;
 
     for (const auto& ship_sz : ship_sizes) {
-      for (int n = 0; n < ship_count_multiplier; ++n) {
-        const auto ship_loc = attempt_to_place_ship(grid, ship_sz);
-        if (std::get<0>(ship_loc) < 0) return false;
-        config.push_back({ship_sz, n, std::get<0>(ship_loc),
-                          std::get<1>(ship_loc), std::get<2>(ship_loc)});
-      }
+      const auto ship_loc = attempt_to_place_ship(grid, ship_sz);
+      if (std::get<0>(ship_loc) < 0) return false;
+      config.push_back({ship_sz, std::get<0>(ship_loc), std::get<1>(ship_loc),
+                        std::get<2>(ship_loc)});
     }
     return true;
   }
@@ -293,9 +289,9 @@ class Battleships : public MCVI::SimInterface {
   // Find a legal arrangement of ships for a square grid of size `grid_size`
   // Ship sizes are 2, 3, 4 and 5, and the number of each type is given by
   // `ship_count_multiplier`
-  std::vector<std::tuple<int, int, int64_t, int64_t, bool>>
+  std::vector<std::tuple<int, int64_t, int64_t, bool>>
   generateBattleshipConfig() {
-    std::vector<std::tuple<int, int, int64_t, int64_t, bool>>
+    std::vector<std::tuple<int, int64_t, int64_t, bool>>
         ship_locs;  // ship_sz, n, row, col, is_horiz
 
     const int max_attempts = 100;
