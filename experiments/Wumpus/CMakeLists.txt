@@ -1,0 +1,2 @@
+add_executable(wumpus_experiment wumpus.cpp)
+target_link_libraries(wumpus_experiment mcvi_library)
