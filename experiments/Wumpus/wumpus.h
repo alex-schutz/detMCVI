@@ -58,8 +58,17 @@ class Wumpus : public MCVI::SimInterface {
                                                           finished);
   }
 
+  std::unordered_map<int64_t, double> initUnifPMF() const {
+    static std::unordered_map<int64_t, double> unif_pmf;
+    for (int i = 1; i < grid_size * grid_size; ++i) unif_pmf[i] = 1;
+    return unif_pmf;
+  }
+
   MCVI::State SampleStartState() override {
     static std::uniform_real_distribution<> pit_dist(0, 1);
+    static std::uniform_int_distribution<int64_t> grid_dist(1, grid_size - 1);
+    static const std::unordered_map<int64_t, double> unif_pmf = initUnifPMF();
+
     std::map<std::string, int64_t> state_factors;
 
     // the entrance/exit are fixed at (0,0) but agent starts in special init
@@ -79,17 +88,29 @@ class Wumpus : public MCVI::SimInterface {
       }
     }
 
-    std::unordered_map<int64_t, double> unif_pmf;
-    for (int i = 1; i < grid_size * grid_size; ++i) unif_pmf[i] = 1;
-    const auto wumpus_locs = MCVI::weightedShuffle(unif_pmf, rng, wumpus_count);
-    for (const auto& [wumpus_loc, d] : wumpus_locs)
-      state_factors[coord2str(wumpus_loc / grid_size, wumpus_loc % grid_size) +
-                    "_wumpus"] = 1;
+    if (wumpus_count == 1) {
+      const int64_t x = grid_dist(rng);
+      const int64_t y = grid_dist(rng);
+      state_factors[coord2str(x, y) + "_wumpus"] = 1;
+    } else {
+      const auto wumpus_locs =
+          MCVI::weightedShuffle(unif_pmf, rng, wumpus_count);
+      for (const auto& [wumpus_loc, d] : wumpus_locs)
+        state_factors[coord2str(wumpus_loc / grid_size,
+                                wumpus_loc % grid_size) +
+                      "_wumpus"] = 1;
+    }
 
-    const auto gold_locs = MCVI::weightedShuffle(unif_pmf, rng, gold_count);
-    for (const auto& [gold_loc, d] : gold_locs)
-      state_factors[coord2str(gold_loc / grid_size, gold_loc % grid_size) +
-                    "_gold"] = 1;
+    if (gold_count == 1) {
+      const int64_t x = grid_dist(rng);
+      const int64_t y = grid_dist(rng);
+      state_factors[coord2str(x, y) + "_gold"] = 1;
+    } else {
+      const auto gold_locs = MCVI::weightedShuffle(unif_pmf, rng, gold_count);
+      for (const auto& [gold_loc, d] : gold_locs)
+        state_factors[coord2str(gold_loc / grid_size, gold_loc % grid_size) +
+                      "_gold"] = 1;
+    }
 
     return names2state(state_factors);
   }
