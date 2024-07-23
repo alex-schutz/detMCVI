@@ -196,7 +196,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
       }
     }
   }
-  std::cout << "Evaluation of POMCP (online) policy (" << max_eval_steps
+  std::cout << "Evaluation of POMCP (offline) policy (" << max_eval_steps
             << " steps, " << n_eval_trials << " trials):" << std::endl;
   const std::string alg_name = "POMCP";
   PrintStats(eval_stats.complete, alg_name + " completed problem");
