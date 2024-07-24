@@ -67,8 +67,11 @@ void runMCVI(Wumpus* pomdp, const BeliefDistribution& init_belief,
   // Evaluate the FSC policy
   std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
             << n_eval_trials << " trials):" << std::endl;
-  planner.EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials,
-                                      nb_particles_b0, std::nullopt);
+  planner.EvaluationWithSimulationFSC(
+      max_eval_steps, n_eval_trials, nb_particles_b0,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      });
   std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
             << std::endl;
   std::cout << std::endl;
@@ -111,9 +114,12 @@ void runAOStar(Wumpus* pomdp, const BeliefDistribution& init_belief,
   std::cout << "Evaluation of alternative (AO* greedy) policy ("
             << max_eval_steps << " steps, " << n_eval_trials
             << " trials):" << std::endl;
-  EvaluationWithGreedyTreePolicy(root, max_eval_steps, n_eval_trials,
-                                 nb_particles_b0, pomdp, rng, solver,
-                                 std::nullopt, "AO*");
+  EvaluationWithGreedyTreePolicy(
+      root, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng, solver,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
+      "AO*");
   std::cout << "AO* greedy policy tree contains " << n_greedy_nodes << " nodes."
             << std::endl;
 }
@@ -155,26 +161,26 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
   std::cerr << "Generating evaluation set" << std::endl;
   const BeliefDistribution init_belief_eval =
       SampleInitialBelief(nb_particles_b0, pomdp);
+  std::cerr << "Evaluating" << std::endl;
   State initial_state = {};
   for (int64_t sim = 0; sim < n_eval_trials; ++sim) {
     State state = SampleOneState(init_belief_eval, rng);
     initial_state = state;
     double sum_r = 0.0;
     int64_t i = 0;
-    const auto [optimal, path] =
-        solver.getMaxReward(initial_state, max_eval_steps);
-    const auto final_state = std::get<1>(path.back());
-    const bool has_soln = final_state[pomdp->sfIdx("player_gold")] > 0;
+    const double optimal = 0;
+    // const auto [optimal, has_soln] =
+    //     pomdp->get_state_value(initial_state, max_eval_steps);
     // std::cerr << "Running trial " << sim << std::endl;
     POMCP::TreeNodePtr tr_node = root_node;
     for (; i < max_eval_steps; ++i) {
       const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
       if (!tr_node || action == -1) {
-        if (!has_soln) {
-          eval_stats.no_solution_off_policy.update(sum_r - optimal);
-        } else {
-          eval_stats.off_policy.update(sum_r);
-        }
+        // if (!has_soln) {
+        //   eval_stats.no_solution_off_policy.update(sum_r - optimal);
+        // } else {
+        eval_stats.off_policy.update(sum_r - optimal);
+        // }
         break;
       }
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
@@ -190,7 +196,7 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
       //   std::cout << "reward: " << reward << std::endl;
 
       if (done) {
-        eval_stats.complete.update(sum_r);
+        eval_stats.complete.update(sum_r - optimal);
         break;
       }
 
@@ -198,11 +204,11 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
       tr_node = tr_node->GetChildNode(action, obs);
     }
     if (i == max_eval_steps) {
-      if (!has_soln) {
-        eval_stats.no_solution_on_policy.update(sum_r - optimal);
-      } else {
-        eval_stats.max_depth.update(sum_r - optimal);
-      }
+      //   if (!has_soln) {
+      //     eval_stats.no_solution_on_policy.update(sum_r - optimal);
+      //   } else {
+      eval_stats.max_depth.update(sum_r - optimal);
+      //   }
     }
   }
   std::cout << "Evaluation of POMCP (offline) policy (" << max_eval_steps
@@ -233,15 +239,15 @@ int main(int argc, char* argv[]) {
   // MCVI parameters
   const int64_t max_sim_depth = 100;
   const int64_t max_node_size = 10000;
-  const int64_t eval_depth = 50;
+  const int64_t eval_depth = max_sim_depth;
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
   const int64_t max_iter = 500;
-  int64_t max_time_ms = 10000;
+  int64_t max_time_ms = 100000;
 
   // Evaluation parameters
-  const int64_t max_eval_steps = 100;
-  const int64_t n_eval_trials = 10000;
+  const int64_t max_eval_steps = max_sim_depth;
+  const int64_t n_eval_trials = 1000;
 
   parseCommandLine(argc, argv, max_time_ms);
 
