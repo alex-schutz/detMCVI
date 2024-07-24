@@ -170,7 +170,7 @@ void runPOMCP(Battleships* pomdp, std::mt19937_64& rng,
         if (!has_soln) {
           eval_stats.no_solution_off_policy.update(sum_r - optimal);
         } else {
-          eval_stats.off_policy.update(sum_r);
+          eval_stats.off_policy.update(sum_r - optimal);
         }
         break;
       }
