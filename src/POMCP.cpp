@@ -56,6 +56,7 @@ double PomcpPlanner::Rollout(const State &sampled_sI, int64_t node_depth) {
       total_discount *= this->discount;
       sI = s_next;
       node_depth += 1;
+      if (done) break;
     }
     sum_accumlated_rewards += temp_res;
   }
