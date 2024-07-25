@@ -1,3 +1,5 @@
 add_executable(wumpus_experiment wumpus.cpp)
-add_executable(wumpus_timeseries wumpus_time_series.cpp)
 target_link_libraries(wumpus_experiment mcvi_library)
+
+add_executable(wumpus_timeseries wumpus_time_series.cpp)
+target_link_libraries(wumpus_timeseries mcvi_library)

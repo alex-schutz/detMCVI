@@ -1,3 +1,5 @@
 add_executable(battleships_experiment battleships.cpp)
-add_executable(battleships_timeseries battleships_time_series.cpp)
 target_link_libraries(battleships_experiment mcvi_library)
+
+add_executable(battleships_timeseries battleships_time_series.cpp)
+target_link_libraries(battleships_timeseries mcvi_library)
