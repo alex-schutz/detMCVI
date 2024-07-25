@@ -7,6 +7,7 @@
 #include "AOStar.h"
 #include "CTP.h"
 #include "MCVI.h"
+#include "POMCP.h"
 
 #define RANDOM_SEED (42)
 
@@ -68,6 +69,37 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
       pomdp);
 }
 
+void runPOMCPIncrements(CTP* pomdp, std::mt19937_64& rng,
+                        int64_t init_belief_size, double pomcp_c,
+                        int64_t pomcp_nb_rollout, double pomcp_epsilon,
+                        int64_t pomcp_depth, int64_t max_computation_time_ms,
+                        int64_t max_eval_steps, int64_t n_eval_trials,
+                        int64_t nb_particles_b0, int64_t eval_interval_ms,
+                        int64_t completion_threshold, int64_t completion_reps) {
+  // Initialise heuristic
+  OptimalPath solver(pomdp);
+
+  // Create root node
+  POMCP::TreeNodePtr root_node = std::make_shared<POMCP::TreeNode>(0);
+
+  // Generate initial belief particles
+  std::vector<State> init_belief_p;
+  for (int64_t n = 0; n < init_belief_size; ++n)
+    init_belief_p.push_back(pomdp->SampleStartState());
+  POMCP::BeliefParticles init_belief(init_belief_p);
+
+  // Run POMCP
+  std::cout << "Running POMCP on belief tree" << std::endl;
+  POMCP::RunPOMCPAndEvaluate(
+      init_belief, pomcp_c, pomcp_nb_rollout, pomcp_epsilon, pomcp_depth,
+      max_computation_time_ms, max_eval_steps, n_eval_trials, nb_particles_b0,
+      eval_interval_ms, completion_threshold, completion_reps, rng, solver,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
+      pomdp);
+}
+
 void parseSeriesArgs(int argc, char** argv, int64_t& n_eval_trials,
                      int64_t& eval_interval_ms, int64_t& completion_threshold,
                      int& completion_reps) {
@@ -116,8 +148,8 @@ int main(int argc, char* argv[]) {
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
   auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
-  std::cout << "Initial belief size: " << init_belief.size() << std::endl;
   if (params.max_belief_samples < (int64_t)init_belief.size()) {
+    std::cout << "Initial belief size: " << init_belief.size() << std::endl;
     std::cout << "Downsampling belief" << std::endl;
     init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
@@ -131,6 +163,7 @@ int main(int argc, char* argv[]) {
                     params.max_time_ms, params.max_sim_depth, n_eval_trials,
                     10 * params.nb_particles_b0, eval_interval_ms,
                     completion_threshold, completion_reps);
+  delete mcvi_ctp;
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
@@ -138,6 +171,19 @@ int main(int argc, char* argv[]) {
                       params.max_time_ms, params.max_sim_depth, n_eval_trials,
                       10 * params.nb_particles_b0, eval_interval_ms,
                       completion_threshold, completion_reps);
+  delete aostar_ctp;
+
+  // Compare to POMCP offline
+  auto pomcp_ctp = new CTP(pomdp);
+  const double pomcp_c = 2.0;
+  const int64_t pomcp_nb_rollout = 200;
+  const double pomcp_epsilon = 0.01;
+  runPOMCPIncrements(pomcp_ctp, rng, params.max_belief_samples, pomcp_c,
+                     pomcp_nb_rollout, pomcp_epsilon, params.max_sim_depth,
+                     params.max_time_ms, params.max_sim_depth, n_eval_trials,
+                     10 * params.nb_particles_b0, eval_interval_ms,
+                     completion_threshold, completion_reps);
+  delete pomcp_ctp;
 
   return 0;
 }

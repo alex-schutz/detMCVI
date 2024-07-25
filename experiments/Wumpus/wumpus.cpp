@@ -136,6 +136,7 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
               std::chrono::microseconds pomcp_time_out, double pomcp_epsilon,
               int64_t pomcp_depth, int64_t max_eval_steps,
               int64_t n_eval_trials, int64_t nb_particles_b0) {
+  // Initialise heuristic
   OptimalPath solver(pomdp);
 
   const double gamma = pomdp->GetDiscount();
@@ -148,78 +149,22 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
   EvaluationStats eval_stats;
   std::cout << "Generating belief particles" << std::endl;
   std::vector<State> init_belief_p;
-  for (int64_t n = 0; n < init_belief_size / 10; ++n)
+  for (int64_t n = 0; n < init_belief_size; ++n)
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
   std::cout << "Running POMCP offline" << std::endl;
   POMCP::TreeNodePtr root_node = std::make_shared<POMCP::TreeNode>(0);
   pomcp.SearchOffline(init_belief, root_node);
 
-  std::cout << "Generating evaluation set" << std::endl;
-  const BeliefDistribution init_belief_eval =
-      SampleInitialBelief(nb_particles_b0, pomdp);
-  std::cout << "Evaluating" << std::endl;
-  State initial_state = {};
-  for (int64_t sim = 0; sim < n_eval_trials; ++sim) {
-    State state = SampleOneState(init_belief_eval, rng);
-    double sum_r = 0.0;
-    int64_t i = 0;
-    const auto [optimal, has_soln] =
-        pomdp->get_state_value(state, max_eval_steps);
-    // std::cout << "Running trial " << sim << std::endl;
-    POMCP::TreeNodePtr tr_node = root_node;
-    for (; i < max_eval_steps; ++i) {
-      const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
-      if (!tr_node || action == -1) {
-        if (!has_soln) {
-          eval_stats.no_solution_off_policy.update(sum_r - optimal);
-        } else {
-          eval_stats.off_policy.update(sum_r - optimal);
-        }
-        break;
-      }
-      const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
-      sum_r += std::pow(gamma, i) * reward;
-
-      //   std::cout << "---------" << std::endl;
-      //   std::cout << "step: " << i << std::endl;
-      //   std::cout << "state: <";
-      //   for (const auto& state_elem : state) std::cout << state_elem << ", ";
-      //   std::cout << ">" << std::endl;
-      //   std::cout << "perform action: " << action << std::endl;
-      //   std::cout << "receive obs: " << obs << std::endl;
-      //   std::cout << "reward: " << reward << std::endl;
-
-      if (done) {
-        if (!has_soln) {
-          eval_stats.no_solution_on_policy.update(sum_r - optimal);
-        } else {
-          eval_stats.complete.update(sum_r - optimal);
-        }
-        break;
-      }
-
-      state = sNext;
-      tr_node = tr_node->GetChildNode(action, obs);
-    }
-    if (i == max_eval_steps) {
-      if (!has_soln) {
-        eval_stats.no_solution_on_policy.update(sum_r - optimal);
-      } else {
-        eval_stats.max_depth.update(sum_r - optimal);
-      }
-    }
-  }
-  std::cout << "Evaluation of POMCP (offline) policy (" << max_eval_steps
-            << " steps, " << n_eval_trials << " trials):" << std::endl;
-  const std::string alg_name = "POMCP";
-  PrintStats(eval_stats.complete, alg_name + " completed problem");
-  PrintStats(eval_stats.off_policy, alg_name + " exited policy");
-  PrintStats(eval_stats.max_depth, alg_name + " max depth");
-  PrintStats(eval_stats.no_solution_on_policy,
-             alg_name + " no solution (on policy)");
-  PrintStats(eval_stats.no_solution_off_policy,
-             alg_name + " no solution (exited policy)");
+  POMCP::EvaluationWithGreedyTreePolicy(
+      root_node, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng,
+      solver,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
+      "POMCP");
+  std::cout << "POMCP offline policy tree contains " << CountNodes(root_node)
+            << " nodes." << std::endl;
 }
 
 int main(int argc, char* argv[]) {

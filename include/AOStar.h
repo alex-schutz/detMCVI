@@ -157,9 +157,9 @@ size_t RunAOEvaluation(std::shared_ptr<BeliefTreeNode> initial_belief,
                        std::mt19937_64& rng, const OptimalPath& solver,
                        std::optional<StateValueFunction> valFunc,
                        SimInterface* pomdp) {
-  std::cout << "Evaluation of alternative (AO* greedy) policy ("
-            << max_eval_steps << " steps, " << n_eval_trials
-            << " trials) at time " << time_sum / 1e6 << ":" << std::endl;
+  std::cout << "Evaluation of AO* policy (" << max_eval_steps << " steps, "
+            << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
+            << std::endl;
   const auto completed_states = EvaluationWithGreedyTreePolicy(
       initial_belief, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp,
       rng, solver, valFunc, "AO*");

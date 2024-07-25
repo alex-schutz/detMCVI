@@ -390,34 +390,14 @@ void MCVIPlanner::SimulationWithFSC(int64_t steps) const {
   std::cout << "sum reward: " << sum_r << std::endl;
 }
 
-BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp) {
-  StateMap<int64_t> state_counts;
-  for (int64_t i = 0; i < N; ++i) state_counts[pomdp->SampleStartState()] += 1;
-  auto init_belief = BeliefDistribution();
-  for (const auto& [state, count] : state_counts)
-    init_belief[state] = (double)count / N;
-  return init_belief;
-}
-
-BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
-                                    int64_t max_belief_samples,
-                                    std::mt19937_64& rng) {
-  const auto shuffled_init = weightedShuffle(belief, rng, max_belief_samples);
-  double prob_sum = 0.0;
-  for (const auto& [state, prob] : shuffled_init) prob_sum += prob;
-  auto b = BeliefDistribution();
-  for (const auto& [state, prob] : shuffled_init) b[state] = prob / prob_sum;
-  return b;
-}
-
 // Return the shortest path reward and whether any terminal state is reachable
-// from this state (assumed false, user must implement StateValueFunction to
+// from this state (assumed true, user must implement StateValueFunction to
 // access this functionality)
 static std::pair<double, bool> OracleReward(const State& state,
                                             const OptimalPath& solver,
                                             int64_t max_depth) {
   const auto [sum_reward, path] = solver.getMaxReward(state, max_depth);
-  const bool can_reach_terminal = false;
+  const bool can_reach_terminal = true;
   return {sum_reward, can_reach_terminal};
 }
 

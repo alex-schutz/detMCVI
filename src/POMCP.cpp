@@ -1,8 +1,6 @@
 #include "POMCP.h"
 
 #include <algorithm>
-#include <chrono>
-#include <random>
 
 namespace POMCP {
 
@@ -190,6 +188,132 @@ int64_t BestAction(const TreeNodePtr node) {
   const auto actionQ = node->GetAllActionQ();
   if (actionQ.empty()) return -1;
   return std::max_element(actionQ.begin(), actionQ.end(), CmpPair)->first;
+}
+
+static std::pair<double, bool> OracleReward(const MCVI::State &state,
+                                            const MCVI::OptimalPath &solver,
+                                            int64_t max_depth) {
+  const auto [sum_reward, path] = solver.getMaxReward(state, max_depth);
+  const bool can_reach_terminal = true;
+  return {sum_reward, can_reach_terminal};
+}
+
+size_t EvaluationWithGreedyTreePolicy(
+    TreeNodePtr root, int64_t max_steps, int64_t num_sims,
+    int64_t init_belief_samples, SimInterface *pomdp, std::mt19937_64 &rng,
+    const MCVI::OptimalPath &solver,
+    std::optional<MCVI::StateValueFunction> valFunc,
+    const std::string &alg_name) {
+  const double gamma = pomdp->GetDiscount();
+  MCVI::EvaluationStats eval_stats;
+  const MCVI::BeliefDistribution init_belief_eval =
+      MCVI::SampleInitialBelief(init_belief_samples, pomdp);
+  for (int64_t sim = 0; sim < num_sims; ++sim) {
+    State state = MCVI::SampleOneState(init_belief_eval, rng);
+    const auto [optimal, has_soln] =
+        (valFunc.has_value()) ? valFunc.value()(state, max_steps)
+                              : OracleReward(state, solver, max_steps);
+    double sum_r = 0.0;
+    auto node = root;
+    int64_t i = 0;
+    for (; i < max_steps; ++i) {
+      const int64_t action = (node) ? BestAction(node) : -1;
+      if (!node || action == -1) {
+        if (!has_soln) {
+          eval_stats.no_solution_off_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.off_policy.update(sum_r);
+        }
+        break;
+      }
+      const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
+      sum_r += std::pow(gamma, i) * reward;
+
+      if (done) {
+        if (!has_soln) {
+          eval_stats.no_solution_on_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.complete.update(sum_r - optimal);
+        }
+        break;
+      }
+
+      state = sNext;
+      node = node->GetChildNode(action, obs);
+    }
+    if (i == max_steps) {
+      if (!has_soln) {
+        eval_stats.no_solution_on_policy.update(sum_r - optimal);
+      } else {
+        eval_stats.max_depth.update(sum_r - optimal);
+      }
+    }
+  }
+  PrintStats(eval_stats.complete, alg_name + " completed problem");
+  PrintStats(eval_stats.off_policy, alg_name + " exited policy");
+  PrintStats(eval_stats.max_depth, alg_name + " max depth");
+  PrintStats(eval_stats.no_solution_on_policy,
+             alg_name + " no solution (on policy)");
+  PrintStats(eval_stats.no_solution_off_policy,
+             alg_name + " no solution (exited policy)");
+  return eval_stats.complete.getCount();
+}
+
+void RunPOMCPAndEvaluate(const BeliefParticles &init_belief, double pomcp_c,
+                         int64_t pomcp_nb_rollout, double pomcp_epsilon,
+                         int64_t pomcp_depth, int64_t max_computation_ms,
+                         int64_t max_eval_steps, int64_t n_eval_trials,
+                         int64_t nb_particles_b0, int64_t eval_interval_ms,
+                         int64_t completion_threshold, int64_t completion_reps,
+                         std::mt19937_64 &rng, const MCVI::OptimalPath &solver,
+                         std::optional<MCVI::StateValueFunction> valFunc,
+                         SimInterface *pomdp) {
+  const double gamma = pomdp->GetDiscount();
+  auto pomcp = PomcpPlanner(pomdp, gamma);
+  pomcp.Init(pomcp_c, pomcp_nb_rollout,
+             std::chrono::milliseconds(eval_interval_ms), pomcp_epsilon,
+             pomcp_depth);
+  TreeNodePtr root_node = std::make_shared<TreeNode>(0);
+
+  int64_t time_sum = 0;
+  int64_t completed_times = 0;
+  while (time_sum < max_computation_ms) {
+    pomcp.SearchOffline(init_belief, root_node);
+    time_sum += eval_interval_ms;
+
+    std::cout << "Evaluation of POMCP policy (" << max_eval_steps << " steps, "
+              << n_eval_trials << " trials) at time " << time_sum / 1e3 << ":"
+              << std::endl;
+    const int64_t completed_count = EvaluationWithGreedyTreePolicy(
+        root_node, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng,
+        solver, valFunc, "POMCP");
+    std::cout << "POMCP offline policy tree contains " << CountNodes(root_node)
+              << " nodes." << std::endl;
+
+    if (completed_count >= completion_threshold)
+      completed_times++;
+    else
+      completed_times = 0;
+    if (completed_times >= completion_reps) {
+      std::cout << "POMCP planning complete, completed " << completion_reps
+                << " times." << std::endl;
+      return;
+    }
+  }
+  std::cout << "POMCP planning complete, reached computation time."
+            << std::endl;
+  return;
+}
+
+size_t CountNodes(const TreeNodePtr &root) {
+  if (!root) return 0;
+  size_t count = 1;
+  for (const auto &action_pair : root->GetChildNodes()) {
+    for (const auto &observation_pair : action_pair.second) {
+      count += CountNodes(observation_pair.second);
+    }
+  }
+  return count;
 }
 
 }  // namespace POMCP

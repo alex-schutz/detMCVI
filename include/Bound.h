@@ -19,6 +19,9 @@
 
 namespace MCVI {
 
+using StateValueFunction =
+    std::function<std::pair<double, bool>(const State&, int64_t)>;
+
 class OptimalPath : public MaximiseReward {
  public:
   OptimalPath(SimInterface* pomdp, size_t cache_capacity = 250000)

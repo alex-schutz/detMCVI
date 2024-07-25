@@ -19,9 +19,6 @@
 
 namespace MCVI {
 
-using StateValueFunction =
-    std::function<std::pair<double, bool>(const State&, int64_t)>;
-
 class MCVIPlanner {
  private:
   SimInterface* _pomdp;
@@ -110,9 +107,4 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
     const OptimalPath& solver, std::optional<StateValueFunction> valFunc,
     const std::string& alg_name);
 
-BeliefDistribution SampleInitialBelief(int64_t N, SimInterface* pomdp);
-
-BeliefDistribution DownsampleBelief(const BeliefDistribution& belief,
-                                    int64_t max_belief_samples,
-                                    std::mt19937_64& rng);
 }  // namespace MCVI

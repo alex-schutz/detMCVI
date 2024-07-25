@@ -4,10 +4,13 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <string>
 
+#include "BeliefDistribution.h"
+#include "Bound.h"
+#include "Sample.h"
 #include "SimInterface.h"
-#include "time.h"
 
 namespace POMCP {
 
@@ -61,6 +64,10 @@ class TreeNode {
   bool CheckChildNodeExist(int64_t aI, int64_t oI) {
     return this->ChildNodes_[aI].count(oI);
   }
+  const std::map<int64_t, std::map<int64_t, TreeNodePtr>> &GetChildNodes()
+      const {
+    return this->ChildNodes_;
+  }
 
   int64_t GetActionCount(int64_t aI) const;
 
@@ -103,5 +110,25 @@ class PomcpPlanner {
   int64_t UcbActionSelection(TreeNodePtr node) const;
   void SearchOffline(const BeliefParticles &b, TreeNodePtr rootnode);
 };
+
+void RunPOMCPAndEvaluate(const BeliefParticles &init_belief, double pomcp_c,
+                         int64_t pomcp_nb_rollout, double pomcp_epsilon,
+                         int64_t pomcp_depth, int64_t max_computation_ms,
+                         int64_t max_eval_steps, int64_t n_eval_trials,
+                         int64_t nb_particles_b0, int64_t eval_interval_ms,
+                         int64_t completion_threshold, int64_t completion_reps,
+                         std::mt19937_64 &rng, const MCVI::OptimalPath &solver,
+                         std::optional<MCVI::StateValueFunction> valFunc,
+                         SimInterface *pomdp);
+
+size_t EvaluationWithGreedyTreePolicy(
+    TreeNodePtr root, int64_t max_steps, int64_t num_sims,
+    int64_t init_belief_samples, SimInterface *pomdp, std::mt19937_64 &rng,
+    const MCVI::OptimalPath &solver,
+    std::optional<MCVI::StateValueFunction> valFunc,
+    const std::string &alg_name);
+
+// count the number of nodes in a tree
+size_t CountNodes(const TreeNodePtr &root);
 
 }  // namespace POMCP
