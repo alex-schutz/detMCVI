@@ -3,6 +3,7 @@
 #include <cassert>
 #include <random>
 
+#include "BeliefDistribution.h"
 #include "Sample.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
@@ -25,6 +26,8 @@ class Wumpus : public MCVI::SimInterface,
 
   double pit_probability;
 
+  size_t heuristic_samples;
+
   std::mt19937_64& rng;
   std::map<std::string, size_t> state_factor_sizes;
 
@@ -35,10 +38,11 @@ class Wumpus : public MCVI::SimInterface,
   double _bad_action_reward = -600;
 
  public:
-  Wumpus(int32_t grid_size, std::mt19937_64& rng)
+  Wumpus(int32_t grid_size, size_t heuristic_samples, std::mt19937_64& rng)
       : grid_size(grid_size),
         observations(initObs()),
         pit_probability(0.2),
+        heuristic_samples(heuristic_samples),
         rng(rng),
         state_factor_sizes(initStateSpace()) {}
 
@@ -419,8 +423,16 @@ class Wumpus : public MCVI::SimInterface,
   double heuristicUpper(const MCVI::StateMap<double>& belief,
                         int64_t max_depth) const {
     double val = 0;
-    for (const auto& [s, p] : belief) {
-      val += get_state_value(s, max_depth).first * p;
+    if (belief.size() <= heuristic_samples) {
+      for (const auto& [s, p] : belief) {
+        val += get_state_value(s, max_depth).first * p;
+      }
+    } else {
+      for (size_t i = 0; i < heuristic_samples; ++i) {
+        const auto state = MCVI::SampleOneState(belief, rng);
+        val += get_state_value(state, max_depth).first;
+      }
+      val /= heuristic_samples;
     }
 
     return val;
