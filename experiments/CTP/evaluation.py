@@ -41,6 +41,7 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
         "Seed": seed,
     }
     patterns = [
+        ("POMCP complete ", "POMCP runtime (s)", extract_float),
         ("AO* complete ", "AO* runtime (s)", extract_float),
         ("MCVI complete ", "MCVI runtime (s)", extract_float),
         ("State space size:", "State space size", extract_int),
@@ -49,8 +50,9 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
         ("--- Iter ", "MCVI iterations", lambda x: extract_int(x) + 1),
         ("MCVI policy FSC contains", "MCVI policy nodes", extract_int),
         ("AO* greedy policy tree contains", "AO* policy nodes", extract_int),
+        ("POMCP policy tree contains", "POMCP policy nodes", extract_int),
     ]
-    algs = ["MCVI", "AO*"]
+    algs = ["MCVI", "AO*", "POMCP"]
     result_types = [
         "completed problem",
         "exited policy",
@@ -84,20 +86,6 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
                 instance_result, result_types, i, alg
             )
 
-    instance_result["avg_regret_difference"] = (
-        instance_result["MCVI completed problem Average regret"]
-        - instance_result["AO* completed problem Average regret"]
-    )
-    instance_result["percentage_complete_difference"] = (
-        instance_result["MCVI completed problem Percentage"]
-        - instance_result["AO* completed problem Percentage"]
-    )
-    instance_result["policy_size_ratio"] = (
-        instance_result["MCVI policy nodes"] / instance_result["AO* policy nodes"]
-    )
-    instance_result["runtime_ratio"] = (
-        instance_result["MCVI runtime (s)"] / instance_result["AO* runtime (s)"]
-    )
     return instance_result
 
 
