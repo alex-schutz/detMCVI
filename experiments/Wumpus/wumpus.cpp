@@ -152,7 +152,8 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
   std::cout << "Running POMCP offline" << std::endl;
-  POMCP::TreeNodePtr root_node = pomcp.SearchOffline(init_belief);
+  POMCP::TreeNodePtr root_node = std::make_shared<POMCP::TreeNode>(0);
+  pomcp.SearchOffline(init_belief, root_node);
 
   std::cout << "Generating evaluation set" << std::endl;
   const BeliefDistribution init_belief_eval =

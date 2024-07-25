@@ -21,8 +21,8 @@ class BeliefParticles {
   std::vector<State> particles;  // a vector of sI
 
  public:
-  BeliefParticles() {};
-  ~BeliefParticles() {};
+  BeliefParticles(){};
+  ~BeliefParticles(){};
   BeliefParticles(std::vector<State> &particles);
   State SampleOneState() const;
   size_t GetParticleSize() const { return this->particles.size(); }
@@ -42,7 +42,7 @@ class TreeNode {
   int64_t depth = 0;
 
  public:
-  TreeNode() {};
+  TreeNode(){};
   TreeNode(int64_t depth) { this->depth = depth; }
 
   void AddParentNode(TreeNodePtr ParentNode) { this->ParentNode_ = ParentNode; }
@@ -89,9 +89,9 @@ class PomcpPlanner {
   double c;
 
  public:
-  PomcpPlanner() {};
+  PomcpPlanner(){};
   PomcpPlanner(SimInterface *sim, double discount);
-  ~PomcpPlanner() {};
+  ~PomcpPlanner(){};
   void Init(double c, int64_t pomcp_nb_rollout,
             std::chrono::microseconds timeout, double threshold,
             int64_t max_depth);
@@ -101,7 +101,7 @@ class PomcpPlanner {
   double Simulate(const State &sampled_sI, TreeNodePtr node, int64_t depth);
   TreeNodePtr CreateNewNode(TreeNodePtr parent_node, int64_t aI, int64_t oI);
   int64_t UcbActionSelection(TreeNodePtr node) const;
-  TreeNodePtr SearchOffline(const BeliefParticles &b);
+  void SearchOffline(const BeliefParticles &b, TreeNodePtr rootnode);
 };
 
 }  // namespace POMCP

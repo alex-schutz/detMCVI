@@ -168,15 +168,15 @@ int64_t PomcpPlanner::UcbActionSelection(TreeNodePtr node) const {
   return selected_aI;
 }
 
-TreeNodePtr PomcpPlanner::SearchOffline(const BeliefParticles &b) {
+void PomcpPlanner::SearchOffline(const BeliefParticles &b,
+                                 TreeNodePtr rootnode) {
   const auto PlanStartTime = std::chrono::steady_clock::now();
   auto PlanEndTime = std::chrono::steady_clock::now();
   std::chrono::microseconds PlanSpentTime =
       std::chrono::duration_cast<std::chrono::microseconds>(PlanEndTime -
                                                             PlanStartTime);
-  TreeNodePtr new_node = std::make_shared<TreeNode>(0);
 
-  this->rootnode = new_node;
+  this->rootnode = rootnode;
   while (PlanSpentTime.count() < this->timeout.count()) {
     const State sampled_sI = b.SampleOneState();
     this->Simulate(sampled_sI, this->rootnode, 0);
@@ -184,8 +184,6 @@ TreeNodePtr PomcpPlanner::SearchOffline(const BeliefParticles &b) {
     PlanSpentTime = std::chrono::duration_cast<std::chrono::microseconds>(
         PlanEndTime - PlanStartTime);
   }
-
-  return this->rootnode;
 }
 
 int64_t BestAction(const TreeNodePtr node) {
