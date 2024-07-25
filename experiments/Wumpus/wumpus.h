@@ -14,83 +14,8 @@ static bool CmpPair(const std::pair<MCVI::State, double>& p1,
   return p1.second < p2.second;
 }
 
-class WumpusPath : public MCVI::ShortestPathFasterAlgorithm {
- private:
-  int64_t grid_size;
-  std::pair<int64_t, int64_t> wumpus_loc;
-  std::vector<std::pair<int64_t, int64_t>> pit_locs;
-  std::pair<int64_t, int64_t> gold_loc;
-
- public:
-  WumpusPath(int64_t grid_size, std::pair<int64_t, int64_t> wumpus_loc,
-             std::vector<std::pair<int64_t, int64_t>> pit_locs,
-             std::pair<int64_t, int64_t> gold_loc)
-      : grid_size(grid_size),
-        wumpus_loc(wumpus_loc),
-        pit_locs(pit_locs),
-        gold_loc(gold_loc) {}
-
-  std::vector<std::tuple<MCVI::State, double, int64_t>> getEdges(
-      const MCVI::State& node) const override {
-    std::vector<std::tuple<MCVI::State, double, int64_t>> out;
-
-    // states = {x, y, dir, wumpus_alive, gold_obtained}
-    const int64_t nx = node[0];
-    const int64_t ny = node[1];
-    const int64_t ndir = node[2];
-    const int64_t nwumpus_alive = node[3];
-    const int64_t ngold_obtained = node[4];
-
-    {  // forward action (0) / shoot action (4)
-      const int64_t x = (ndir == 1) ? nx + 1 : ((ndir == 3) ? nx - 1 : nx);
-      const int64_t y = (ndir == 0) ? ny + 1 : ((ndir == 2) ? ny - 1 : ny);
-      if (x < grid_size && x >= 0 && y < grid_size && y >= 0) {
-        if (std::find(pit_locs.begin(), pit_locs.end(), std::make_pair(x, y)) ==
-            pit_locs.end()) {  // not a pit
-          if (nwumpus_alive && x == wumpus_loc.first &&
-              y == wumpus_loc.second) {
-            out.push_back({{nx, ny, ndir, false, ngold_obtained}, 11, 4});
-          } else {
-            out.push_back({{x, y, ndir, nwumpus_alive, ngold_obtained}, 1, 0});
-          }
-        }
-      }
-    }
-    {  // turn left (1)
-      out.push_back(
-          {{nx, ny, (ndir - 1) % 4, nwumpus_alive, ngold_obtained}, 1, 1});
-    }
-    {  // turn right (2)
-      out.push_back(
-          {{nx, ny, (ndir + 1) % 4, nwumpus_alive, ngold_obtained}, 1, 2});
-    }
-    {  // pick up gold (3)
-      if (!ngold_obtained && nx == gold_loc.first && ny == gold_loc.second)
-        out.push_back({{nx, ny, ndir, nwumpus_alive, true}, 1, 3});
-    }
-    {  // exit (5)
-      if (ngold_obtained && nx == 0 && ny == 0)
-        out.push_back(
-            {{nx, ny, ndir, nwumpus_alive, ngold_obtained}, -1000, 5});
-    }
-
-    return out;
-  }
-
-  std::pair<double, bool> bestPath(int64_t max_depth) const {
-    const auto [costs, predecessors] = calculate({0, 0}, max_depth);
-    const auto best_state =
-        std::max_element(costs.begin(), costs.end(), CmpPair);
-    if (best_state == costs.end())
-      throw std::logic_error("Could not find path in Wumpus World");
-
-    const auto path_to_gold = reconstructPath(best_state->first, predecessors);
-    const bool can_reach_gold = path_to_gold.back().first[4];
-    return {best_state->second, can_reach_gold};
-  }
-};
-
-class Wumpus : public MCVI::SimInterface {
+class Wumpus : public MCVI::SimInterface,
+               public MCVI::ShortestPathFasterAlgorithm {
  private:
   int64_t grid_size;
   std::vector<std::string> actions = {
@@ -107,7 +32,7 @@ class Wumpus : public MCVI::SimInterface {
   double _success_reward = 1000;
   double _action_reward = -1;
   double _shoot_reward = -10;
-  double _bad_action_reward = -1000;
+  double _bad_action_reward = -2000;
 
  public:
   Wumpus(int32_t grid_size, std::mt19937_64& rng)
@@ -218,17 +143,7 @@ class Wumpus : public MCVI::SimInterface {
 
   std::pair<double, bool> get_state_value(const MCVI::State& state,
                                           int64_t max_depth) const {
-    std::pair<int64_t, int64_t> wumpus_loc = {state[sfIdx("wumpus_x")],
-                                              state[sfIdx("wumpus_y")]};
-    std::vector<std::pair<int64_t, int64_t>> pit_locs;
-    std::pair<int64_t, int64_t> gold_loc = {state[sfIdx("gold_x")],
-                                            state[sfIdx("gold_y")]};
-    for (int64_t x = 0; x < grid_size; ++x)
-      for (int64_t y = 0; y < grid_size; ++y)
-        if (coordHasItem(state, x, y, "pit")) pit_locs.push_back({x, y});
-
-    WumpusPath path(grid_size, wumpus_loc, pit_locs, gold_loc);
-    return path.bestPath(max_depth);
+    return bestPath(state, max_depth);
   }
 
   std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
@@ -307,7 +222,7 @@ class Wumpus : public MCVI::SimInterface {
       if ((sI[sfIdx("wumpus_x")] == x && sI[sfIdx("wumpus_y")] == y) ||
           coordHasItem(sI, x, y, "pit")) {
         sNext[sfIdx("player_state")] = 1;  // terminate
-        return _failed_reward + _action_reward;
+        return _failed_reward;
       }
       return _action_reward;
 
@@ -349,12 +264,12 @@ class Wumpus : public MCVI::SimInterface {
         y += y_inc;
       }
 
-      return _shoot_reward + _action_reward;
+      return _shoot_reward;
 
     } else if (actions[aI] == "climb" && loc == 0) {
       sNext[sfIdx("player_state")] = 1;  // terminate
       if (sI[sfIdx("player_gold")] == 1) return _success_reward;
-      return _bad_action_reward;
+      return _action_reward;
     }
 
     return _bad_action_reward;
@@ -505,45 +420,49 @@ class Wumpus : public MCVI::SimInterface {
                         int64_t max_depth) const {
     double val = 0;
     for (const auto& [s, p] : belief) {
-      //   double d = 0;
-      //   int64_t x = s[sfIdx("player_pos")] / grid_size;
-      //   int64_t y = s[sfIdx("player_pos")] % grid_size;
-      //   bool got_gold = s[sfIdx("player_gold")];
-      //   bool no_wumpus = true;
-
-      //   // wumpus is on gold, have to shoot first
-      //   if (s[sfIdx("gold_x")] == s[sfIdx("wumpus_x")] &&
-      //       s[sfIdx("gold_y")] == s[sfIdx("wumpus_y")]) {
-      //     if (s[sfIdx("player_arrow")] == 1) {
-      //       d += _shoot_reward + _action_reward;
-      //       no_wumpus = true;
-      //     } else
-      //       no_wumpus = false;  // wumpus is on gold, can't shoot
-      //   }
-      //   // gold is available, go grab it
-      //   if (no_wumpus && s[sfIdx("player_gold")] == 0 &&
-      //       !coordHasItem(s, s[sfIdx("gold_x")], s[sfIdx("gold_y")], "pit"))
-      //       {
-      //     // l1 distance from player location to gold
-      //     d += _action_reward * std::abs(x - s[sfIdx("gold_x")]) +
-      //          _action_reward * std::abs(y - s[sfIdx("gold_y")]);
-      //     d += _action_reward;  // pick up gold
-      //     got_gold = true;
-      //     // set player location to gold so we navigate to start
-      //     x = s[sfIdx("gold_x")];
-      //     y = s[sfIdx("gold_y")];
-      //   }
-
-      //   // l1 distance to return to start
-      //   d += _action_reward * std::abs(x - 0) + _action_reward * std::abs(y -
-      //   0); if (got_gold)
-      //     d += _success_reward;
-      //   else
-      //     d = _bad_action_reward;
-      //   val += d * p;
       val += get_state_value(s, max_depth).first * p;
     }
 
     return val;
+  }
+
+ public:
+  std::vector<std::tuple<MCVI::State, double, int64_t>> getEdges(
+      const MCVI::State& state) const {
+    if (IsTerminal(state)) return {};
+    std::vector<std::tuple<MCVI::State, double, int64_t>> successors;
+    for (int64_t a = 0; a < GetSizeOfA(); ++a) {
+      MCVI::State sNext;
+      const auto& reward = applyActionToState(state, a, sNext);
+      successors.push_back({sNext, -reward, a});
+    }
+    return successors;
+  }
+
+ private:
+  std::pair<double, bool> bestPath(const MCVI::State& state,
+                                   int64_t max_depth) const {
+    const auto [costs, predecessors] = calculate(state, max_depth);
+    const auto best_state =
+        std::min_element(costs.begin(), costs.end(), CmpPair);
+    if (best_state == costs.end())
+      throw std::logic_error("Could not find path");
+
+    const auto path_to_gold = reconstructPath(best_state->first, predecessors);
+    const bool can_reach_gold = path_to_gold.back().first[sfIdx("player_gold")];
+
+    if (!can_reach_gold) {
+      // shortest path back to start
+      const auto st_idx = sfIdx("player_state");
+      const auto best_state_terminal = std::min_element(
+          costs.begin(), costs.end(),
+          [&st_idx](const std::pair<MCVI::State, double>& p1,
+                    const std::pair<MCVI::State, double>& p2) {
+            return p1.second < p2.second && p1.first[st_idx] == 1;
+          });
+      return {-best_state_terminal->second, false};
+    }
+
+    return {-best_state->second, can_reach_gold};
   }
 };

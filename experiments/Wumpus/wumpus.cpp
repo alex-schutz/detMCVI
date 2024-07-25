@@ -35,10 +35,6 @@ void runMCVI(Wumpus* pomdp, const BeliefDistribution& init_belief,
   // Initialise the FSC
   std::cout << "Initialising FSC" << std::endl;
   const auto init_fsc = AlphaVectorFSC(max_node_size);
-  //   const auto init_fsc =
-  //       InitialiseFSC(solver, init_belief, max_sim_depth, max_node_size,
-  //       &pomdp);
-  //   init_fsc.GenerateGraphviz(std::cerr, pomdp.getActions(), pomdp.getObs());
 
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
@@ -58,6 +54,11 @@ void runMCVI(Wumpus* pomdp, const BeliefDistribution& init_belief,
   fsc.GenerateGraphviz(fsc_graph, pomdp->getActions(), pomdp->getObs());
   fsc_graph.close();
 
+  // Draw the internal belief tree
+  std::fstream belief_tree("belief_tree.dot", std::fstream::out);
+  root->DrawBeliefTree(belief_tree);
+  belief_tree.close();
+
   // Simulate the resultant FSC
   std::cout << "Simulation with up to " << max_eval_steps
             << " steps:" << std::endl;
@@ -75,11 +76,6 @@ void runMCVI(Wumpus* pomdp, const BeliefDistribution& init_belief,
   std::cout << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
             << std::endl;
   std::cout << std::endl;
-
-  // Draw the internal belief tree
-  std::fstream belief_tree("belief_tree.dot", std::fstream::out);
-  root->DrawBeliefTree(belief_tree);
-  belief_tree.close();
 }
 
 void runAOStar(Wumpus* pomdp, const BeliefDistribution& init_belief,
@@ -143,44 +139,43 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
   OptimalPath solver(pomdp);
 
   const double gamma = pomdp->GetDiscount();
-  std::cerr << "Initialising POMCP" << std::endl;
+  std::cout << "Initialising POMCP" << std::endl;
   auto pomcp = POMCP::PomcpPlanner(pomdp, gamma);
   pomcp.Init(pomcp_c, pomcp_nb_rollout, pomcp_time_out, pomcp_epsilon,
              pomcp_depth);
-  std::cerr << "POMCP initialised" << std::endl;
+  std::cout << "POMCP initialised" << std::endl;
 
   EvaluationStats eval_stats;
-  std::cerr << "Generating belief particles" << std::endl;
+  std::cout << "Generating belief particles" << std::endl;
   std::vector<State> init_belief_p;
   for (int64_t n = 0; n < init_belief_size / 10; ++n)
     init_belief_p.push_back(pomdp->SampleStartState());
   POMCP::BeliefParticles init_belief(init_belief_p);
-  std::cerr << "Running POMCP offline" << std::endl;
+  std::cout << "Running POMCP offline" << std::endl;
   POMCP::TreeNodePtr root_node = pomcp.SearchOffline(init_belief);
 
-  std::cerr << "Generating evaluation set" << std::endl;
+  std::cout << "Generating evaluation set" << std::endl;
   const BeliefDistribution init_belief_eval =
       SampleInitialBelief(nb_particles_b0, pomdp);
-  std::cerr << "Evaluating" << std::endl;
+  std::cout << "Evaluating" << std::endl;
   State initial_state = {};
   for (int64_t sim = 0; sim < n_eval_trials; ++sim) {
     State state = SampleOneState(init_belief_eval, rng);
     initial_state = state;
     double sum_r = 0.0;
     int64_t i = 0;
-    const double optimal = 0;
-    // const auto [optimal, has_soln] =
-    //     pomdp->get_state_value(initial_state, max_eval_steps);
-    // std::cerr << "Running trial " << sim << std::endl;
+    const auto [optimal, has_soln] =
+        pomdp->get_state_value(initial_state, max_eval_steps);
+    // std::cout << "Running trial " << sim << std::endl;
     POMCP::TreeNodePtr tr_node = root_node;
     for (; i < max_eval_steps; ++i) {
       const int64_t action = (tr_node) ? POMCP::BestAction(tr_node) : -1;
       if (!tr_node || action == -1) {
-        // if (!has_soln) {
-        //   eval_stats.no_solution_off_policy.update(sum_r - optimal);
-        // } else {
-        eval_stats.off_policy.update(sum_r - optimal);
-        // }
+        if (!has_soln) {
+          eval_stats.no_solution_off_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.off_policy.update(sum_r - optimal);
+        }
         break;
       }
       const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
@@ -204,11 +199,11 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
       tr_node = tr_node->GetChildNode(action, obs);
     }
     if (i == max_eval_steps) {
-      //   if (!has_soln) {
-      //     eval_stats.no_solution_on_policy.update(sum_r - optimal);
-      //   } else {
-      eval_stats.max_depth.update(sum_r - optimal);
-      //   }
+      if (!has_soln) {
+        eval_stats.no_solution_on_policy.update(sum_r - optimal);
+      } else {
+        eval_stats.max_depth.update(sum_r - optimal);
+      }
     }
   }
   std::cout << "Evaluation of POMCP (offline) policy (" << max_eval_steps
@@ -228,7 +223,7 @@ int main(int argc, char* argv[]) {
 
   // Initialise the POMDP
   std::cout << "Initialising Wumpus" << std::endl;
-  auto pomdp = Wumpus(4, rng);
+  auto pomdp = Wumpus(2, rng);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
@@ -237,13 +232,13 @@ int main(int argc, char* argv[]) {
   const int64_t max_belief_samples = 20000;
 
   // MCVI parameters
-  const int64_t max_sim_depth = 100;
+  const int64_t max_sim_depth = 50;
   const int64_t max_node_size = 10000;
   const int64_t eval_depth = max_sim_depth;
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
-  const int64_t max_iter = 500;
-  int64_t max_time_ms = 100000;
+  const int64_t max_iter = 200;
+  int64_t max_time_ms = 10000;
 
   // Evaluation parameters
   const int64_t max_eval_steps = max_sim_depth;
