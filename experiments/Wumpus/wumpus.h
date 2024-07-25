@@ -28,11 +28,11 @@ class Wumpus : public MCVI::SimInterface,
   std::mt19937_64& rng;
   std::map<std::string, size_t> state_factor_sizes;
 
-  double _failed_reward = -1000;
-  double _success_reward = 1000;
-  double _action_reward = -1;
-  double _shoot_reward = -10;
-  double _bad_action_reward = -2000;
+  double _failed_reward = -300;
+  double _success_reward = 300;
+  double _action_reward = -10;
+  double _shoot_reward = -50;
+  double _bad_action_reward = -600;
 
  public:
   Wumpus(int32_t grid_size, std::mt19937_64& rng)
@@ -269,7 +269,7 @@ class Wumpus : public MCVI::SimInterface,
     } else if (actions[aI] == "climb" && loc == 0) {
       sNext[sfIdx("player_state")] = 1;  // terminate
       if (sI[sfIdx("player_gold")] == 1) return _success_reward;
-      return _action_reward;
+      return _bad_action_reward;
     }
 
     return _bad_action_reward;

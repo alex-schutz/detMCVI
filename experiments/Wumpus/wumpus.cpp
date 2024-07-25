@@ -161,11 +161,10 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
   State initial_state = {};
   for (int64_t sim = 0; sim < n_eval_trials; ++sim) {
     State state = SampleOneState(init_belief_eval, rng);
-    initial_state = state;
     double sum_r = 0.0;
     int64_t i = 0;
     const auto [optimal, has_soln] =
-        pomdp->get_state_value(initial_state, max_eval_steps);
+        pomdp->get_state_value(state, max_eval_steps);
     // std::cout << "Running trial " << sim << std::endl;
     POMCP::TreeNodePtr tr_node = root_node;
     for (; i < max_eval_steps; ++i) {
@@ -191,7 +190,11 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
       //   std::cout << "reward: " << reward << std::endl;
 
       if (done) {
-        eval_stats.complete.update(sum_r - optimal);
+        if (!has_soln) {
+          eval_stats.no_solution_on_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.complete.update(sum_r - optimal);
+        }
         break;
       }
 
@@ -223,7 +226,7 @@ int main(int argc, char* argv[]) {
 
   // Initialise the POMDP
   std::cout << "Initialising Wumpus" << std::endl;
-  auto pomdp = Wumpus(2, rng);
+  auto pomdp = Wumpus(4, rng);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
@@ -237,12 +240,12 @@ int main(int argc, char* argv[]) {
   const int64_t eval_depth = max_sim_depth;
   const int64_t eval_epsilon = 0.005;
   const double converge_thresh = 0.005;
-  const int64_t max_iter = 200;
-  int64_t max_time_ms = 10000;
+  const int64_t max_iter = 200000;
+  int64_t max_time_ms = 600000;
 
   // Evaluation parameters
   const int64_t max_eval_steps = max_sim_depth;
-  const int64_t n_eval_trials = 1000;
+  const int64_t n_eval_trials = 10000;
 
   parseCommandLine(argc, argv, max_time_ms);
 
@@ -258,8 +261,8 @@ int main(int argc, char* argv[]) {
 
   // Run POMCP
   auto pomcp = new Wumpus(pomdp);
-  const double pomcp_c = 2.0;
-  const int64_t pomcp_nb_rollout = 200;
+  const double pomcp_c = 10.0;
+  const int64_t pomcp_nb_rollout = 1000;
   const std::chrono::microseconds pomcp_time_out =
       std::chrono::milliseconds(max_time_ms);
   const double pomcp_epsilon = 0.01;
