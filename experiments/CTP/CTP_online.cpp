@@ -7,6 +7,7 @@
 #include "AOStar.h"
 #include "CTP.h"
 #include "MCVI.h"
+#include "Params.h"
 #include "Sample.h"
 
 #define RANDOM_SEED (42)
@@ -72,7 +73,7 @@ class CTP_Online : public CTP {
 
 using OnlineFuncPtr = std::tuple<double, std::chrono::microseconds, bool> (*)(
     const CTP_Online&, const BeliefDistribution&, std::mt19937_64&,
-    const CTPParams&, std::ostream&);
+    const EvalParams&, std::ostream&);
 
 static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
                           const std::chrono::steady_clock::time_point& end) {
@@ -150,7 +151,7 @@ std::shared_ptr<BeliefTreeNode> runAOStar(
 
 std::tuple<double, std::chrono::microseconds, bool> MCVIOnline(
     const CTP_Online& pomdp, const BeliefDistribution& init_belief,
-    std::mt19937_64& rng, const CTPParams& params, std::ostream& fs) {
+    std::mt19937_64& rng, const EvalParams& params, std::ostream& fs) {
   const auto begin = std::chrono::steady_clock::now();
   // Run MCVI
   auto mcvi_ctp = new CTP_Online(pomdp);
@@ -216,7 +217,7 @@ std::tuple<double, std::chrono::microseconds, bool> MCVIOnline(
 
 std::tuple<double, std::chrono::microseconds, bool> AOStarOnline(
     const CTP_Online& pomdp, const BeliefDistribution& init_belief,
-    std::mt19937_64& rng, const CTPParams& params, std::ostream& fs) {
+    std::mt19937_64& rng, const EvalParams& params, std::ostream& fs) {
   const auto begin = std::chrono::steady_clock::now();
   // Run AO*
   auto ao_ctp = new CTP_Online(pomdp);
@@ -275,7 +276,7 @@ std::tuple<double, std::chrono::microseconds, bool> AOStarOnline(
 std::pair<Welford, Welford> RunOnlineTrials(
     OnlineFuncPtr func, int64_t n_trials, const CTP_Online& pomdp,
     const BeliefDistribution& init_belief, std::mt19937_64& rng,
-    const CTPParams& params) {
+    const EvalParams& params) {
   Welford reward_stats;
   Welford time_stats;
 
@@ -294,7 +295,7 @@ std::pair<Welford, Welford> RunOnlineTrials(
 }
 
 int main(int argc, char* argv[]) {
-  const CTPParams params = parseArgs(argc, argv);
+  const EvalParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
 
   const int64_t n_trials = 10;
@@ -304,7 +305,7 @@ int main(int argc, char* argv[]) {
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> stoch_edges;
   int64_t origin;
   int64_t goal;
-  ctpGraphFromFile(params.filename, nodes, edges, stoch_edges, origin, goal);
+  ctpGraphFromFile(params.datafile, nodes, edges, stoch_edges, origin, goal);
   auto ctp = CTP(rng, nodes, edges, stoch_edges, origin, goal);
   auto pomdp = CTP_Online(ctp);
 

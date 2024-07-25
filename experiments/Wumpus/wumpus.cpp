@@ -9,6 +9,7 @@
 #include "AOStar.h"
 #include "MCVI.h"
 #include "POMCP.h"
+#include "Params.h"
 
 #define RANDOM_SEED (42)
 
@@ -120,17 +121,6 @@ void runAOStar(Wumpus* pomdp, const BeliefDistribution& init_belief,
             << std::endl;
 }
 
-void parseCommandLine(int argc, char* argv[], int64_t& runtime_ms) {
-  if (argc > 1) {
-    for (int i = 1; i < argc; ++i) {
-      if (std::string(argv[i]) == "--runtime" && i + 1 < argc) {
-        runtime_ms = std::stoi(argv[i + 1]);
-        break;
-      }
-    }
-  }
-}
-
 void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
               double pomcp_c, int64_t pomcp_nb_rollout,
               std::chrono::microseconds pomcp_time_out, double pomcp_epsilon,
@@ -168,40 +158,23 @@ void runPOMCP(Wumpus* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
 }
 
 int main(int argc, char* argv[]) {
+  const EvalParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
 
   // Initialise the POMDP
   std::cout << "Initialising Wumpus" << std::endl;
-  auto pomdp = Wumpus(4, rng);
+  const size_t heuristic_samples = params.max_belief_samples / 10;
+  auto pomdp = Wumpus(4, heuristic_samples, rng);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
-  // Initial belief parameters
-  const int64_t nb_particles_b0 = 100000;
-  const int64_t max_belief_samples = 20000;
-
-  // MCVI parameters
-  const int64_t max_sim_depth = 50;
-  const int64_t max_node_size = 10000;
-  const int64_t eval_depth = max_sim_depth;
-  const int64_t eval_epsilon = 0.005;
-  const double converge_thresh = 0.005;
-  const int64_t max_iter = 200000;
-  int64_t max_time_ms = 600000;
-
-  // Evaluation parameters
-  const int64_t max_eval_steps = max_sim_depth;
-  const int64_t n_eval_trials = 10000;
-
-  parseCommandLine(argc, argv, max_time_ms);
-
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
-  auto init_belief = SampleInitialBelief(nb_particles_b0, &pomdp);
-  if (max_belief_samples < init_belief.size()) {
+  auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
+  if (params.max_belief_samples < init_belief.size()) {
     std::cout << "Initial belief size: " << init_belief.size() << std::endl;
     std::cout << "Downsampling belief" << std::endl;
-    init_belief = DownsampleBelief(init_belief, max_belief_samples, rng);
+    init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
 
@@ -210,23 +183,25 @@ int main(int argc, char* argv[]) {
   const double pomcp_c = 10.0;
   const int64_t pomcp_nb_rollout = 1000;
   const std::chrono::microseconds pomcp_time_out =
-      std::chrono::milliseconds(max_time_ms);
+      std::chrono::milliseconds(params.max_time_ms);
   const double pomcp_epsilon = 0.01;
-  const int64_t pomcp_depth = max_sim_depth;
-  runPOMCP(pomcp, rng, max_belief_samples, pomcp_c, pomcp_nb_rollout,
-           pomcp_time_out, pomcp_epsilon, pomcp_depth, max_sim_depth,
-           n_eval_trials, nb_particles_b0);
+  const int64_t pomcp_depth = params.max_sim_depth;
+  runPOMCP(pomcp, rng, params.max_belief_samples, pomcp_c, pomcp_nb_rollout,
+           pomcp_time_out, pomcp_epsilon, pomcp_depth, params.max_sim_depth,
+           params.n_eval_trials, params.nb_particles_b0);
 
   // Run MCVI
   auto mcvi = new Wumpus(pomdp);
-  runMCVI(mcvi, init_belief, rng, max_sim_depth, max_node_size, eval_depth,
-          eval_epsilon, converge_thresh, max_iter, max_time_ms, max_eval_steps,
-          n_eval_trials, nb_particles_b0);
+  runMCVI(mcvi, init_belief, rng, params.max_sim_depth, params.max_node_size,
+          params.max_sim_depth, params.eval_epsilon, params.converge_thresh,
+          params.max_iterations, params.max_time_ms, params.max_sim_depth,
+          params.n_eval_trials, params.nb_particles_b0);
 
   // Compare to AO*
   auto aostar = new Wumpus(pomdp);
-  runAOStar(aostar, init_belief, rng, eval_depth, max_iter, max_time_ms,
-            max_eval_steps, n_eval_trials, nb_particles_b0);
+  runAOStar(aostar, init_belief, rng, params.max_sim_depth,
+            params.max_iterations, params.max_time_ms, params.max_sim_depth,
+            params.n_eval_trials, params.nb_particles_b0);
 
   return 0;
 }

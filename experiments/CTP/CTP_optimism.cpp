@@ -3,6 +3,7 @@
 
 #include "Bound.h"
 #include "CTP.h"
+#include "Params.h"
 
 #define RANDOM_SEED (42)
 
@@ -154,7 +155,7 @@ class CTP_Optimism : public CTP {
 };
 
 int main(int argc, char* argv[]) {
-  const CTPParams params = parseArgs(argc, argv);
+  const EvalParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
 
   std::vector<int64_t> nodes;
@@ -162,7 +163,7 @@ int main(int argc, char* argv[]) {
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> stoch_edges;
   int64_t origin;
   int64_t goal;
-  ctpGraphFromFile(params.filename, nodes, edges, stoch_edges, origin, goal);
+  ctpGraphFromFile(params.datafile, nodes, edges, stoch_edges, origin, goal);
 
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;

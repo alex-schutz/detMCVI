@@ -9,6 +9,7 @@
 #include "AOStar.h"
 #include "MCVI.h"
 #include "POMCP.h"
+#include "Params.h"
 
 #define RANDOM_SEED (42)
 
@@ -157,7 +158,7 @@ void runPOMCP(CTP* pomdp, std::mt19937_64& rng, int64_t init_belief_size,
 }
 
 int main(int argc, char* argv[]) {
-  const CTPParams params = parseArgs(argc, argv);
+  const EvalParams params = parseArgs(argc, argv);
   std::mt19937_64 rng(RANDOM_SEED);
 
   std::vector<int64_t> nodes;
@@ -165,7 +166,7 @@ int main(int argc, char* argv[]) {
   std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash> stoch_edges;
   int64_t origin;
   int64_t goal;
-  ctpGraphFromFile(params.filename, nodes, edges, stoch_edges, origin, goal);
+  ctpGraphFromFile(params.datafile, nodes, edges, stoch_edges, origin, goal);
 
   // Initialise the POMDP
   std::cout << "Initialising CTP" << std::endl;
@@ -194,14 +195,14 @@ int main(int argc, char* argv[]) {
   auto mcvi_ctp = new CTP(pomdp);
   runMCVI(mcvi_ctp, init_belief, rng, params.max_sim_depth,
           params.max_node_size, params.max_sim_depth, params.eval_epsilon,
-          params.converge_thresh, params.max_iter, params.max_time_ms,
+          params.converge_thresh, params.max_iterations, params.max_time_ms,
           params.max_sim_depth, n_eval_trials, 10 * params.nb_particles_b0);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
-  runAOStar(aostar_ctp, init_belief, rng, params.max_sim_depth, params.max_iter,
-            params.max_time_ms, params.max_sim_depth, n_eval_trials,
-            10 * params.nb_particles_b0);
+  runAOStar(aostar_ctp, init_belief, rng, params.max_sim_depth,
+            params.max_iterations, params.max_time_ms, params.max_sim_depth,
+            n_eval_trials, 10 * params.nb_particles_b0);
 
   auto pomcp_ctp = new CTP(pomdp);
   const double pomcp_c = 2.0;
