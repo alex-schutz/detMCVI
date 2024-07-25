@@ -306,3 +306,15 @@ class Battleships : public MCVI::SimInterface {
         "parameters or a larger grid.");
   }
 };
+
+void ReadBattleshipsParams(const std::string& filename, int32_t& grid_size,
+                           int& ship_count) {
+  std::ifstream file(filename);
+  if (!file.is_open())
+    throw std::runtime_error("Unable to open file: " + filename);
+  if (!(file >> grid_size))
+    throw std::runtime_error("Error reading the grid_size from file");
+  if (!(file >> ship_count))
+    throw std::runtime_error("Error reading ship_count from file");
+  file.close();
+}

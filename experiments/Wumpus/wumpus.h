@@ -478,3 +478,12 @@ class Wumpus : public MCVI::SimInterface,
     return {-best_state->second, can_reach_gold};
   }
 };
+
+void ReadWumpusParams(const std::string& filename, int64_t& grid_size) {
+  std::ifstream file(filename);
+  if (!file.is_open())
+    throw std::runtime_error("Unable to open file: " + filename);
+  if (!(file >> grid_size))
+    throw std::runtime_error("Error reading the grid_size from file");
+  file.close();
+}

@@ -158,7 +158,10 @@ int main(int argc, char* argv[]) {
 
   // Initialise the POMDP
   std::cout << "Initialising Battleships" << std::endl;
-  auto pomdp = Battleships(10, 5, rng);
+  int32_t grid_size = 10;
+  int ship_count = 5;
+  ReadBattleshipsParams(params.datafile, grid_size, ship_count);
+  auto pomdp = Battleships(grid_size, ship_count, rng);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
