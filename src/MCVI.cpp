@@ -454,7 +454,11 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
       sum_r += std::pow(gamma, i) * reward;
 
       if (done) {
-        eval_stats.complete.update(sum_r - optimal);
+        if (!has_soln) {
+          eval_stats.no_solution_on_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.complete.update(sum_r - optimal);
+        }
         break;
       }
 
@@ -514,7 +518,11 @@ std::vector<State> EvaluationWithGreedyTreePolicy(
       sum_r += std::pow(gamma, i) * reward;
 
       if (done) {
-        eval_stats.complete.update(sum_r - optimal);
+        if (!has_soln) {
+          eval_stats.no_solution_on_policy.update(sum_r - optimal);
+        } else {
+          eval_stats.complete.update(sum_r - optimal);
+        }
         success_states.push_back(initial_state);
         break;
       }
