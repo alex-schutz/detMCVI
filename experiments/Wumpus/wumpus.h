@@ -35,6 +35,7 @@ class Wumpus : public MCVI::SimInterface,
   double _success_reward = 300;
   double _action_reward = -10;
   double _shoot_reward = -50;
+  double _grab_gold_reward = 50;
   double _bad_action_reward = -600;
 
  public:
@@ -246,7 +247,7 @@ class Wumpus : public MCVI::SimInterface,
       sNext[sfIdx("gold_y")] = -1;
       // put gold in inventory
       sNext[sfIdx("player_gold")] = 1;
-      return _action_reward;
+      return _grab_gold_reward;
 
     } else if (actions[aI] == "shoot" &&
                sI[sfIdx("player_arrow")] == 1) {  // shoot arrow
