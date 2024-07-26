@@ -276,10 +276,10 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
 
     if (time_sum - last_eval >= eval_interval_ms * 1000) {
       last_eval = time_sum;
-      std::fstream fsc_graph("fsc_" + std::to_string(time_sum) + ".dot",
-                             std::fstream::out);
-      fsc.GenerateGraphviz(fsc_graph);
-      fsc_graph.close();
+      //   std::fstream fsc_graph("fsc_" + std::to_string(time_sum) + ".dot",
+      //                          std::fstream::out);
+      //   fsc.GenerateGraphviz(fsc_graph);
+      //   fsc_graph.close();
       std::cout << "Evaluation of policy (" << max_eval_steps << " steps, "
                 << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
                 << std::endl;
