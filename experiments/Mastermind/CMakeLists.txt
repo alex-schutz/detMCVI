@@ -1,0 +1,5 @@
+add_executable(mastermind_experiment mastermind.cpp)
+target_link_libraries(mastermind_experiment mcvi_library)
+
+add_executable(mastermind_timeseries mastermind_time_series.cpp)
+target_link_libraries(mastermind_timeseries mcvi_library)
