@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import numpy as np
 from evaluation import initialise_folder
 from time_series import parse_file
 import subprocess
@@ -13,14 +12,14 @@ import sys
 TIMEOUT = 60 * 60 * 20
 
 max_time = {
-    2: 30 * 1000,
-    3: 20 * 60 * 1000,
-    4: 100 * 60 * 1000,
+    2: 1 * 60 * 60 * 1000,
+    3: 5 * 60 * 60 * 1000,
+    4: 20 * 60 * 60 * 1000,
 }
 eval_ms = {
-    2: 100,
-    3: 1000,
-    4: 2 * 60 * 1000,
+    2: 1000,
+    3: 10000,
+    4: 20 * 60 * 1000,
 }
 
 
@@ -62,7 +61,7 @@ def run_instance(N, problem_file, results_folder):
 
 
 def work(params):
-    problem_size, problem_file, results_folder, seed = params
+    problem_size, problem_file, results_folder = params
     print(f"Starting Wumpus problem {problem_size}")
     outfile, error = run_instance(problem_size, problem_file, results_folder)
     if error:
@@ -78,21 +77,17 @@ def work(params):
 
 def generate_problem_set(problem_size):
     timestr = time.strftime("%Y-%m-%d_%H-%M")
-    results_folder = f"Wumpus_results_{timestr}"
-
-    seed = np.random.randint(0, 9999999)
+    results_folder = f"wumpus_results_{problem_size}_{timestr}"
 
     initialise_folder(results_folder)
 
     problem_files = []
-    seeds = []
-    for n in range(2, 5):
-        problem_file = f"{results_folder}/wumpus_world_{problem_size}.txt"
-        with open(problem_file, "w") as f:
-            f.write(f"{n}" + "\n")
-        problem_files.append(problem_file)
+    problem_file = f"{results_folder}/wumpus_world_{problem_size}.txt"
+    with open(problem_file, "w") as f:
+        f.write(f"{problem_size}" + "\n")
+    problem_files.append(problem_file)
 
-    return results_folder, problem_files, seeds
+    return results_folder, problem_files
 
 
 def summarise_results(results_folder):
@@ -109,10 +104,10 @@ def summarise_results(results_folder):
 
 
 def run_problem_set(problem_size):
-    results_folder, problem_files, seeds = generate_problem_set(problem_size)
+    results_folder, problem_files = generate_problem_set(problem_size)
     futures = []
-    for i, (problem_file, seed) in enumerate(zip(problem_files, seeds)):
-        params = (problem_size, i, problem_file, results_folder, seed)
+    for problem_file in problem_files:
+        params = (problem_size, problem_file, results_folder)
         future = tp.submit(work, params)
         futures.append((future, results_folder))
 
@@ -122,7 +117,7 @@ def run_problem_set(problem_size):
 if __name__ == "__main__":
     instantiate()
 
-    max_workers = min(cpu_count() - 2, 5)
+    max_workers = 1
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
     problem_sets = max_time.keys()

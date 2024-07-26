@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Initialising Wumpus" << std::endl;
   int64_t grid_size = 4;
   ReadWumpusParams(params.datafile, grid_size);
-  const size_t heuristic_samples = params.max_belief_samples / 10;
+  const size_t heuristic_samples = params.max_belief_samples;
   auto pomdp = Wumpus(grid_size, heuristic_samples, rng);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
