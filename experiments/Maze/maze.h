@@ -75,7 +75,8 @@ class Maze : public MCVI::SimInterface,
 
   MCVI::State SampleStartState() override {
     // Start in any available position other than the goal
-    static std::uniform_int_distribution<int64_t> ss_dist(1, state_space_sz);
+    static std::uniform_int_distribution<int64_t> ss_dist(1,
+                                                          state_space_sz - 1);
     return {ss_dist(rng)};
   }
 
@@ -85,7 +86,8 @@ class Maze : public MCVI::SimInterface,
     const auto curr_maze = indexToPlayerLocation(_maze, sI[0]);
     const std::pair<int64_t, int64_t> curr_loc = findPlayerLocation(curr_maze);
     if (curr_loc.first == -1 || curr_loc.second == -1)
-      return _move_reward;  // player location not found
+      throw std::logic_error("Cannot find player location for state " +
+                             std::to_string(sI[0]));
 
     auto next_maze = curr_maze;
     const std::string action = actions[aI];
@@ -226,7 +228,9 @@ class Maze : public MCVI::SimInterface,
     std::string obs = "*";
     const auto curr_maze = indexToPlayerLocation(_maze, sI[0]);
     const std::pair<int64_t, int64_t> curr_loc = findPlayerLocation(curr_maze);
-    if (curr_loc.first == -1 || curr_loc.second == -1) return 0;
+    if (curr_loc.first == -1 || curr_loc.second == -1)
+      throw std::logic_error("Cannot find player location for state " +
+                             std::to_string(sI[0]));
     if (curr_loc.first > 0 &&
         curr_maze[curr_loc.first - 1][curr_loc.second] != ' ' &&
         curr_maze[curr_loc.first - 1][curr_loc.second] != 'G')
