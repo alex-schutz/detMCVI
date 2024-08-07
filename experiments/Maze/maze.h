@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "Cache.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
 
@@ -29,13 +30,16 @@ class Maze : public MCVI::SimInterface,
   double _move_reward = -1;
 
   int64_t state_space_sz;
+  mutable MCVI::LRUCache<MCVI::State, double, MCVI::StateHash, MCVI::StateEqual>
+      state_value_cache;
 
  public:
   Maze(std::vector<std::string> maze, std::mt19937_64& rng)
       : _maze(maze),
         observations(initObs()),
         rng(rng),
-        state_space_sz(countBlankSpaces(_maze) + 1) {}
+        state_space_sz(countBlankSpaces(_maze) + 1),
+        state_value_cache(250000) {}
 
   int64_t GetSizeOfObs() const override { return observations.size(); }
   int64_t GetSizeOfA() const override { return actions.size(); }
@@ -59,7 +63,11 @@ class Maze : public MCVI::SimInterface,
 
   std::pair<double, bool> get_state_value(const MCVI::State& state,
                                           int64_t max_depth) const {
-    return bestPath(state, max_depth);
+    const auto f = state_value_cache.find(state);
+    if (f != state_value_cache.cend()) return {f->second.first, true};
+    const auto b = bestPath(state, max_depth);
+    if (b.second) state_value_cache.put(state, b.first);
+    return b;
   }
 
   std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
