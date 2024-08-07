@@ -13,7 +13,7 @@ SET_SIZE = 10
 PROBLEM_SRC_FOLDER = "experiments/Maze/evaluation"
 
 max_time = {
-    5: 10 * 1000,
+    5: 2 * 1000,
     10: 2 * 60 * 1000,
     15: 10 * 60 * 1000,
     20: 60 * 60 * 1000,
@@ -21,7 +21,7 @@ max_time = {
     30: 20 * 60 * 60 * 1000,
 }
 eval_ms = {
-    5: 10,
+    5: 30,
     10: 1000,
     15: 5 * 1000,
     20: 60 * 1000,
@@ -66,13 +66,22 @@ def run_maze_instance(N, i, problem_file, results_folder, executable):
 
     with open(outfile, "w") as f:
         # Run solver
-        cmd = f"{executable} {problem_file} --max_sim_depth {4*N*N} --max_time_ms {max_time[N]} --eval_interval_ms {eval_ms[N]}"
+        cmd = [
+            executable,
+            problem_file,
+            "--max_sim_depth",
+            str(4 * N * N),
+            "--max_time_ms",
+            str(max_time[N]),
+            "--eval_interval_ms",
+            str(eval_ms[N]),
+        ]
+        # cmd = f"{executable} {problem_file} --max_sim_depth {4*N*N} --max_time_ms {max_time[N]} --eval_interval_ms {eval_ms[N]}"
         p = subprocess.run(
             cmd,
             stdout=f,
             stderr=subprocess.PIPE,
-            timeout=max_time[N] * 15 / 1000,
-            shell=True,
+            timeout=(max_time[N] / 1000 + max_time[N] / eval_ms[N] * N * N * 20) * 3,
         )
         if p.returncode != 0:
             print(f"INSTANCE {N}_{i} FAILED")
@@ -86,19 +95,30 @@ def run_maze_instance(N, i, problem_file, results_folder, executable):
 def work(params):
     problem_size, i, problem_file, results_folder, executable = params
     print(f"Starting problem {problem_size} {i}")
-    outfile, error = run_maze_instance(
-        problem_size, i, problem_file, results_folder, executable
-    )
+    try:
+        outfile, error = run_maze_instance(
+            problem_size, i, problem_file, results_folder, executable
+        )
+        print("run_maze_instance completed")
+    except Exception as e:
+        print(f"Error in run_maze_instance: {e}")
+        # return
+
     if error:
-        return
+        print(f"Error occurred in problem {problem_size} {i}")
+        # return
 
     # Summarise results
-    instance_result = parse_file(outfile)
-    instance_result["Set number"] = i
+    try:
+        instance_result = parse_file(outfile)
+        instance_result["Set number"] = i
 
-    # Save as we go
-    df = instance_result
-    df.to_csv(f"{results_folder}/maze_results_{problem_size}_{i}.csv", index=False)
+        print(f"Saving {problem_size} {i}")
+        # Save as we go
+        df = instance_result
+        df.to_csv(f"{results_folder}/maze_results_{problem_size}_{i}.csv", index=False)
+    except Exception as e:
+        print(f"Error in processing or saving results: {e}")
 
 
 def generate_problem_set(problem_size, timestr):
