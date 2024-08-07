@@ -97,7 +97,7 @@ class Maze : public MCVI::SimInterface,
         next_maze[curr_loc.first][curr_loc.second] = ' ';
       }
     } else if (action == "down") {
-      if (curr_loc.first < _maze.size() - 1 &&
+      if (curr_loc.first < (int64_t)_maze.size() - 1 &&
           (curr_maze[curr_loc.first + 1][curr_loc.second] == ' ' ||
            curr_maze[curr_loc.first + 1][curr_loc.second] == 'G')) {
         next_maze[curr_loc.first + 1][curr_loc.second] = '*';
@@ -111,7 +111,7 @@ class Maze : public MCVI::SimInterface,
         next_maze[curr_loc.first][curr_loc.second] = ' ';
       }
     } else if (action == "right") {
-      if (curr_loc.second < _maze[0].size() - 1 &&
+      if (curr_loc.second < (int64_t)_maze[0].size() - 1 &&
           (curr_maze[curr_loc.first][curr_loc.second + 1] == ' ' ||
            curr_maze[curr_loc.first][curr_loc.second + 1] == 'G')) {
         next_maze[curr_loc.first][curr_loc.second + 1] = '*';
@@ -138,7 +138,7 @@ class Maze : public MCVI::SimInterface,
 
   std::pair<int64_t, int64_t> findPlayerLocation(
       const std::vector<std::string>& maze) const {
-    for (int r = 0; r < maze.size(); ++r) {
+    for (int64_t r = 0; r < (int64_t)maze.size(); ++r) {
       size_t col = maze[r].find('*');
       if (col != std::string::npos) {
         return {r, static_cast<int64_t>(col)};
@@ -149,7 +149,7 @@ class Maze : public MCVI::SimInterface,
 
   std::pair<int64_t, int64_t> findGoalLocation(
       const std::vector<std::string>& maze) const {
-    for (int r = 0; r < maze.size(); ++r) {
+    for (int64_t r = 0; r < (int64_t)maze.size(); ++r) {
       size_t col = maze[r].find('G');
       if (col != std::string::npos) {
         return {r, static_cast<int64_t>(col)};
@@ -164,8 +164,8 @@ class Maze : public MCVI::SimInterface,
 
     int64_t index = 1;  // Start at 1 since G is index 0
 
-    for (int64_t r = 0; r < maze.size(); ++r) {
-      for (int64_t c = 0; c < maze[r].size(); ++c) {
+    for (int64_t r = 0; r < (int64_t)maze.size(); ++r) {
+      for (int64_t c = 0; c < (int64_t)maze[r].size(); ++c) {
         if (maze[r][c] == ' ' || maze[r][c] == '*') {
           if (maze[r][c] == '*') return index;
           ++index;
@@ -189,8 +189,8 @@ class Maze : public MCVI::SimInterface,
     }
 
     int64_t currentIndex = 1;
-    for (int64_t r = 0; r < blankMaze.size(); ++r) {
-      for (int64_t c = 0; c < blankMaze[r].size(); ++c) {
+    for (int64_t r = 0; r < (int64_t)blankMaze.size(); ++r) {
+      for (int64_t c = 0; c < (int64_t)blankMaze[r].size(); ++c) {
         if (blankMaze[r][c] == ' ') {
           if (index == currentIndex) {
             blankMaze[r][c] = '*';
@@ -231,11 +231,11 @@ class Maze : public MCVI::SimInterface,
         curr_maze[curr_loc.first - 1][curr_loc.second] != ' ' &&
         curr_maze[curr_loc.first - 1][curr_loc.second] != 'G')
       obs += "above";
-    if (curr_loc.second < _maze[0].size() - 1 &&
+    if (curr_loc.second < (int64_t)_maze[0].size() - 1 &&
         curr_maze[curr_loc.first][curr_loc.second + 1] != ' ' &&
         curr_maze[curr_loc.first][curr_loc.second + 1] != 'G')
       obs += "right";
-    if (curr_loc.first < _maze.size() - 1 &&
+    if (curr_loc.first < (int64_t)_maze.size() - 1 &&
         curr_maze[curr_loc.first + 1][curr_loc.second] != ' ' &&
         curr_maze[curr_loc.first + 1][curr_loc.second] != 'G')
       obs += "below";

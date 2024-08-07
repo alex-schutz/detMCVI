@@ -172,7 +172,7 @@ int main(int argc, char* argv[]) {
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
   auto init_belief = SampleInitialBelief(params.nb_particles_b0, &pomdp);
-  if (params.max_belief_samples < init_belief.size()) {
+  if (params.max_belief_samples < (int64_t)init_belief.size()) {
     std::cout << "Initial belief size: " << init_belief.size() << std::endl;
     std::cout << "Downsampling belief" << std::endl;
     init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);

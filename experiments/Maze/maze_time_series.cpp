@@ -109,7 +109,6 @@ int main(int argc, char* argv[]) {
   std::cout << "Initialising Maze" << std::endl;
   std::vector<std::string> maze;
   ReadMazeParams(params.datafile, maze);
-  const size_t heuristic_samples = params.max_belief_samples;
   auto pomdp = Maze(maze, rng);
 
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
