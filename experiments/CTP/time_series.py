@@ -76,7 +76,7 @@ def parse_file(filename) -> pd.DataFrame:
                 info_lines = lines[i + 1 : i + 27]
                 mcvi_stats[time] = parse_evaluation(info_lines)
                 i += 26
-            elif lines[i].startswith("Evaluation of AO* greedy policy"):
+            elif lines[i].startswith("Evaluation of AO* policy"):
                 time = extract_float(lines[i].split("at time ")[1])
                 if i + 27 > len(lines):
                     break
@@ -102,8 +102,8 @@ def parse_file(filename) -> pd.DataFrame:
         for timestamp, stats in ao_stats.items()
     ]
     pomcp_data = [
-        {"Algorithm": "POMCP*", "Timestamp": timestamp, **stats}
-        for timestamp, stats in ao_stats.items()
+        {"Algorithm": "POMCP", "Timestamp": timestamp, **stats}
+        for timestamp, stats in pomcp_stats.items()
     ]
     combined_data = mcvi_data + ao_data + pomcp_data
     return pd.DataFrame(combined_data)
@@ -117,7 +117,7 @@ def lighten_colour(colour_str, factor=0.2):
 def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
     algs = ["MCVI", "AO*", "POMCP"]
     fig = go.Figure()
-    colours = ["#cb6ce6", "#0097b2", "#f097b2"]
+    colours = ["#cb6ce6", "#0097b2", "#90e079"]
 
     for i, alg in enumerate(algs):
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
@@ -183,7 +183,7 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
 def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show"):
     algs = ["MCVI", "AO*", "POMCP"]
     fig = go.Figure()
-    colours = ["#cb6ce6", "#0097b2", "#f097b2"]
+    colours = ["#cb6ce6", "#0097b2", "#90e079"]
 
     for i, alg in enumerate(algs):
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     # output="png"
     # output="html"
 
-    series_file = "timeseries5.txt"
+    series_file = "wumpus_results_3_2024-07-26_08-43/WumpusInstance_3.txt"
 
     df = parse_file(series_file)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)

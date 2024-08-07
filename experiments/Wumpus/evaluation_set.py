@@ -1,7 +1,5 @@
 #!/usr/bin/python3
-
-from evaluation import initialise_folder
-from time_series import parse_file
+from experiments.CTP.time_series import parse_file
 import subprocess
 import pandas as pd
 import time
@@ -9,7 +7,6 @@ import concurrent.futures
 from multiprocessing import cpu_count
 import sys
 
-TIMEOUT = 60 * 60 * 20
 
 max_time = {
     2: 1 * 60 * 60 * 1000,
@@ -21,6 +18,24 @@ eval_ms = {
     3: 10000,
     4: 20 * 60 * 1000,
 }
+
+
+def initialise_folder(results_folder):
+    # subprocess.run(
+    #     "rm -rf build; mkdir build",
+    #     check=True,
+    #     shell=True,
+    # )
+    subprocess.run(
+        "cd build && cmake ..",
+        check=True,
+        shell=True,
+    )
+    subprocess.run(
+        f"mkdir {results_folder}",
+        check=True,
+        shell=True,
+    )
 
 
 def instantiate():
@@ -48,7 +63,7 @@ def run_instance(N, problem_file, results_folder):
             cmd,
             stdout=f,
             stderr=subprocess.PIPE,
-            timeout=TIMEOUT,
+            timeout=max_time[N] * 15 / 1000,
             shell=True,
         )
         if p.returncode != 0:
