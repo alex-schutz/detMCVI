@@ -12,28 +12,29 @@ import concurrent.futures
 from multiprocessing import cpu_count
 import sys
 
-TIMEOUT = 60 * 60 * 20
 SET_SIZE = 10
 
 max_time = {
-    # 5: 30 * 1000,
-    # 10: 2 * 60 * 1000,
-    # 15: 10 * 60 * 1000,
-    # 20: 60 * 60 * 1000,
+    5: 30 * 1000,
+    10: 2 * 60 * 1000,
+    15: 10 * 60 * 1000,
+    20: 60 * 60 * 1000,
     30: 20 * 60 * 60 * 1000,
-    # 40: 60 * 60 * 60 * 1000,
-    # 50: 5 * 60 * 60 * 1000,
-    # 100: 5 * 60 * 60 * 1000,
+    40: 60 * 60 * 60 * 1000,
+    50: 5 * 60 * 60 * 1000,
+    75: 10 * 60 * 60 * 1000,
+    100: 20 * 60 * 60 * 1000,
 }
 eval_ms = {
-    # 5: 0,
-    # 10: 2,
-    # 15: 1000,
-    # 20: 5 * 1000,
+    5: 0,
+    10: 2,
+    15: 1000,
+    20: 5 * 1000,
     30: 10 * 1000,
-    # 40: 60 * 1000,
-    # 50: 2 * 60 * 1000,
-    # 100: 20 * 60 * 1000,
+    40: 60 * 1000,
+    50: 2 * 60 * 1000,
+    75: 10 * 60 * 1000,
+    100: 20 * 60 * 1000,
 }
 
 
@@ -62,7 +63,7 @@ def run_ctp_instance(N, i, problem_file, results_folder):
             cmd,
             stdout=f,
             stderr=subprocess.PIPE,
-            timeout=TIMEOUT,
+            timeout=max_time[N] * 15,
             shell=True,
         )
         if p.returncode != 0:
@@ -143,7 +144,7 @@ def run_problem_set(problem_size):
 if __name__ == "__main__":
     instantiate_ctp()
 
-    max_workers = min(cpu_count() - 2, 5)
+    max_workers = min(cpu_count() - 2, 1)
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
     problem_sets = max_time.keys()
