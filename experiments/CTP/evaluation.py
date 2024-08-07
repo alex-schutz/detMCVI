@@ -192,7 +192,7 @@ def initialise_folder(results_folder):
         shell=True,
     )
     subprocess.run(
-        f"mkdir {results_folder}",
+        f"mkdir -p {results_folder}",
         check=True,
         shell=True,
     )

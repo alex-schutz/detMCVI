@@ -8,4 +8,6 @@ eval_results_*/
 
 experiments/CTP/auto_generated_graph.h
 
+experiments/CTP/evaluation/ctp_results_*
+experiments/Wumpus/evaluation/wumpus_results_*
 experiments/Maze/evaluation/maze_results_*

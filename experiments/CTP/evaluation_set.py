@@ -94,7 +94,9 @@ def work(params):
 
 def generate_problem_set(problem_size):
     timestr = time.strftime("%Y-%m-%d_%H-%M")
-    results_folder = f"eval_results_{problem_size}x{SET_SIZE}_{timestr}"
+    results_folder = (
+        f"experiments/CTP/evaluation/ctp_results_{problem_size}x{SET_SIZE}_{timestr}"
+    )
 
     seed = np.random.randint(0, 9999999)
 

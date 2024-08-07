@@ -32,7 +32,7 @@ def initialise_folder(results_folder):
         shell=True,
     )
     subprocess.run(
-        f"mkdir {results_folder}",
+        f"mkdir -p {results_folder}",
         check=True,
         shell=True,
     )
@@ -92,7 +92,9 @@ def work(params):
 
 def generate_problem_set(problem_size):
     timestr = time.strftime("%Y-%m-%d_%H-%M")
-    results_folder = f"wumpus_results_{problem_size}_{timestr}"
+    results_folder = (
+        f"experiments/Wumpus/evaluation/wumpus_results_{problem_size}_{timestr}"
+    )
 
     initialise_folder(results_folder)
 
