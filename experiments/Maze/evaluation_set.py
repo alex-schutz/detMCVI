@@ -31,16 +31,6 @@ eval_ms = {
 
 
 def initialise_folder(results_folder):
-    # subprocess.run(
-    #     "rm -rf build; mkdir build",
-    #     check=True,
-    #     shell=True,
-    # )
-    subprocess.run(
-        "cd build && cmake ..",
-        check=True,
-        shell=True,
-    )
     subprocess.run(
         f"mkdir -p {results_folder}",
         check=True,
@@ -48,9 +38,15 @@ def initialise_folder(results_folder):
     )
 
 
-def instantiate_maze():
+def instantiate_maze(executable):
+    # subprocess.run(
+    #     "rm -rf build; mkdir build",
+    #     check=True,
+    #     shell=True,
+    # )
+
     # Build files
-    cmd = "cd build && make"
+    cmd = "cd build && cmake .. && make"
     p = subprocess.run(
         cmd,
         stderr=subprocess.PIPE,
@@ -62,13 +58,15 @@ def instantiate_maze():
         print(p.stderr)
         raise RuntimeError(f"Build failed with returncode {p.returncode}")
 
+    shutil.copy("build/experiments/Maze/maze_timeseries", executable)
 
-def run_maze_instance(N, i, problem_file, results_folder):
+
+def run_maze_instance(N, i, problem_file, results_folder, executable):
     outfile = f"{results_folder}/MazeInstance_{N}_{i}.txt"
 
     with open(outfile, "w") as f:
         # Run solver
-        cmd = f"time build/experiments/Maze/maze_timeseries {problem_file} --max_sim_depth {4*N*N} --max_time_ms {max_time[N]} --eval_interval_ms {eval_ms[N]}"
+        cmd = f"{executable} {problem_file} --max_sim_depth {4*N*N} --max_time_ms {max_time[N]} --eval_interval_ms {eval_ms[N]}"
         p = subprocess.run(
             cmd,
             stdout=f,
@@ -86,9 +84,11 @@ def run_maze_instance(N, i, problem_file, results_folder):
 
 
 def work(params):
-    problem_size, i, problem_file, results_folder = params
+    problem_size, i, problem_file, results_folder, executable = params
     print(f"Starting problem {problem_size} {i}")
-    outfile, error = run_maze_instance(problem_size, i, problem_file, results_folder)
+    outfile, error = run_maze_instance(
+        problem_size, i, problem_file, results_folder, executable
+    )
     if error:
         return
 
@@ -101,8 +101,7 @@ def work(params):
     df.to_csv(f"{results_folder}/maze_results_{problem_size}_{i}.csv", index=False)
 
 
-def generate_problem_set(problem_size):
-    timestr = time.strftime("%Y-%m-%d_%H-%M")
+def generate_problem_set(problem_size, timestr):
     results_folder = (
         f"experiments/Maze/evaluation/maze_results_{problem_size}x{SET_SIZE}_{timestr}"
     )
@@ -134,11 +133,12 @@ def summarise_results(results_folder):
     df.to_csv(f"{results_folder}/maze_results_all.csv", index=False)
 
 
-def run_problem_set(problem_size):
-    results_folder, problem_files = generate_problem_set(problem_size)
+def run_problem_set(problem_size, timestr, executable):
+    results_folder, problem_files = generate_problem_set(problem_size, timestr)
+    folder_exec = shutil.copy(executable, results_folder)
     futures = []
     for i, problem_file in enumerate(problem_files):
-        params = (problem_size, i, problem_file, results_folder)
+        params = (problem_size, i, problem_file, results_folder, folder_exec)
         future = tp.submit(work, params)
         futures.append((future, results_folder))
 
@@ -146,16 +146,18 @@ def run_problem_set(problem_size):
 
 
 if __name__ == "__main__":
-    instantiate_maze()
+    timestr = time.strftime("%Y-%m-%d_%H-%M")
+    executable = "maze_timeseries" + timestr
+    instantiate_maze(executable=executable)
 
-    max_workers = min(cpu_count() - 2, 1)
+    max_workers = min(cpu_count() - 2, 4)
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
     problem_sets = max_time.keys()
     all_futures = []
 
     for problem_size in problem_sets:
-        futures = run_problem_set(problem_size)
+        futures = run_problem_set(problem_size, timestr, executable)
         all_futures.extend(futures)
 
     # Check if futures are done and summarise results
