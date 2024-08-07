@@ -182,7 +182,8 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
                           int64_t max_eval_steps, int64_t n_eval_trials,
                           int64_t nb_particles_b0, int64_t eval_interval_ms,
                           int64_t completion_threshold, int64_t completion_reps,
-                          std::mt19937_64& rng, const OptimalPath& solver,
+                          int64_t node_limit, std::mt19937_64& rng,
+                          const OptimalPath& solver,
                           std::optional<StateValueFunction> valFunc,
                           SimInterface* pomdp,
                           AOSearchType method = AOSearchType::random) {
@@ -214,6 +215,18 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
       else
         completed_times = 0;
       if (completed_times >= completion_reps) return;
+
+      const std::string policy_tree_file =
+          "greedy_policy_tree_" + std::to_string(time_sum) + ".dot";
+      std::fstream policy_tree(policy_tree_file, std::fstream::out);
+      const int64_t node_count = initial_belief->DrawPolicyTree(policy_tree);
+      policy_tree.close();
+      std::remove(policy_tree_file.c_str());
+      if (node_count >= node_limit) {
+        std::cout << "POMCP planning complete, reached node limit."
+                  << std::endl;
+        return;
+      }
     }
     if (time_sum >= max_computation_ms * 1000) {
       std::cout << "AO* planning complete, reached computation time."

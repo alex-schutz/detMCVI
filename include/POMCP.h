@@ -24,8 +24,8 @@ class BeliefParticles {
   std::vector<State> particles;  // a vector of sI
 
  public:
-  BeliefParticles(){};
-  ~BeliefParticles(){};
+  BeliefParticles() {};
+  ~BeliefParticles() {};
   BeliefParticles(std::vector<State> &particles);
   State SampleOneState() const;
   size_t GetParticleSize() const { return this->particles.size(); }
@@ -45,7 +45,7 @@ class TreeNode {
   int64_t depth = 0;
 
  public:
-  TreeNode(){};
+  TreeNode() {};
   TreeNode(int64_t depth) { this->depth = depth; }
 
   void AddParentNode(TreeNodePtr ParentNode) { this->ParentNode_ = ParentNode; }
@@ -96,9 +96,9 @@ class PomcpPlanner {
   double c;
 
  public:
-  PomcpPlanner(){};
+  PomcpPlanner() {};
   PomcpPlanner(SimInterface *sim, double discount);
-  ~PomcpPlanner(){};
+  ~PomcpPlanner() {};
   void Init(double c, int64_t pomcp_nb_rollout,
             std::chrono::microseconds timeout, double threshold,
             int64_t max_depth);
@@ -117,7 +117,8 @@ void RunPOMCPAndEvaluate(const BeliefParticles &init_belief, double pomcp_c,
                          int64_t max_eval_steps, int64_t n_eval_trials,
                          int64_t nb_particles_b0, int64_t eval_interval_ms,
                          int64_t completion_threshold, int64_t completion_reps,
-                         std::mt19937_64 &rng, const MCVI::OptimalPath &solver,
+                         int64_t node_limit, std::mt19937_64 &rng,
+                         const MCVI::OptimalPath &solver,
                          std::optional<MCVI::StateValueFunction> valFunc,
                          SimInterface *pomdp);
 

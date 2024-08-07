@@ -50,7 +50,7 @@ void runAOStarIncrements(Battleships* pomdp,
                          int64_t max_time_ms, int64_t max_eval_steps,
                          int64_t n_eval_trials, int64_t nb_particles_b0,
                          int64_t eval_interval_ms, int64_t completion_threshold,
-                         int64_t completion_reps) {
+                         int64_t completion_reps, int64_t node_limit) {
   // Initialise heuristic
   OptimalPath solver(pomdp);
 
@@ -65,7 +65,8 @@ void runAOStarIncrements(Battleships* pomdp,
   RunAOStarAndEvaluate(
       root, std::numeric_limits<int64_t>::max(), max_time_ms, solver,
       eval_depth, max_eval_steps, n_eval_trials, nb_particles_b0,
-      eval_interval_ms, completion_threshold, completion_reps, rng, solver,
+      eval_interval_ms, completion_threshold, completion_reps, node_limit, rng,
+      solver,
       [&pomdp](const State& state, int64_t value) {
         return pomdp->get_state_value(state, value);
       },
@@ -78,7 +79,8 @@ void runPOMCPIncrements(Battleships* pomdp, std::mt19937_64& rng,
                         int64_t pomcp_depth, int64_t max_computation_time_ms,
                         int64_t max_eval_steps, int64_t n_eval_trials,
                         int64_t nb_particles_b0, int64_t eval_interval_ms,
-                        int64_t completion_threshold, int64_t completion_reps) {
+                        int64_t completion_threshold, int64_t completion_reps,
+                        int64_t node_limit) {
   // Initialise heuristic
   OptimalPath solver(pomdp);
 
@@ -96,7 +98,8 @@ void runPOMCPIncrements(Battleships* pomdp, std::mt19937_64& rng,
   POMCP::RunPOMCPAndEvaluate(
       init_belief, pomcp_c, pomcp_nb_rollout, pomcp_epsilon, pomcp_depth,
       max_computation_time_ms, max_eval_steps, n_eval_trials, nb_particles_b0,
-      eval_interval_ms, completion_threshold, completion_reps, rng, solver,
+      eval_interval_ms, completion_threshold, completion_reps, node_limit, rng,
+      solver,
       [&pomdp](const State& state, int64_t value) {
         return pomdp->get_state_value(state, value);
       },
@@ -143,7 +146,8 @@ int main(int argc, char* argv[]) {
                       params.max_sim_depth, params.max_time_ms,
                       params.max_sim_depth, params.n_eval_trials,
                       10 * params.nb_particles_b0, params.eval_interval_ms,
-                      params.completion_threshold, params.completion_reps);
+                      params.completion_threshold, params.completion_reps,
+                      params.max_node_size);
   delete aostar_battleships;
 
   // Compare to POMCP offline
@@ -156,7 +160,7 @@ int main(int argc, char* argv[]) {
                      params.max_time_ms, params.max_sim_depth,
                      params.n_eval_trials, 10 * params.nb_particles_b0,
                      params.eval_interval_ms, params.completion_threshold,
-                     params.completion_reps);
+                     params.completion_reps, params.max_node_size);
   delete pomcp_battleships;
 
   return 0;

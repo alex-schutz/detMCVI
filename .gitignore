@@ -7,3 +7,5 @@ BUILD/
 eval_results_*/
 
 experiments/CTP/auto_generated_graph.h
+
+experiments/Maze/evaluation/maze_results_*

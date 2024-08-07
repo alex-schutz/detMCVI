@@ -265,7 +265,8 @@ void RunPOMCPAndEvaluate(const BeliefParticles &init_belief, double pomcp_c,
                          int64_t max_eval_steps, int64_t n_eval_trials,
                          int64_t nb_particles_b0, int64_t eval_interval_ms,
                          int64_t completion_threshold, int64_t completion_reps,
-                         std::mt19937_64 &rng, const MCVI::OptimalPath &solver,
+                         int64_t node_limit, std::mt19937_64 &rng,
+                         const MCVI::OptimalPath &solver,
                          std::optional<MCVI::StateValueFunction> valFunc,
                          SimInterface *pomdp) {
   const double gamma = pomdp->GetDiscount();
@@ -287,8 +288,14 @@ void RunPOMCPAndEvaluate(const BeliefParticles &init_belief, double pomcp_c,
     const int64_t completed_count = EvaluationWithGreedyTreePolicy(
         root_node, max_eval_steps, n_eval_trials, nb_particles_b0, pomdp, rng,
         solver, valFunc, "POMCP");
-    std::cout << "POMCP offline policy tree contains " << CountNodes(root_node)
+    const int64_t node_count = CountNodes(root_node);
+    std::cout << "POMCP offline policy tree contains " << node_count
               << " nodes." << std::endl;
+
+    if (node_count >= node_limit) {
+      std::cout << "POMCP planning complete, reached node limit." << std::endl;
+      return;
+    }
 
     if (completed_count >= completion_threshold)
       completed_times++;
