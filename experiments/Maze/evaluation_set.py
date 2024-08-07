@@ -76,7 +76,6 @@ def run_maze_instance(N, i, problem_file, results_folder, executable):
             "--eval_interval_ms",
             str(eval_ms[N]),
         ]
-        # cmd = f"{executable} {problem_file} --max_sim_depth {4*N*N} --max_time_ms {max_time[N]} --eval_interval_ms {eval_ms[N]}"
         p = subprocess.run(
             cmd,
             stdout=f,
