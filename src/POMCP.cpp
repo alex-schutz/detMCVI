@@ -106,8 +106,8 @@ double PomcpPlanner::Simulate(const State &sampled_sI, TreeNodePtr node,
       this->simulator->Step(sampled_sI, aI);
 
   // check if have child node with this new history "hao"
-  if (node->CheckChildNodeExist(aI, oI)) {
-    TreeNodePtr child_node = node->GetChildNode(aI, oI);
+  auto child_node = node->GetChildNode(aI, oI);
+  if (child_node) {
     esti_V = reward + this->discount * Simulate(next_sI, child_node, depth + 1);
   } else {
     CreateNewNode(node, aI, oI);

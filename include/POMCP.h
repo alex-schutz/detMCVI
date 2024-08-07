@@ -61,9 +61,6 @@ class TreeNode {
   TreeNodePtr GetChildNode(int64_t aI, int64_t oI) {
     return this->ChildNodes_[aI][oI];
   }
-  bool CheckChildNodeExist(int64_t aI, int64_t oI) {
-    return this->ChildNodes_[aI].count(oI);
-  }
   const std::map<int64_t, std::map<int64_t, TreeNodePtr>> &GetChildNodes()
       const {
     return this->ChildNodes_;
