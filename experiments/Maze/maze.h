@@ -12,11 +12,6 @@
 
 #define USE_HEURISTIC_BOUNDS 1
 
-static bool CmpPair(const std::pair<MCVI::State, double>& p1,
-                    const std::pair<MCVI::State, double>& p2) {
-  return p1.second < p2.second;
-}
-
 class Maze : public MCVI::SimInterface,
              public MCVI::ShortestPathFasterAlgorithm {
  private:
@@ -287,20 +282,21 @@ class Maze : public MCVI::SimInterface,
   std::pair<double, bool> bestPath(const MCVI::State& state,
                                    int64_t max_depth) const {
     const auto [costs, predecessors] = calculate(state, max_depth);
-    const auto best_state =
-        std::min_element(costs.begin(), costs.end(), CmpPair);
-    if (best_state == costs.end())
-      throw std::logic_error("Could not find path");
-
-    const auto path_to_goal = reconstructPath(best_state->first, predecessors);
+    const auto path_to_goal = reconstructPath({0}, predecessors);
     const bool can_reach_goal =
         findGoalLocation(
             indexToPlayerLocation(_maze, path_to_goal.back().first[0]))
             .first == -1;
 
-    if (!can_reach_goal) return {max_depth * _move_reward, false};
+    if (!can_reach_goal) {
+      std::cerr << state[0] << " " << max_depth << " " << path_to_goal.size()
+                << std::endl;
+      drawState(state);
+      drawState(path_to_goal.back().first);
+      return {max_depth * _move_reward, false};
+    }
 
-    return {-best_state->second, can_reach_goal};
+    return {-costs.at({0}), can_reach_goal};
   }
 
   int64_t countBlankSpaces(const std::vector<std::string>& maze) {
