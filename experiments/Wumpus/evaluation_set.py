@@ -11,12 +11,12 @@ import shutil
 max_time = {
     2: 1 * 60 * 60 * 1000,
     3: 5 * 60 * 60 * 1000,
-    4: 20 * 60 * 60 * 1000,
+    4: 10 * 60 * 60 * 1000,
 }
 eval_ms = {
     2: 1000,
     3: 10000,
-    4: 20 * 60 * 1000,
+    4: 10 * 60 * 1000,
 }
 
 
@@ -70,7 +70,7 @@ def run_instance(N, problem_file, results_folder, executable):
             cmd,
             stdout=f,
             stderr=subprocess.PIPE,
-            timeout=(max_time[N] / 1000 + max_time[N] / eval_ms[N] * N * N * 100) * 3,
+            # timeout=(max_time[N] / 1000 + max_time[N] / eval_ms[N] * N*20) * 3,
         )
         if p.returncode != 0:
             print(f"INSTANCE {N} FAILED")
@@ -88,9 +88,9 @@ def work(params):
         outfile, error = run_instance(
             problem_size, problem_file, results_folder, executable
         )
-        print("run_maze_instance completed")
+        print("run_wumpus_instance completed")
     except Exception as e:
-        print(f"Error in run_maze_instance: {e}")
+        print(f"Error in run_wumpus_instance: {e}")
         # return
 
     if error:
@@ -133,9 +133,9 @@ def summarise_results(results_folder):
                 results.append(pd.read_csv(f))
         except:
             pass
-
-    df = pd.concat(results, ignore_index=True, sort=False)
-    df.to_csv(f"{results_folder}/wumpus_results_all.csv", index=False)
+    if results:
+        df = pd.concat(results, ignore_index=True, sort=False)
+        df.to_csv(f"{results_folder}/wumpus_results_all.csv", index=False)
 
 
 def run_problem_set(problem_size, timestr, executable):
@@ -152,7 +152,7 @@ def run_problem_set(problem_size, timestr, executable):
 
 if __name__ == "__main__":
     timestr = time.strftime("%Y-%m-%d_%H-%M")
-    executable = "maze_timeseries" + timestr
+    executable = "wumpus_timeseries" + timestr
     instantiate(executable=executable)
 
     max_workers = min(cpu_count() - 2, 1)

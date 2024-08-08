@@ -16,8 +16,8 @@ max_time = {
     5: 2 * 1000,
     10: 2 * 60 * 1000,
     15: 10 * 60 * 1000,
-    20: 60 * 60 * 1000,
-    25: 5 * 60 * 60 * 1000,
+    20: 3 * 60 * 60 * 1000,
+    25: 10 * 60 * 60 * 1000,
     30: 20 * 60 * 60 * 1000,
 }
 eval_ms = {
@@ -70,7 +70,7 @@ def run_maze_instance(N, i, problem_file, results_folder, executable):
             executable,
             problem_file,
             "--max_sim_depth",
-            str(4 * N * N),
+            str(10 * N * N),
             "--max_time_ms",
             str(max_time[N]),
             "--eval_interval_ms",
@@ -80,7 +80,7 @@ def run_maze_instance(N, i, problem_file, results_folder, executable):
             cmd,
             stdout=f,
             stderr=subprocess.PIPE,
-            timeout=(max_time[N] / 1000 + max_time[N] / eval_ms[N] * N * N * 20) * 3,
+            # timeout=(max_time[N] / 1000 + max_time[N] / eval_ms[N] * N) * 3,
         )
         if p.returncode != 0:
             print(f"INSTANCE {N}_{i} FAILED")
@@ -148,8 +148,9 @@ def summarise_results(results_folder):
             except:
                 pass
 
-    df = pd.concat(results, ignore_index=True, sort=False)
-    df.to_csv(f"{results_folder}/maze_results_all.csv", index=False)
+    if results:
+        df = pd.concat(results, ignore_index=True, sort=False)
+        df.to_csv(f"{results_folder}/maze_results_all.csv", index=False)
 
 
 def run_problem_set(problem_size, timestr, executable):
