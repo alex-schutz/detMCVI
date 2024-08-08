@@ -456,8 +456,12 @@ class Wumpus : public MCVI::SimInterface,
   std::pair<double, bool> bestPath(const MCVI::State& state,
                                    int64_t max_depth) const {
     const auto [costs, predecessors] = calculate(state, max_depth);
-    const auto best_state =
-        std::min_element(costs.begin(), costs.end(), CmpPair);
+    const auto best_state = std::min_element(
+        costs.begin(), costs.end(), [state](const auto& lhs, const auto& rhs) {
+          if (lhs.first == state) return false;  // skip lhs
+          if (rhs.first == state) return true;   // skip rhs
+          return CmpPair(lhs, rhs);              // compare the rest
+        });
     if (best_state == costs.end())
       throw std::logic_error("Could not find path");
 
