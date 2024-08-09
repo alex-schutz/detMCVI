@@ -9,13 +9,13 @@
 #include <string>
 
 struct EvalParams {
-  std::string datafile;               // problem data file
-  int64_t nb_particles_b0 = 100000;   // num init belief samples
-  int64_t max_belief_samples = 2000;  // downsampled belief size
-  int64_t max_node_size = 3125000;    // num FSC nodes
-  int64_t max_sim_depth = 100;        // trajectory depth
-  double eval_epsilon = 0.005;        // trajectory cumulative discount limit
-  double converge_thresh = 0.005;     // upper and lower bound diff
+  std::string datafile;                // problem data file
+  int64_t nb_particles_b0 = 100000;    // num init belief samples
+  int64_t max_belief_samples = 20000;  // downsampled belief size
+  int64_t max_node_size = 3125000;     // num FSC nodes
+  int64_t max_sim_depth = 100;         // trajectory depth
+  double eval_epsilon = 0.005;         // trajectory cumulative discount limit
+  double converge_thresh = 0.005;      // upper and lower bound diff
   int64_t max_iterations =
       std::numeric_limits<int64_t>::max();  // MCVI iterations
   int64_t max_time_ms = 60000;              // MCVI computation time
