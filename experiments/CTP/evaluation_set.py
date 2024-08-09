@@ -83,6 +83,8 @@ def run_ctp_instance(N, i, problem_file, results_folder, executable):
             str(max_time[N]),
             "--eval_interval_ms",
             str(eval_ms[N]),
+            "max_belief_samples",
+            str(20000),
         ]
         p = subprocess.run(
             cmd,

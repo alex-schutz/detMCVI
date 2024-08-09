@@ -16,7 +16,7 @@ max_time = {
 eval_ms = {
     2: 1000,
     3: 10000,
-    4: 10 * 60 * 1000,
+    4: 5 * 60 * 1000,
 }
 
 
@@ -65,6 +65,8 @@ def run_instance(N, problem_file, results_folder, executable):
             str(max_time[N]),
             "--eval_interval_ms",
             str(eval_ms[N]),
+            "max_belief_samples",
+            str(20000),
         ]
         p = subprocess.run(
             cmd,
@@ -155,7 +157,7 @@ if __name__ == "__main__":
     executable = "wumpus_timeseries" + timestr
     instantiate(executable=executable)
 
-    max_workers = min(cpu_count() - 2, 1)
+    max_workers = min(cpu_count() - 2, 3)
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
     problem_sets = max_time.keys()
