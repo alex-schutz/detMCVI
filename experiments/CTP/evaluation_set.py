@@ -36,6 +36,19 @@ eval_ms = {
     75: 10 * 60 * 1000,
     100: 20 * 60 * 1000,
 }
+max_time1 = {
+    5: 30 * 1000,
+    10: 2 * 60 * 1000,
+    15: 10 * 60 * 1000,
+    20: 60 * 60 * 1000,
+    30: 20 * 60 * 60 * 1000,
+}
+max_time2 = {
+    40: 60 * 60 * 60 * 1000,
+    50: 5 * 60 * 60 * 1000,
+    75: 10 * 60 * 60 * 1000,
+    100: 20 * 60 * 60 * 1000,
+}
 
 
 def initialise_folder(results_folder):
@@ -94,6 +107,33 @@ def run_ctp_instance(N, i, problem_file, results_folder, executable):
         )
         if p.returncode != 0:
             print(f"INSTANCE {N}_{i} FAILED")
+            print(p.stderr)
+            return outfile, 1
+        else:
+            print(p.stderr, file=f)
+
+    with open(outfile, "w+") as f:
+        # Run solver
+        cmd = [
+            "../MCVI/build/experiments/CTP/ctp_timeseries",
+            problem_file,
+            "--max_sim_depth",
+            str(2 * N),
+            "--max_time_ms",
+            str(max_time[N]),
+            "--eval_interval_ms",
+            str(eval_ms[N]),
+            "max_belief_samples",
+            str(min(0.00007299857 * N**5.712286, 20000)),
+        ]
+        p = subprocess.run(
+            cmd,
+            stdout=f,
+            stderr=subprocess.PIPE,
+            timeout=(max_time[N] / 1000 + max_time[N] / eval_ms[N] * 10),
+        )
+        if p.returncode != 0:
+            print(f"INSTANCE {N}_{i} Orig MCVI FAILED")
             print(p.stderr)
             return outfile, 1
         else:
@@ -169,7 +209,7 @@ def summarise_results(results_folder):
         df.to_csv(f"{results_folder}/ctp_results_all.csv", index=False)
 
 
-def run_problem_set(problem_size, timestr, executable):
+def run_problem_set(problem_size, timestr, executable, tp):
     results_folder, problem_files, seeds = generate_problem_set(problem_size, timestr)
     folder_exec = shutil.copy(executable, results_folder)
     futures = []
@@ -189,11 +229,11 @@ if __name__ == "__main__":
     max_workers = min(cpu_count() - 2, 4)
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
-    problem_sets = max_time.keys()
+    problem_sets = max_time1.keys()
     all_futures = []
 
     for problem_size in problem_sets:
-        futures = run_problem_set(problem_size, timestr, executable)
+        futures = run_problem_set(problem_size, timestr, executable, tp)
         all_futures.extend(futures)
 
     # Check if futures are done and summarise results
@@ -204,3 +244,22 @@ if __name__ == "__main__":
                 summarise_results(results_folder)
 
     tp.shutdown()
+
+    max_workers = min(cpu_count() - 2, 1)
+    tp2 = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+
+    problem_sets = max_time2.keys()
+    all_futures = []
+
+    for problem_size in problem_sets:
+        futures = run_problem_set(problem_size, timestr, executable, tp2)
+        all_futures.extend(futures)
+
+    # Check if futures are done and summarise results
+    while all_futures:
+        for future, results_folder in all_futures[:]:
+            if future.done():
+                all_futures.remove((future, results_folder))
+                summarise_results(results_folder)
+
+    tp2.shutdown()
