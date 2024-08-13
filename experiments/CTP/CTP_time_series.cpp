@@ -134,9 +134,11 @@ int main(int argc, char* argv[]) {
     init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
+  auto mcvi_ctp = new CTP(pomdp);
+  auto aostar_ctp = new CTP(pomdp);
+  auto pomcp_ctp = new CTP(pomdp);
 
   // Run MCVI
-  auto mcvi_ctp = new CTP(pomdp);
   runMCVIIncrements(
       mcvi_ctp, init_belief, rng, params.max_sim_depth, params.max_node_size,
       params.max_sim_depth, params.eval_epsilon, params.converge_thresh,
@@ -146,7 +148,6 @@ int main(int argc, char* argv[]) {
   delete mcvi_ctp;
 
   // Compare to AO*
-  auto aostar_ctp = new CTP(pomdp);
   runAOStarIncrements(aostar_ctp, init_belief, rng, params.max_sim_depth,
                       params.max_time_ms, params.max_sim_depth,
                       params.n_eval_trials, 10 * params.nb_particles_b0,
@@ -155,7 +156,6 @@ int main(int argc, char* argv[]) {
   delete aostar_ctp;
 
   // Compare to POMCP offline
-  auto pomcp_ctp = new CTP(pomdp);
   const double pomcp_c = 2.0;
   const int64_t pomcp_nb_rollout = 200;
   const double pomcp_epsilon = 0.01;

@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "BeliefDistribution.h"
 #include "Cache.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
@@ -87,6 +86,7 @@ class Maze : public MCVI::SimInterface,
   double applyActionToState(const MCVI::State& sI, int64_t aI,
                             MCVI::State& sNext) const {
     sNext = sI;
+    if (IsTerminal(sI)) return 0;
     const auto curr_maze = indexToPlayerLocation(_maze, sI[0]);
     const std::pair<int64_t, int64_t> curr_loc = findPlayerLocation(curr_maze);
     if (curr_loc.first == -1 || curr_loc.second == -1)
@@ -323,8 +323,13 @@ class Maze : public MCVI::SimInterface,
 
     // Initial belief
     os << "start: " << std::endl;
-    auto init_belief = SampleInitialBelief(init_belief_sz, this);
-    for (const auto& s : state_enum) os << init_belief[s] << " ";
+    os << 0 << " ";  // goal state
+    double sum = 0.0;
+    for (int64_t s = 1; s < state_space_sz; ++s) {
+      const double target = s * 1.0 / (state_space_sz - 1);
+      os << target - sum << " ";
+      sum += target - sum;
+    }
     os << std::endl << std::endl;
 
     // Transition probabilities  T : <action> : <start-state> : <end-state> %f
@@ -333,7 +338,11 @@ class Maze : public MCVI::SimInterface,
     for (size_t sI = 0; sI < state_enum.size(); ++sI) {
       for (int64_t a = 0; a < GetSizeOfA(); ++a) {
         MCVI::State sNext;
-        const double reward = applyActionToState(state_enum[sI], a, sNext);
+        double reward = applyActionToState(state_enum[sI], a, sNext);
+        if (IsTerminal(state_enum[sI])) {
+          reward = 0;
+          sNext = state_enum[sI];
+        }
         const int64_t obs = observeState(state_enum[sI]);
         const size_t eI = std::distance(
             state_enum.begin(),

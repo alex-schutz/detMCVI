@@ -71,6 +71,7 @@ class CTP : public MCVI::SimInterface {
   std::vector<std::string> observations;
   double _idle_reward;
   double _bad_action_reward;
+  double _complete_reward = 0;
   mutable MCVI::LRUCache<MCVI::State, bool, MCVI::StateHash, MCVI::StateEqual>
       goal_reachable;
   mutable MCVI::LRUCache<MCVI::State, double, MCVI::StateHash, MCVI::StateEqual>
@@ -224,16 +225,17 @@ class CTP : public MCVI::SimInterface {
   double applyActionToState(const MCVI::State& state, int64_t action,
                             MCVI::State& sNext) const override {
     sNext = state;
+    if (IsTerminal(state)) return 0;
     const int64_t loc_idx = sfIdx("loc");
     const int64_t loc = state.at(loc_idx);
     if (loc == (int64_t)nodes.size()) {  // special initial state
       sNext[loc_idx] = origin;
       return 0;
     }
-    if (loc == goal) return 0;  // goal is absorbing
+    if (loc == goal) return _complete_reward;  // goal is absorbing
 
     if (actions.at(action) == "decide_goal_unreachable")
-      return goalUnreachable(state) ? 0 : _bad_action_reward;
+      return goalUnreachable(state) ? _complete_reward : _bad_action_reward;
 
     const int64_t dest_loc = nodes.at(action);
     if (loc == dest_loc) return _idle_reward;  // idling
@@ -551,7 +553,11 @@ class CTP : public MCVI::SimInterface {
     for (size_t sI = 0; sI < state_enum.size(); ++sI) {
       for (int64_t a = 0; a < GetSizeOfA(); ++a) {
         MCVI::State sNext;
-        const double reward = applyActionToState(state_enum[sI], a, sNext);
+        double reward = applyActionToState(state_enum[sI], a, sNext);
+        if (IsTerminal(state_enum[sI])) {
+          reward = 0;
+          sNext = state_enum[sI];
+        }
         const int64_t obs = observeState(state_enum[sI]);
         const size_t eI = std::distance(
             state_enum.begin(),

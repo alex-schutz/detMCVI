@@ -64,6 +64,7 @@ def parse_file(filename) -> pd.DataFrame:
     mcvi_stats = {}
     ao_stats = {}
     pomcp_stats = {}
+    origmcvi_stats = {}
 
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -90,6 +91,13 @@ def parse_file(filename) -> pd.DataFrame:
                 info_lines = lines[i + 1 : i + 27]
                 pomcp_stats[time] = parse_evaluation(info_lines)
                 i += 26
+            elif lines[i].startswith("Evaluation of OrigMCVI policy"):
+                time = extract_float(lines[i].split("at time ")[1])
+                if i + 27 > len(lines):
+                    break
+                info_lines = lines[i + 1 : i + 27]
+                origmcvi_stats[time] = parse_evaluation(info_lines)
+                i += 26
             else:
                 i += 1
 
@@ -105,7 +113,11 @@ def parse_file(filename) -> pd.DataFrame:
         {"Algorithm": "POMCP", "Timestamp": timestamp, **stats}
         for timestamp, stats in pomcp_stats.items()
     ]
-    combined_data = mcvi_data + ao_data + pomcp_data
+    orig_data = [
+        {"Algorithm": "OrigMCVI", "Timestamp": timestamp, **stats}
+        for timestamp, stats in origmcvi_stats.items()
+    ]
+    combined_data = mcvi_data + ao_data + pomcp_data + orig_data
     return pd.DataFrame(combined_data)
 
 
@@ -220,9 +232,14 @@ if __name__ == "__main__":
     # output="png"
     # output="html"
 
-    series_file = "wumpus_results_3_2024-07-26_08-43/WumpusInstance_3.txt"
+    series_file = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_21-47/WumpusInstance_2.txt"
+    series_file2 = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_17-08/WumpusInstance_2.txt"
 
     df = parse_file(series_file)
+    df = df[df["Algorithm"] != "MCVI"]
+    df2 = parse_file(series_file2)
+    df2 = df2[df2["Algorithm"] == "MCVI"]
+    df = pd.concat([df, df2])
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     plot_timeseries(df, "Policy value", "timeseries_5_value", output)
