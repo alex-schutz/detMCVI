@@ -109,7 +109,6 @@ static bool MCVITimeExpired(const std::chrono::steady_clock::time_point& begin,
 double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
                                   double R_lower, int64_t ms_remaining,
                                   int64_t max_depth_sim, int64_t eval_depth,
-
                                   std::atomic<bool>& exit_flag) {
   std::cout << "Belief Expand Process" << std::flush;
   std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {Tr_root};
@@ -121,7 +120,7 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
     SampleBeliefs(traversal_list, eval_depth - depth, precision,
                   excessUncertainty, R_lower, max_depth_sim - depth);
     if (exit_flag.load()) break;
-    if (excessUncertainty <= 0) break;
+    // if (excessUncertainty <= 0) break;
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed =
         std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
