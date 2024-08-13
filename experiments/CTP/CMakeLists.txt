@@ -12,3 +12,6 @@ target_link_libraries(ctp_timeseries mcvi_library)
 
 add_executable(ctp_optimistic CTP_optimism.cpp)
 target_link_libraries(ctp_optimistic mcvi_library)
+
+add_executable(ctp_to_sarsop CTP_to_SARSOP.cpp)
+target_link_libraries(ctp_to_sarsop mcvi_library)

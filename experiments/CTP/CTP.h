@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "BeliefDistribution.h"
 #include "Cache.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
@@ -134,7 +135,7 @@ class CTP : public MCVI::SimInterface {
     std::uniform_real_distribution<> unif(0, 1);
     std::map<std::string, int64_t> state;
     // agent starts at special initial state (for init observation)
-    state["loc"] = -1;
+    state["loc"] = (int64_t)nodes.size();
     // stochastic edge status
     for (const auto& [edge, p] : stoch_edges)
       state[edge2str(edge)] = (unif(rng)) < p ? 0 : 1;
@@ -172,7 +173,8 @@ class CTP : public MCVI::SimInterface {
                                           int64_t max_depth) const {
     const auto loc_idx = sfIdx("loc");
     MCVI::State eval_state = state;
-    if (eval_state.at(loc_idx) == -1) eval_state[loc_idx] = origin;
+    if (eval_state.at(loc_idx) == (int64_t)nodes.size())
+      eval_state[loc_idx] = origin;
     if (state_value.contains(eval_state))
       return {state_value.at(eval_state), true};
 
@@ -224,7 +226,7 @@ class CTP : public MCVI::SimInterface {
     sNext = state;
     const int64_t loc_idx = sfIdx("loc");
     const int64_t loc = state.at(loc_idx);
-    if (loc == -1) {  // special initial state
+    if (loc == (int64_t)nodes.size()) {  // special initial state
       sNext[loc_idx] = origin;
       return 0;
     }
@@ -352,7 +354,7 @@ class CTP : public MCVI::SimInterface {
   }
 
   bool nodesAdjacent(int64_t a, int64_t b, const MCVI::State& state) const {
-    if (a == -1 || b == -1) return false;
+    if (a == (int64_t)nodes.size() || b == (int64_t)nodes.size()) return false;
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
     if (edges.find(edge) == edges.end()) return false;  // edge does not exist
@@ -369,7 +371,8 @@ class CTP : public MCVI::SimInterface {
     int64_t observation = 0;
 
     int64_t loc = state.at(sfIdx("loc"));
-    if (loc == -1) loc = origin;  // observe initial state as if at origin
+    if (loc == (int64_t)nodes.size())
+      loc = origin;  // observe initial state as if at origin
     const int64_t loc_idx = std::distance(
         nodes.begin(), std::find(nodes.begin(), nodes.end(), loc));
 
@@ -388,7 +391,7 @@ class CTP : public MCVI::SimInterface {
   bool checkFinished(const MCVI::State& sI, int64_t aI,
                      const MCVI::State& sNext) const {
     const int64_t loc_idx = sfIdx("loc");
-    if (sI.at(loc_idx) == -1) return false;
+    if (sI.at(loc_idx) == (int64_t)nodes.size()) return false;
     if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
       return true;
     return sNext.at(loc_idx) == goal;
@@ -460,7 +463,7 @@ class CTP : public MCVI::SimInterface {
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
     MCVI::State best_case_state = findMaxSumElement(belief, sf_indices);
-    if (best_case_state.at(sfIdx("loc")) == -1)
+    if (best_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
       best_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(best_case_state);
@@ -478,7 +481,7 @@ class CTP : public MCVI::SimInterface {
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
     MCVI::State worst_case_state = findMinSumElement(belief, sf_indices);
-    if (worst_case_state.at(sfIdx("loc")) == -1)
+    if (worst_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
       worst_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(worst_case_state);
@@ -487,6 +490,78 @@ class CTP : public MCVI::SimInterface {
     const auto [val, _] = get_state_value(worst_case_state, max_depth);
     state_value[worst_case_state] = val;
     return val;
+  }
+
+  std::vector<MCVI::State> enumerateStates(
+      size_t max_size = std::numeric_limits<int64_t>::max()) const {
+    std::vector<MCVI::State> enum_states;
+    std::vector<size_t> sizes;
+    for (const auto& pair : state_factor_sizes) sizes.push_back(pair.second);
+
+    // Initialize a state vector with the first state (all zeros)
+    MCVI::State current_state(state_factor_sizes.size(), 0);
+    enum_states.push_back(current_state);
+
+    // Generate all combinations of state factors
+    while (true) {
+      // Find the rightmost factor that can be incremented
+      size_t factor_index = state_factor_sizes.size();
+      while (factor_index > 0) {
+        factor_index--;
+        if (current_state[factor_index] + 1 < (int64_t)sizes[factor_index]) {
+          current_state[factor_index]++;
+          break;
+        } else {
+          // Reset this factor and carry over to the next factor
+          current_state[factor_index] = 0;
+        }
+      }
+
+      // If we completed a full cycle (all factors are zero again), we are done
+      if (factor_index == 0 && current_state[0] == 0) {
+        break;
+      }
+      // warn if overflow
+      if (enum_states.size() >= max_size)
+        throw std::runtime_error("Maximum size exceeded.");
+      enum_states.push_back(current_state);
+    }
+    return enum_states;
+  }
+
+ public:
+  void toSARSOP(std::ostream& os, int64_t init_belief_sz) {
+    std::vector<MCVI::State> state_enum = enumerateStates();
+    const size_t num_states = state_enum.size();
+    os << "discount: " << GetDiscount() << std::endl;
+    os << "values: reward" << std::endl;
+    os << "states: " << num_states << std::endl;
+    os << "actions: " << GetSizeOfA() << std::endl;
+    os << "observations: " << GetSizeOfObs() << std::endl << std::endl;
+
+    // Initial belief
+    os << "start: " << std::endl;
+    auto init_belief = SampleInitialBelief(init_belief_sz, this);
+    for (const auto& s : state_enum) os << init_belief[s] << " ";
+    os << std::endl << std::endl;
+
+    // Transition probabilities  T : <action> : <start-state> : <end-state> %f
+    // Observation probabilities O : <action> : <end-state> : <observation> %f
+    // Reward     R: <action> : <start-state> : <end-state> : <observation> %f
+    for (size_t sI = 0; sI < state_enum.size(); ++sI) {
+      for (int64_t a = 0; a < GetSizeOfA(); ++a) {
+        MCVI::State sNext;
+        const double reward = applyActionToState(state_enum[sI], a, sNext);
+        const int64_t obs = observeState(state_enum[sI]);
+        const size_t eI = std::distance(
+            state_enum.begin(),
+            std::find(state_enum.begin(), state_enum.end(), sNext));
+        os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
+        os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : " << obs << " "
+           << reward << std::endl;
+      }
+    }
   }
 };
 

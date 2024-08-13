@@ -94,14 +94,14 @@ class Wumpus : public MCVI::SimInterface,
     // Wumpus position
     int64_t wumpus_x = state[sfIdx("wumpus_x")];
     int64_t wumpus_y = state[sfIdx("wumpus_y")];
-    if (wumpus_x != -1 && wumpus_y != -1) {
+    if (wumpus_x != grid_size && wumpus_y != grid_size) {
       grid[wumpus_x][wumpus_y][1] = 'W';
     }
 
     // Gold position
     int64_t gold_x = state[sfIdx("gold_x")];
     int64_t gold_y = state[sfIdx("gold_y")];
-    if (gold_x != -1 && gold_y != -1) {
+    if (gold_x != grid_size && gold_y != grid_size) {
       grid[gold_x][gold_y][0] = 'G';
     }
 
@@ -173,7 +173,7 @@ class Wumpus : public MCVI::SimInterface,
     // state for init observation
     state_factors["player_pos"] = 0;
     state_factors["player_dir"] = 1;  // Facing East
-    state_factors["player_state"] = -1;
+    state_factors["player_state"] = 2;
     state_factors["player_gold"] = 0;
     state_factors["player_arrow"] = 1;
 
@@ -198,7 +198,7 @@ class Wumpus : public MCVI::SimInterface,
   double applyActionToState(const MCVI::State& sI, int64_t aI,
                             MCVI::State& sNext) const {
     sNext = sI;
-    if (sI[sfIdx("player_state")] == -1) {  // initial state
+    if (sI[sfIdx("player_state")] == 2) {  // initial state
       sNext[sfIdx("player_state")] = 0;
       return 0;
     } else if (sI[sfIdx("player_state")] == 1) {  // terminal state
@@ -243,8 +243,8 @@ class Wumpus : public MCVI::SimInterface,
                (sI[sfIdx("gold_x")] == loc_x &&
                 sI[sfIdx("gold_y")] == loc_y)) {  // grab gold
       // remove gold from world
-      sNext[sfIdx("gold_x")] = -1;
-      sNext[sfIdx("gold_y")] = -1;
+      sNext[sfIdx("gold_x")] = grid_size;
+      sNext[sfIdx("gold_y")] = grid_size;
       // put gold in inventory
       sNext[sfIdx("player_gold")] = 1;
       return _grab_gold_reward;
@@ -261,8 +261,8 @@ class Wumpus : public MCVI::SimInterface,
 
       while ((x_inc != 0 && x != x_end) || (y_inc != 0 && y != y_end)) {
         if (sI[sfIdx("wumpus_x")] == x && sI[sfIdx("wumpus_y")] == y) {
-          sNext[sfIdx("wumpus_x")] = -1;
-          sNext[sfIdx("wumpus_y")] = -1;
+          sNext[sfIdx("wumpus_x")] = grid_size;
+          sNext[sfIdx("wumpus_y")] = grid_size;
           break;
         }
         x += x_inc;
@@ -348,7 +348,7 @@ class Wumpus : public MCVI::SimInterface,
     state_factors["player_dir"] = 4;  // 0=N, 1=E, 2=S, 3=W
     state_factors["player_gold"] = 2;
     state_factors["player_arrow"] = 2;
-    state_factors["player_state"] = 3;  // -1=init, 0=playing, 1=terminal
+    state_factors["player_state"] = 3;  // 2=init, 0=playing, 1=terminal
     state_factors["wumpus_x"] = grid_size + 1;
     state_factors["wumpus_y"] = grid_size + 1;
     state_factors["gold_x"] = grid_size + 1;
@@ -409,9 +409,10 @@ class Wumpus : public MCVI::SimInterface,
           prev_loc_y + y_inc < 0 || prev_loc_y + y_inc >= grid_size)
         obs += "bump";
     } else if (actions[aI] == "shoot" && sPrev[sfIdx("player_arrow")] == 1 &&
-               sPrev[sfIdx("wumpus_x")] != -1 &&
-               sPrev[sfIdx("wumpus_y")] != -1 && sI[sfIdx("wumpus_x")] == -1 &&
-               sI[sfIdx("wumpus_y")] == -1) {  // hear wumpus scream
+               sPrev[sfIdx("wumpus_x")] != grid_size &&
+               sPrev[sfIdx("wumpus_y")] != grid_size &&
+               sI[sfIdx("wumpus_x")] == grid_size &&
+               sI[sfIdx("wumpus_y")] == grid_size) {  // hear wumpus scream
       obs += "scream";
     }
 
@@ -481,6 +482,78 @@ class Wumpus : public MCVI::SimInterface,
     }
 
     return {-best_state->second, can_reach_gold};
+  }
+
+  std::vector<MCVI::State> enumerateStates(
+      size_t max_size = std::numeric_limits<int64_t>::max()) const {
+    std::vector<MCVI::State> enum_states;
+    std::vector<size_t> sizes;
+    for (const auto& pair : state_factor_sizes) sizes.push_back(pair.second);
+
+    // Initialize a state vector with the first state (all zeros)
+    MCVI::State current_state(state_factor_sizes.size(), 0);
+    enum_states.push_back(current_state);
+
+    // Generate all combinations of state factors
+    while (true) {
+      // Find the rightmost factor that can be incremented
+      size_t factor_index = state_factor_sizes.size();
+      while (factor_index > 0) {
+        factor_index--;
+        if (current_state[factor_index] + 1 < (int64_t)sizes[factor_index]) {
+          current_state[factor_index]++;
+          break;
+        } else {
+          // Reset this factor and carry over to the next factor
+          current_state[factor_index] = 0;
+        }
+      }
+
+      // If we completed a full cycle (all factors are zero again), we are done
+      if (factor_index == 0 && current_state[0] == 0) {
+        break;
+      }
+      // warn if overflow
+      if (enum_states.size() >= max_size)
+        throw std::runtime_error("Maximum size exceeded.");
+      enum_states.push_back(current_state);
+    }
+    return enum_states;
+  }
+
+ public:
+  void toSARSOP(std::ostream& os, int64_t init_belief_sz) {
+    std::vector<MCVI::State> state_enum = enumerateStates();
+    const size_t num_states = state_enum.size();
+    os << "discount: " << GetDiscount() << std::endl;
+    os << "values: reward" << std::endl;
+    os << "states: " << num_states << std::endl;
+    os << "actions: " << GetSizeOfA() << std::endl;
+    os << "observations: " << GetSizeOfObs() << std::endl << std::endl;
+
+    // Initial belief
+    os << "start: " << std::endl;
+    auto init_belief = SampleInitialBelief(init_belief_sz, this);
+    for (const auto& s : state_enum) os << init_belief[s] << " ";
+    os << std::endl << std::endl;
+
+    // Transition probabilities  T : <action> : <start-state> : <end-state> %f
+    // Observation probabilities O : <action> : <end-state> : <observation> %f
+    // Reward     R: <action> : <start-state> : <end-state> : <observation> %f
+    for (size_t sI = 0; sI < state_enum.size(); ++sI) {
+      for (int64_t a = 0; a < GetSizeOfA(); ++a) {
+        MCVI::State sNext;
+        const double reward = applyActionToState(state_enum[sI], a, sNext);
+        const int64_t obs = observeState(state_enum[sI], state_enum[sI], a);
+        const size_t eI = std::distance(
+            state_enum.begin(),
+            std::find(state_enum.begin(), state_enum.end(), sNext));
+        os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
+        os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : " << obs << " "
+           << reward << std::endl;
+      }
+    }
   }
 };
 

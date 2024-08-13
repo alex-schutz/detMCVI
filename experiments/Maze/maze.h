@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "BeliefDistribution.h"
 #include "Cache.h"
 #include "ShortestPath.h"
 #include "SimInterface.h"
@@ -307,6 +308,42 @@ class Maze : public MCVI::SimInterface,
       }
     }
     return count;
+  }
+
+ public:
+  void toSARSOP(std::ostream& os, int64_t init_belief_sz) {
+    const size_t num_states = state_space_sz;
+    std::vector<MCVI::State> state_enum;
+    for (int64_t s = 0; s < state_space_sz; ++s) state_enum.push_back({s});
+    os << "discount: " << 0.999 << std::endl;
+    os << "values: reward" << std::endl;
+    os << "states: " << num_states << std::endl;
+    os << "actions: " << GetSizeOfA() << std::endl;
+    os << "observations: " << GetSizeOfObs() << std::endl << std::endl;
+
+    // Initial belief
+    os << "start: " << std::endl;
+    auto init_belief = SampleInitialBelief(init_belief_sz, this);
+    for (const auto& s : state_enum) os << init_belief[s] << " ";
+    os << std::endl << std::endl;
+
+    // Transition probabilities  T : <action> : <start-state> : <end-state> %f
+    // Observation probabilities O : <action> : <end-state> : <observation> %f
+    // Reward     R: <action> : <start-state> : <end-state> : <observation> %f
+    for (size_t sI = 0; sI < state_enum.size(); ++sI) {
+      for (int64_t a = 0; a < GetSizeOfA(); ++a) {
+        MCVI::State sNext;
+        const double reward = applyActionToState(state_enum[sI], a, sNext);
+        const int64_t obs = observeState(state_enum[sI]);
+        const size_t eI = std::distance(
+            state_enum.begin(),
+            std::find(state_enum.begin(), state_enum.end(), sNext));
+        os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
+        os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : " << obs << " "
+           << reward << std::endl;
+      }
+    }
   }
 };
 
