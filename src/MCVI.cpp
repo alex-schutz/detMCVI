@@ -68,8 +68,8 @@ static double s_time_diff(const std::chrono::steady_clock::time_point& begin,
 
 void MCVIPlanner::SampleBeliefs(
     std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-    int64_t eval_depth, double target, double& excessUncertainty,
-    double R_lower, int64_t max_depth_sim) {
+    int64_t eval_depth, double eval_epsilon, double R_lower,
+    int64_t max_depth_sim) {
   const auto node = traversal_list.back();
   if (node == nullptr) throw std::logic_error("Invalid node");
   // Initialise node with all action children if not already done
@@ -85,7 +85,9 @@ void MCVIPlanner::SampleBeliefs(
   node->UpdateBestAction();
 
   try {
-    const auto next_node = node->ChooseObservation(target, excessUncertainty);
+    const auto [next_node, excess_uncertainty] =
+        node->ChooseObservation(eval_epsilon, _pomdp->GetDiscount());
+    if (excess_uncertainty < 0) return;
     traversal_list.push_back(next_node);
   } catch (std::logic_error& e) {
     if (std::string(e.what()) == "Failed to find best observation") return;
@@ -109,18 +111,17 @@ static bool MCVITimeExpired(const std::chrono::steady_clock::time_point& begin,
 double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
                                   double R_lower, int64_t ms_remaining,
                                   int64_t max_depth_sim, int64_t eval_depth,
+                                  double eval_epsilon,
                                   std::atomic<bool>& exit_flag) {
   std::cout << "Belief Expand Process" << std::flush;
   std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {Tr_root};
   const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
 
   auto begin = std::chrono::steady_clock::now();
-  double excessUncertainty = 0.0;
   for (int64_t depth = 0; depth < max_depth_sim; ++depth) {
-    SampleBeliefs(traversal_list, eval_depth - depth, precision,
-                  excessUncertainty, R_lower, max_depth_sim - depth);
+    SampleBeliefs(traversal_list, eval_depth - depth, eval_epsilon, R_lower,
+                  max_depth_sim - depth);
     if (exit_flag.load()) break;
-    // if (excessUncertainty <= 0) break;
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed =
         std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
@@ -189,8 +190,9 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
   }
   const auto iter_start = std::chrono::steady_clock::now();
   std::cout << "--- Iter " << iter << " ---" << std::endl;
-  const double precision = MCVIIteration(Tr_root, R_lower, ms_remaining,
-                                         max_depth_sim, eval_depth, exit_flag);
+  const double precision =
+      MCVIIteration(Tr_root, R_lower, ms_remaining, max_depth_sim, eval_depth,
+                    eval_epsilon, exit_flag);
   return {_fsc,
           Tr_root,
           precision,

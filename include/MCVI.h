@@ -57,7 +57,8 @@ class MCVIPlanner {
 
   double MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root, double R_lower,
                        int64_t ms_remaining, int64_t max_depth_sim,
-                       int64_t eval_depth, std::atomic<bool>& exit_flag);
+                       int64_t eval_depth, double eval_epsilon,
+                       std::atomic<bool>& exit_flag);
 
   // run evaluation after each iteration
   std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> PlanAndEvaluate(
@@ -97,8 +98,8 @@ class MCVIPlanner {
 
   void SampleBeliefs(
       std::vector<std::shared_ptr<BeliefTreeNode>>& traversal_list,
-      int64_t eval_depth, double target, double& excessUncertainty,
-      double R_lower, int64_t max_depth_sim);
+      int64_t eval_depth, double eval_epsilon, double R_lower,
+      int64_t max_depth_sim);
 };
 
 std::vector<State> EvaluationWithGreedyTreePolicy(

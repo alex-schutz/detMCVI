@@ -90,21 +90,24 @@ std::shared_ptr<BeliefTreeNode> ActionNode::GetChild(
   return it->second.GetBelief();
 }
 
-std::shared_ptr<BeliefTreeNode> ActionNode::ChooseObservation(
-    double target, double& excessUncertainty) const {
+std::pair<std::shared_ptr<BeliefTreeNode>, double>
+ActionNode::ChooseObservation(double epsilon, double gamma,
+                              int64_t depth) const {
   double best_gap = -std::numeric_limits<double>::infinity();
   int64_t best_obs = -1;
+  double excess_uncertainty = 0;
   for (const auto& [obs, obs_node] : _observation_edges) {
-    const double diff = (obs_node.GetUpper() - obs_node.GetLower()) - target;
+    const double diff = (obs_node.GetUpper() - obs_node.GetLower()) -
+                        epsilon * std::pow(gamma, -depth);
     const double weighted_diff = diff * obs_node.GetWeight();
     if (weighted_diff > best_gap) {
       best_gap = weighted_diff;
       best_obs = obs;
-      excessUncertainty = diff;
+      excess_uncertainty = weighted_diff;
     }
   }
   if (best_obs == -1) throw std::logic_error("Failed to find best observation");
-  return _observation_edges.at(best_obs).GetBelief();
+  return {_observation_edges.at(best_obs).GetBelief(), excess_uncertainty};
 }
 
 void ActionNode::BackUp(AlphaVectorFSC& fsc, double R_lower,
@@ -168,15 +171,15 @@ const std::unordered_map<int64_t, ObservationNode>& BeliefTreeNode::GetChildren(
   return it->second.GetChildren();
 }
 
-std::shared_ptr<BeliefTreeNode> BeliefTreeNode::ChooseObservation(
-    double target, double& excessUncertainty) {
+std::pair<std::shared_ptr<BeliefTreeNode>, double>
+BeliefTreeNode::ChooseObservation(double epsilon, double gamma) {
   auto it = _action_edges.find(_bestActUBound);
   if (it == _action_edges.cend()) UpdateBestAction();
   it = _action_edges.find(_bestActUBound);
   if (it == _action_edges.cend())
     throw std::logic_error("Could not find best action");
 
-  return it->second.ChooseObservation(target, excessUncertainty);
+  return it->second.ChooseObservation(epsilon, gamma, _belief_depth + 1);
 }
 
 const ActionNode& BeliefTreeNode::GetOrAddChildren(
