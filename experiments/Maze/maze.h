@@ -289,13 +289,7 @@ class Maze : public MCVI::SimInterface,
             indexToPlayerLocation(_maze, path_to_goal.back().first[0]))
             .first == -1;
 
-    if (!can_reach_goal) {
-      std::cerr << state[0] << " " << max_depth << " " << path_to_goal.size()
-                << std::endl;
-      drawState(state);
-      drawState(path_to_goal.back().first);
-      return {max_depth * _move_reward, false};
-    }
+    if (!can_reach_goal) return {max_depth * _move_reward, false};
 
     return {-costs.at({0}), can_reach_goal};
   }
