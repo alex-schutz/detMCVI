@@ -311,7 +311,7 @@ class Maze : public MCVI::SimInterface,
   }
 
  public:
-  void toSARSOP(std::ostream& os, int64_t init_belief_sz) {
+  void toSARSOP(std::ostream& os) {
     const size_t num_states = state_space_sz;
     std::vector<MCVI::State> state_enum;
     for (int64_t s = 0; s < state_space_sz; ++s) state_enum.push_back({s});

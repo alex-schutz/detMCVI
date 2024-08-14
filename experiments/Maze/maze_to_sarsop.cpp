@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Writing Maze SARSOP to " << params.datafile + ".pomdp"
             << std::endl;
   std::fstream f(params.datafile + ".pomdp", std::fstream::out);
-  pomdp.toSARSOP(f, params.nb_particles_b0);
+  pomdp.toSARSOP(f);
   f.close();
   return 0;
 }
