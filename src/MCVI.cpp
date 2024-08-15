@@ -115,7 +115,6 @@ double MCVIPlanner::MCVIIteration(std::shared_ptr<BeliefTreeNode> Tr_root,
                                   std::atomic<bool>& exit_flag) {
   std::cout << "Belief Expand Process" << std::flush;
   std::vector<std::shared_ptr<BeliefTreeNode>> traversal_list = {Tr_root};
-  const double precision = Tr_root->GetUpper() - Tr_root->GetLower();
 
   auto begin = std::chrono::steady_clock::now();
   for (int64_t depth = 0; depth < max_depth_sim; ++depth) {
@@ -285,7 +284,8 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                 << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
                 << std::endl;
       const int64_t completed_count = EvaluationWithSimulationFSC(
-          max_eval_steps, n_eval_trials, nb_particles_b0, valFunc);
+          max_eval_steps, n_eval_trials, nb_particles_b0, valFunc, _pomdp, _rng,
+          _fsc, _heuristic);
       std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
                 << " nodes." << std::endl;
       if (completed_count >= completion_threshold)
@@ -312,7 +312,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
             << n_eval_trials << " trials) at time " << time_sum / 1e6 << ":"
             << std::endl;
   EvaluationWithSimulationFSC(max_eval_steps, n_eval_trials, nb_particles_b0,
-                              valFunc);
+                              valFunc, _pomdp, _rng, _fsc, _heuristic);
   std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes() << " nodes."
             << std::endl;
   return {_fsc, Tr_root};
@@ -402,23 +402,26 @@ static std::pair<double, bool> OracleReward(const State& state,
   return {sum_reward, can_reach_terminal};
 }
 
-int64_t MCVIPlanner::EvaluationWithSimulationFSC(
-    int64_t max_steps, int64_t num_sims, int64_t init_belief_samples,
-    std::optional<StateValueFunction> valFunc) const {
-  const double gamma = _pomdp->GetDiscount();
+int64_t EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
+                                    int64_t init_belief_samples,
+                                    std::optional<StateValueFunction> valFunc,
+                                    SimInterface* pomdp, std::mt19937_64& rng,
+                                    const AlphaVectorFSC& fsc,
+                                    const OptimalPath& solver,
+                                    const std::string& alg_name) {
+  const double gamma = pomdp->GetDiscount();
   EvaluationStats eval_stats;
   const BeliefDistribution init_belief =
-      SampleInitialBelief(init_belief_samples, _pomdp);
+      SampleInitialBelief(init_belief_samples, pomdp);
   for (int64_t sim = 0; sim < num_sims; ++sim) {
-    State state = SampleOneState(init_belief, _rng);
+    State state = SampleOneState(init_belief, rng);
     const State initial_state = state;
     const auto [optimal, has_soln] =
-        (valFunc.has_value())
-            ? valFunc.value()(initial_state, max_steps)
-            : OracleReward(initial_state, _heuristic, max_steps);
+        (valFunc.has_value()) ? valFunc.value()(initial_state, max_steps)
+                              : OracleReward(initial_state, solver, max_steps);
 
     double sum_r = 0.0;
-    int64_t nI = _fsc.GetStartNodeIndex();
+    int64_t nI = fsc.GetStartNodeIndex();
     int64_t i = 0;
     for (; i < max_steps; ++i) {
       if (nI == -1) {
@@ -430,8 +433,8 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
         break;
       }
 
-      const int64_t action = _fsc.GetNode(nI).GetBestAction();
-      const auto [sNext, obs, reward, done] = _pomdp->Step(state, action);
+      const int64_t action = fsc.GetNode(nI).GetBestAction();
+      const auto [sNext, obs, reward, done] = pomdp->Step(state, action);
       sum_r += std::pow(gamma, i) * reward;
 
       if (done) {
@@ -443,7 +446,7 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
         break;
       }
 
-      nI = _fsc.GetEdgeValue(nI, obs);
+      nI = fsc.GetEdgeValue(nI, obs);
 
       state = sNext;
     }
@@ -455,12 +458,13 @@ int64_t MCVIPlanner::EvaluationWithSimulationFSC(
       }
     }
   }
-  PrintStats(eval_stats.complete, "MCVI completed problem");
-  PrintStats(eval_stats.off_policy, "MCVI exited policy");
-  PrintStats(eval_stats.max_depth, "MCVI max depth");
-  PrintStats(eval_stats.no_solution_on_policy, "MCVI no solution (on policy)");
+  PrintStats(eval_stats.complete, alg_name + " completed problem");
+  PrintStats(eval_stats.off_policy, alg_name + " exited policy");
+  PrintStats(eval_stats.max_depth, alg_name + " max depth");
+  PrintStats(eval_stats.no_solution_on_policy,
+             alg_name + " no solution (on policy)");
   PrintStats(eval_stats.no_solution_off_policy,
-             "MCVI no solution (exited policy)");
+             alg_name + " no solution (exited policy)");
   return eval_stats.complete.getCount();
 }
 

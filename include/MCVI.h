@@ -72,12 +72,6 @@ class MCVIPlanner {
   /// @brief Simulate an FSC execution from the initial belief
   void SimulationWithFSC(int64_t steps) const;
 
-  /// @brief Evaluate the FSC bounds through multiple simulations. Reverts to
-  /// greedy policy when policy runs out
-  int64_t EvaluationWithSimulationFSC(
-      int64_t max_steps, int64_t num_sims, int64_t init_belief_samples,
-      std::optional<StateValueFunction> valFunc) const;
-
  private:
   int64_t GetFirstAction(std::shared_ptr<BeliefTreeNode> Tr_node,
                          double R_lower, int64_t max_depth_sim,
@@ -101,6 +95,14 @@ class MCVIPlanner {
       int64_t eval_depth, double eval_epsilon, double R_lower,
       int64_t max_depth_sim);
 };
+
+int64_t EvaluationWithSimulationFSC(int64_t max_steps, int64_t num_sims,
+                                    int64_t init_belief_samples,
+                                    std::optional<StateValueFunction> valFunc,
+                                    SimInterface* pomdp, std::mt19937_64& rng,
+                                    const AlphaVectorFSC& fsc,
+                                    const OptimalPath& solver,
+                                    const std::string& alg_name = "detMCVI");
 
 std::vector<State> EvaluationWithGreedyTreePolicy(
     std::shared_ptr<BeliefTreeNode> root, int64_t max_steps, int64_t num_sims,

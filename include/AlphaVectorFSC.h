@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "AlphaVectorNode.h"
 #include "Bound.h"
 #include "SimInterface.h"
@@ -65,5 +67,7 @@ class AlphaVectorFSC {
                            double R_lower_lim, int64_t max_depth,
                            SimInterface* pomdp);
 };
+
+AlphaVectorFSC ParseDotFile(const std::string& filename);
 
 }  // namespace MCVI

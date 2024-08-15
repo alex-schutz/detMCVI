@@ -1,5 +1,13 @@
 #include "AlphaVectorFSC.h"
 
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 namespace MCVI {
 
 int64_t AlphaVectorFSC::GetEdgeValue(int64_t nI, int64_t observation) const {
@@ -110,6 +118,75 @@ double AlphaVectorFSC::LowerBoundFromFSC(const BeliefDistribution& b0,
     belief_value += alpha * prob;
   }
   return std::pow(pomdp->GetDiscount(), belief_depth) * belief_value;
+}
+
+int64_t CountNodes(const std::string& filename) {
+  std::ifstream file(filename);
+  std::string line;
+  int64_t node_count = 0;
+
+  // Regular expression for matching node lines
+  std::regex node_regex(R"((\w+)\s+\[label=\".*?A\s+\((\d+)\).*\"]\;)");
+
+  while (std::getline(file, line)) {
+    if (std::regex_search(line, node_regex)) {
+      ++node_count;
+    }
+  }
+
+  return node_count;
+}
+
+AlphaVectorFSC ParseDotFile(const std::string& filename) {
+  std::ifstream file(filename);
+  std::string line;
+  std::unordered_map<std::string, int64_t> node_indices;
+  AlphaVectorFSC fsc(CountNodes(filename));
+  int64_t current_index = 0;
+  std::string start_node;
+
+  std::regex node_regex(R"((\w+)\s+\[label=\".*?A\s+\((\d+)\).*\"]\;)");
+  std::regex start_node_regex(
+      R"((\w+)\s+\[label=\".*?A\s+\((\d+)\).*\" shape=doublecircle.*\]\;)");
+  std::regex edge_regex(
+      R"((\w+)\s+->\s+(\w+)\s+\[label=\"o\s+\((\d+)\).*\"]\;)");
+
+  while (std::getline(file, line)) {
+    std::smatch match;
+
+    // Check for start node (doublecircle shape)
+    if (std::regex_search(line, match, start_node_regex)) {
+      std::string node_name = match[1];
+      int64_t action = std::stoll(match[2]);
+      node_indices[node_name] = current_index;
+      fsc.AddNode(AlphaVectorNode(action));
+      start_node = node_name;
+      ++current_index;
+    }
+    // Check for regular nodes
+    else if (std::regex_search(line, match, node_regex)) {
+      std::string node_name = match[1];
+      int64_t action = std::stoll(match[2]);
+      node_indices[node_name] = current_index;
+      fsc.AddNode(AlphaVectorNode(action));
+      ++current_index;
+    }
+    // Check for edges
+    else if (std::regex_search(line, match, edge_regex)) {
+      std::string start = match[1];
+      std::string end = match[2];
+      int64_t observation = std::stoll(match[3]);
+      int64_t start_index = node_indices[start];
+      int64_t end_index = node_indices[end];
+      fsc.UpdateEdge(start_index, observation, end_index);
+    }
+  }
+
+  // Set the start node index
+  if (!start_node.empty()) {
+    fsc.SetStartNodeIndex(node_indices[start_node]);
+  }
+  return fsc;
 }
 
 }  // namespace MCVI
