@@ -93,7 +93,14 @@ def generate_graph(
         nx.add_path(G, path)
     weights = {}
     for e in G.edges():
-        weights[e] = round(edge_distance(e, grid_nodes), 2) if use_edge_weights else 1
+        weights[e] = (
+            max(
+                round(edge_distance(e, grid_nodes), 2),
+                distance(grid_nodes[goal], grid_nodes[origin]) / (n_nodes),
+            )
+            if use_edge_weights
+            else 1
+        )
     nx.set_edge_attributes(G, values=weights, name="weight")
 
     # Define stochastic edges and probabilities

@@ -65,6 +65,7 @@ def parse_file(filename) -> pd.DataFrame:
     ao_stats = {}
     pomcp_stats = {}
     origmcvi_stats = {}
+    sarsop_stats = {}
 
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -98,11 +99,18 @@ def parse_file(filename) -> pd.DataFrame:
                 info_lines = lines[i + 1 : i + 27]
                 origmcvi_stats[time] = parse_evaluation(info_lines)
                 i += 26
+            elif lines[i].startswith("Evaluation of SARSOP policy"):
+                time = extract_float(lines[i].split("at time ")[1])
+                if i + 27 > len(lines):
+                    break
+                info_lines = lines[i + 1 : i + 27]
+                sarsop_stats[time] = parse_evaluation(info_lines)
+                i += 26
             else:
                 i += 1
 
     mcvi_data = [
-        {"Algorithm": "MCVI", "Timestamp": timestamp, **stats}
+        {"Algorithm": "detMCVI", "Timestamp": timestamp, **stats}
         for timestamp, stats in mcvi_stats.items()
     ]
     ao_data = [
@@ -117,6 +125,10 @@ def parse_file(filename) -> pd.DataFrame:
         {"Algorithm": "OrigMCVI", "Timestamp": timestamp, **stats}
         for timestamp, stats in origmcvi_stats.items()
     ]
+    orig_data = [
+        {"Algorithm": "SARSOP", "Timestamp": timestamp, **stats}
+        for timestamp, stats in sarsop_stats.items()
+    ]
     combined_data = mcvi_data + ao_data + pomcp_data + orig_data
     return pd.DataFrame(combined_data)
 
@@ -127,7 +139,7 @@ def lighten_colour(colour_str, factor=0.2):
 
 
 def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
-    algs = ["MCVI", "AO*", "POMCP"]
+    algs = ["detMCVI", "AO*", "POMCP"]
     fig = go.Figure()
     colours = ["#cb6ce6", "#0097b2", "#90e079"]
 
@@ -193,7 +205,7 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
 
 
 def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show"):
-    algs = ["MCVI", "AO*", "POMCP"]
+    algs = ["detMCVI", "AO*", "POMCP"]
     fig = go.Figure()
     colours = ["#cb6ce6", "#0097b2", "#90e079"]
 
@@ -236,9 +248,9 @@ if __name__ == "__main__":
     series_file2 = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_17-08/WumpusInstance_2.txt"
 
     df = parse_file(series_file)
-    df = df[df["Algorithm"] != "MCVI"]
+    df = df[df["Algorithm"] != "detMCVI"]
     df2 = parse_file(series_file2)
-    df2 = df2[df2["Algorithm"] == "MCVI"]
+    df2 = df2[df2["Algorithm"] == "detMCVI"]
     df = pd.concat([df, df2])
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 

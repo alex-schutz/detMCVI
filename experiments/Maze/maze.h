@@ -291,6 +291,10 @@ class Maze : public MCVI::SimInterface,
 
     if (!can_reach_goal) return {max_depth * _move_reward, false};
 
+    if (!costs.contains({0}))
+      throw std::logic_error("Cannot access goal from state " +
+                             std::to_string(state[0]));
+
     return {-costs.at({0}), can_reach_goal};
   }
 
