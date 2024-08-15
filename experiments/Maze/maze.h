@@ -309,7 +309,8 @@ class Maze : public MCVI::SimInterface,
     const size_t num_states = state_space_sz;
     std::vector<MCVI::State> state_enum;
     for (int64_t s = 0; s < state_space_sz; ++s) state_enum.push_back({s});
-    os << "discount: " << 0.999 << std::endl;
+    const double n = std::sqrt((num_states + 1) / 2);
+    os << "discount: " << std::exp(std::log(0.01) / (4.0 * n * n)) << std::endl;
     os << "values: reward" << std::endl;
     os << "states: " << num_states << std::endl;
     os << "actions: " << GetSizeOfA() << std::endl;

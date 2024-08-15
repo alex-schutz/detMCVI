@@ -66,7 +66,7 @@ def run_instance(N, problem_file, results_folder, executable):
             "--eval_interval_ms",
             str(eval_ms[N]),
             "max_belief_samples",
-            str(20000),
+            str(10000),
         ]
         p = subprocess.run(
             cmd,

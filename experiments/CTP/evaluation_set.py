@@ -91,13 +91,13 @@ def run_ctp_instance(N, i, problem_file, results_folder, executable):
             executable,
             problem_file,
             "--max_sim_depth",
-            str(2 * N),
+            str(20 * N),
             "--max_time_ms",
             str(max_time[N]),
             "--eval_interval_ms",
             str(eval_ms[N]),
-            "max_belief_samples",
-            str(20000),
+            "--max_belief_samples",
+            str(10000),
         ]
         p = subprocess.run(
             cmd,
@@ -112,7 +112,7 @@ def run_ctp_instance(N, i, problem_file, results_folder, executable):
         else:
             print(p.stderr, file=f)
 
-    with open(outfile, "w+") as f:
+    with open(outfile, "a") as f:
         # Run solver
         cmd = [
             "../MCVI/build/experiments/CTP/ctp_timeseries",
@@ -123,8 +123,8 @@ def run_ctp_instance(N, i, problem_file, results_folder, executable):
             str(max_time[N]),
             "--eval_interval_ms",
             str(eval_ms[N]),
-            "max_belief_samples",
-            str(min(0.00007299857 * N**5.712286, 20000)),
+            "--max_belief_samples",
+            str(min(5 * int(0.00007299857 * N**5.712286 + 5), 10000)),
         ]
         p = subprocess.run(
             cmd,
