@@ -17,7 +17,7 @@
 #include "ShortestPath.h"
 #include "SimInterface.h"
 
-#define USE_HEURISTIC_BOUNDS 0
+#define USE_HEURISTIC_BOUNDS 1
 
 struct pairhash {
  public:
@@ -26,6 +26,11 @@ struct pairhash {
     return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
   }
 };
+
+static bool CmpPair2(const std::pair<MCVI::State, double>& p1,
+                     const std::pair<MCVI::State, double>& p2) {
+  return p1.second < p2.second;
+}
 
 static bool CmpPair(const std::pair<std::pair<int64_t, int64_t>, double>& p1,
                     const std::pair<std::pair<int64_t, int64_t>, double>& p2) {
@@ -55,7 +60,8 @@ class GraphPath : public MCVI::ShortestPathFasterAlgorithm {
   }
 };
 
-class CTP : public MCVI::SimInterface {
+class CTP : public MCVI::SimInterface,
+            public MCVI::ShortestPathFasterAlgorithm {
  protected:
   std::mt19937_64& rng;
   std::vector<int64_t> nodes;
@@ -110,16 +116,22 @@ class CTP : public MCVI::SimInterface {
     return sI.at(sfIdx("loc")) == goal;
   }
 
-#if (USE_HEURISTIC_BOUNDS == 1)
+  // #if (USE_HEURISTIC_BOUNDS == 1)
   std::optional<double> GetHeuristicUpper(const MCVI::StateMap<double>& belief,
                                           int64_t max_depth) const override {
-    return heuristicUpper(belief, max_depth);
+    double val = 0;
+    for (const auto& [s, p] : belief) {
+      val += get_state_value(s, max_depth).first * p;
+    }
+    return val;
   }
-  std::optional<double> GetHeuristicLower(const MCVI::StateMap<double>& belief,
-                                          int64_t max_depth) const override {
-    return heuristicLower(belief, max_depth);
-  }
-#endif
+  //   std::optional<double> GetHeuristicLower(const MCVI::StateMap<double>&
+  //   belief,
+  //                                           int64_t max_depth) const override
+  //                                           {
+  //     return heuristicLower(belief, max_depth);
+  //   }
+  // #endif
 
   std::tuple<MCVI::State, int64_t, double, bool> Step(const MCVI::State& sI,
                                                       int64_t aI) override {
@@ -172,54 +184,13 @@ class CTP : public MCVI::SimInterface {
 
   std::pair<double, bool> get_state_value(const MCVI::State& state,
                                           int64_t max_depth) const {
-    const auto loc_idx = sfIdx("loc");
-    MCVI::State eval_state = state;
-    if (eval_state.at(loc_idx) == (int64_t)nodes.size())
-      eval_state[loc_idx] = origin;
-    if (state_value.contains(eval_state))
-      return {state_value.at(eval_state), true};
-
-    // find cost to goal in this realisation of the graph
-    std::unordered_map<std::pair<int64_t, int64_t>, double, pairhash>
-        state_edges;
-    for (const auto& e : edges) {
-      if (!stoch_edges.contains(e.first) ||
-          state.at(sfIdx(edge2str(e.first))) == 1)
-        state_edges.insert(e);
-    }
-    auto gp = GraphPath(state_edges);
-    const auto [costs, pred] = gp.calculate({goal}, max_depth);
-
-    // Calculate discounted reward by following path
-    const auto path = gp.reconstructPath({eval_state[loc_idx]}, pred);
-    const double gamma = GetDiscount();
-    double sum_reward = 0.0;
-    double discount = 1.0;
-    bool reaches_goal = false;
-    for (const auto& [loc, action] : path) {
-      if (loc == MCVI::State({goal})) {
-        reaches_goal = true;
-        break;
-      }
-
-      MCVI::State world_state = eval_state;
-      world_state[loc_idx] = loc.at(0);
-      MCVI::State sNext;
-      const auto state_action = std::distance(
-          nodes.begin(), std::find(nodes.begin(), nodes.end(), action));
-      const double reward =
-          applyActionToState(world_state, state_action, sNext);
-      sum_reward += discount * reward;
-      discount *= gamma;
-    }
-
-    if (!reaches_goal) {  // cannot reach goal
-      state_value[eval_state] = 0;
-      return {0, true};
-    }
-
-    state_value[eval_state] = sum_reward;
-    return {sum_reward, reaches_goal};
+    const auto f = state_value.find(state);
+    if (f != state_value.cend())
+      return {f->second.first, goal_reachable.at(state)};
+    const auto b = bestPath(state, max_depth);
+    state_value.put(state, b.first);
+    goal_reachable.put(state, b.second);
+    return b;
   }
 
   double applyActionToState(const MCVI::State& state, int64_t action,
@@ -492,6 +463,41 @@ class CTP : public MCVI::SimInterface {
     const auto [val, _] = get_state_value(worst_case_state, max_depth);
     state_value[worst_case_state] = val;
     return val;
+  }
+
+ public:
+  std::vector<std::tuple<MCVI::State, double, int64_t>> getEdges(
+      const MCVI::State& state) const {
+    if (IsTerminal(state)) return {};
+    std::vector<std::tuple<MCVI::State, double, int64_t>> successors;
+    for (int64_t a = 0; a < GetSizeOfA(); ++a) {
+      MCVI::State sNext;
+      const auto& reward = applyActionToState(state, a, sNext);
+      successors.push_back({sNext, -reward, a});
+    }
+    return successors;
+  }
+
+ private:
+  std::pair<double, bool> bestPath(const MCVI::State& state,
+                                   int64_t max_depth) const {
+    const auto [costs, predecessors] = calculate(state, max_depth);
+    const auto loc_idx = sfIdx("loc");
+    const auto G = goal;
+    const auto best_state =
+        std::min_element(costs.begin(), costs.end(),
+                         [loc_idx, G](const auto& lhs, const auto& rhs) {
+                           if (lhs.first[loc_idx] != G)
+                             return false;  // skip lhs
+                           if (rhs.first[loc_idx] != G)
+                             return true;              // skip rhs
+                           return CmpPair2(lhs, rhs);  // compare the rest
+                         });
+    if (best_state == costs.end())
+      throw std::logic_error("Could not find path");
+
+    if (goalUnreachable(state)) return {_complete_reward, false};
+    return {-best_state->second, true};
   }
 
   std::vector<MCVI::State> enumerateStates(

@@ -9,8 +9,6 @@
 #include "ShortestPath.h"
 #include "SimInterface.h"
 
-#define USE_HEURISTIC_BOUNDS 0
-
 class CTP_Disambiguate : public MCVI::SimInterface {
  protected:
   std::mt19937_64& rng;
