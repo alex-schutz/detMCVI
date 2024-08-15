@@ -100,7 +100,7 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> runMCVI(
       max_computation_ms, eval_depth, eval_epsilon, exit_flag);
   const std::chrono::steady_clock::time_point mcvi_end =
       std::chrono::steady_clock::now();
-  fs << "MCVI complete (" << s_time_diff(mcvi_begin, mcvi_end) << " seconds)"
+  fs << "detMCVI complete (" << s_time_diff(mcvi_begin, mcvi_end) << " seconds)"
      << std::endl;
 
   fs << "detMCVI policy FSC contains " << fsc.NumNodes() << " nodes."
@@ -330,8 +330,8 @@ int main(int argc, char* argv[]) {
 
   const auto [mcvi_rw, mcvi_ts] =
       RunOnlineTrials(MCVIOnline, n_trials, pomdp, init_belief, rng, params);
-  PrintStats(mcvi_rw, "MCVI Online Reward");
-  PrintStats(mcvi_ts, "MCVI Online Times");
+  PrintStats(mcvi_rw, "detMCVI Online Reward");
+  PrintStats(mcvi_ts, "detMCVI Online Times");
 
   const auto [ao_rw, ao_ts] =
       RunOnlineTrials(AOStarOnline, n_trials, pomdp, init_belief, rng, params);

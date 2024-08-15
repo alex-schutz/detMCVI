@@ -43,19 +43,19 @@ def process_output_file(f, N, i, seed) -> dict[str, int | float | str]:
     patterns = [
         ("POMCP complete ", "POMCP runtime (s)", extract_float),
         ("AO* complete ", "AO* runtime (s)", extract_float),
-        ("MCVI complete ", "MCVI runtime (s)", extract_float),
+        ("detMCVI complete ", "detMCVI runtime (s)", extract_float),
         ("OrigMCVI complete ", "OrigMCVI runtime (s)", extract_float),
         ("State space size:", "State space size", extract_int),
         ("Observation space size:", "Observation space size", extract_int),
         ("Initial belief size:", "Initial belief size", extract_int),
-        ("--- Iter ", "MCVI iterations", lambda x: extract_int(x) + 1),
-        ("MCVI policy FSC contains", "MCVI policy nodes", extract_int),
+        ("--- Iter ", "detMCVI iterations", lambda x: extract_int(x) + 1),
+        ("detMCVI policy FSC contains", "detMCVI policy nodes", extract_int),
         ("AO* greedy policy tree contains", "AO* policy nodes", extract_int),
         ("POMCP policy tree contains", "POMCP policy nodes", extract_int),
         ("OrigMCVI policy FSC contains", "OrigMCVI policy nodes", extract_int),
         ("Orig--- Iter ", "OrigMCVI iterations", lambda x: extract_int(x) + 1),
     ]
-    algs = ["MCVI", "AO*", "POMCP", "OrigMCVI"]
+    algs = ["detMCVI", "AO*", "POMCP", "OrigMCVI"]
     result_types = [
         "completed problem",
         "exited policy",

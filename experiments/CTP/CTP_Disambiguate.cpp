@@ -43,7 +43,7 @@ void runMCVI(CTP_Disambiguate* pomdp, const BeliefDistribution& init_belief,
                    eval_depth, eval_epsilon, exit_flag);
   const std::chrono::steady_clock::time_point mcvi_end =
       std::chrono::steady_clock::now();
-  std::cout << "MCVI complete (" << s_time_diff(mcvi_begin, mcvi_end)
+  std::cout << "detMCVI complete (" << s_time_diff(mcvi_begin, mcvi_end)
             << " seconds)" << std::endl;
 
   // Draw FSC plot

@@ -34,11 +34,11 @@ def plot_comparison(df, xlabel, ylabel, title, figname, output="show"):
             "State space size",
             "Initial belief size",
             "Stochastic edge count",
-            "MCVI runtime (s)",
+            "detMCVI runtime (s)",
             "AO* runtime (s)",
             "AO* completed problem Average regret",
-            "MCVI completed problem Average regret",
-            "MCVI completed problem Percentage",
+            "detMCVI completed problem Average regret",
+            "detMCVI completed problem Percentage",
             "AO* completed problem Percentage",
         ],
     )
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     plot_comparison(
         df,
         "AO* policy nodes",
-        "MCVI policy nodes",
+        "detMCVI policy nodes",
         "Policy size",
         "policy_size",
         output,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     plot_comparison(
         df,
         "AO* completed problem Average regret",
-        "MCVI completed problem Average regret",
+        "detMCVI completed problem Average regret",
         "Average regret",
         "regret",
         output,

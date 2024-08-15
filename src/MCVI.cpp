@@ -101,7 +101,7 @@ static bool MCVITimeExpired(const std::chrono::steady_clock::time_point& begin,
   const auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
   if (elapsed.count() >= max_computation_ms * 1000) {
-    std::cout << "MCVI planning complete, reached maximum computation time."
+    std::cout << "detMCVI planning complete, reached maximum computation time."
               << std::endl;
     return true;
   }
@@ -295,13 +295,13 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
         completed_times = 0;
       if (completed_times >= completion_reps) {
         std::cout
-            << "MCVI planning complete, reached number of completion reps."
+            << "detMCVI planning complete, reached number of completion reps."
             << std::endl;
         break;
       }
     }
     if (converged || timed_out || max_iter) {
-      std::cout << "MCVI planning complete. Converged: " << converged
+      std::cout << "detMCVI planning complete. Converged: " << converged
                 << " Timed out: " << timed_out
                 << " Maxed iterations: " << max_iter << std::endl;
       break;
