@@ -550,8 +550,8 @@ class Wumpus : public MCVI::SimInterface,
             std::find(state_enum.begin(), state_enum.end(), sNext));
         os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
         os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
-        os << "R : " << a << " : " << sI << " : " << eI << " : " << obs << " "
-           << reward << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : * " << reward
+           << std::endl;
       }
     }
   }

@@ -313,19 +313,13 @@ class Maze : public MCVI::SimInterface,
     os << "discount: " << std::exp(std::log(0.01) / (4.0 * n * n)) << std::endl;
     os << "values: reward" << std::endl;
     os << "states: " << num_states << std::endl;
-    os << "actions: " << GetSizeOfA() << std::endl;
+    os << "actions: ";
+    for (const auto& act : actions) os << act << " ";
+    os << std::endl;
     os << "observations: " << GetSizeOfObs() << std::endl << std::endl;
 
     // Initial belief
-    os << "start: " << std::endl;
-    os << 0 << " ";  // goal state
-    double sum = 0.0;
-    for (int64_t s = 1; s < state_space_sz; ++s) {
-      const double target = s * 1.0 / (state_space_sz - 1);
-      os << target - sum << " ";
-      sum += target - sum;
-    }
-    os << std::endl << std::endl;
+    os << "start exclude: 0" << std::endl;
 
     // Transition probabilities  T : <action> : <start-state> : <end-state> %f
     // Observation probabilities O : <action> : <end-state> : <observation> %f
@@ -344,8 +338,8 @@ class Maze : public MCVI::SimInterface,
             std::find(state_enum.begin(), state_enum.end(), sNext));
         os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
         os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
-        os << "R : " << a << " : " << sI << " : " << eI << " : " << obs << " "
-           << reward << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : * " << reward
+           << std::endl;
       }
     }
   }

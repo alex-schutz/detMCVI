@@ -531,11 +531,22 @@ class CTP : public MCVI::SimInterface {
     return enum_states;
   }
 
+  double init_prob(const MCVI::State& s) const {
+    double prob = 1.0;
+    for (const auto& [edge, p] : stoch_edges)
+      if (s[sfIdx(edge2str(edge))])
+        prob *= (1 - p);
+      else
+        prob *= p;
+    return prob;
+  }
+
  public:
-  void toSARSOP(std::ostream& os, int64_t init_belief_sz) {
+  void toSARSOP(std::ostream& os) {
     std::vector<MCVI::State> state_enum = enumerateStates();
     const size_t num_states = state_enum.size();
-    os << "discount: " << GetDiscount() << std::endl;
+    os << "discount: " << std::exp(std::log(0.01) / (20.0 * nodes.size()))
+       << std::endl;
     os << "values: reward" << std::endl;
     os << "states: " << num_states << std::endl;
     os << "actions: " << GetSizeOfA() << std::endl;
@@ -543,8 +554,12 @@ class CTP : public MCVI::SimInterface {
 
     // Initial belief
     os << "start: " << std::endl;
-    auto init_belief = SampleInitialBelief(init_belief_sz, this);
-    for (const auto& s : state_enum) os << init_belief[s] << " ";
+    for (const auto& s : state_enum) {
+      if (s[sfIdx("loc")] != (int64_t)nodes.size())
+        os << "0 ";
+      else
+        os << init_prob(s) << " ";
+    }
     os << std::endl << std::endl;
 
     // Transition probabilities  T : <action> : <start-state> : <end-state> %f
@@ -564,8 +579,8 @@ class CTP : public MCVI::SimInterface {
             std::find(state_enum.begin(), state_enum.end(), sNext));
         os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
         os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
-        os << "R : " << a << " : " << sI << " : " << eI << " : " << obs << " "
-           << reward << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : * " << reward
+           << std::endl;
       }
     }
   }
