@@ -15,3 +15,6 @@ target_link_libraries(ctp_optimistic mcvi_library)
 
 add_executable(ctp_to_sarsop CTP_to_SARSOP.cpp)
 target_link_libraries(ctp_to_sarsop mcvi_library)
+
+add_executable(ctp_evaluate_sarsop evaluate_sarsop.cpp)
+target_link_libraries(ctp_evaluate_sarsop mcvi_library)

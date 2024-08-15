@@ -496,7 +496,7 @@ class CTP : public MCVI::SimInterface,
     if (best_state == costs.end())
       throw std::logic_error("Could not find path");
 
-    if (goalUnreachable(state)) return {_complete_reward, false};
+    if (goalUnreachable(state)) return {_complete_reward, true};
     return {-best_state->second, true};
   }
 
