@@ -16,7 +16,7 @@ SET_SIZE = 10
 
 max_time = {
     5: 30 * 1000,
-    10: 2 * 60 * 1000,
+    10: 1 * 60 * 1000,
     15: 10 * 60 * 1000,
     20: 60 * 60 * 1000,
     30: 20 * 60 * 60 * 1000,
@@ -27,18 +27,18 @@ max_time = {
 }
 eval_ms = {
     5: 1,
-    10: 1,
+    10: 10,
     15: 100,
-    20: 5 * 1000,
-    30: 10 * 1000,
-    40: 60 * 1000,
+    20: 1000,
+    30: 5 * 1000,
+    40: 10 * 1000,
     50: 2 * 60 * 1000,
     75: 10 * 60 * 1000,
     100: 20 * 60 * 1000,
 }
-max_time1 = {
+max_time_1 = {
     5: 30 * 1000,
-    10: 2 * 60 * 1000,
+    10: 1 * 60 * 1000,
     15: 10 * 60 * 1000,
     20: 60 * 60 * 1000,
     30: 20 * 60 * 60 * 1000,
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     max_workers = min(cpu_count() - 2, 4)
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
-    problem_sets = max_time1.keys()
+    problem_sets = max_time_1.keys()
     all_futures = []
 
     for problem_size in problem_sets:
