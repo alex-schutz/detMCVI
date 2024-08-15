@@ -119,6 +119,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Initialising CTP" << std::endl;
   auto pomdp = CTP(rng, nodes, edges, stoch_edges, origin, goal);
 
+  std::cout << "Action space size: " << pomdp.GetSizeOfA() << std::endl;
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
   std::fstream ctp_graph("ctp_graph.dot", std::fstream::out);

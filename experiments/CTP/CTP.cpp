@@ -173,14 +173,12 @@ int main(int argc, char* argv[]) {
   std::cout << "Initialising CTP" << std::endl;
   auto pomdp = CTP(rng, nodes, edges, stoch_edges, origin, goal);
 
+  std::cout << "Action space size: " << pomdp.GetSizeOfA() << std::endl;
   std::cout << "Observation space size: " << pomdp.GetSizeOfObs() << std::endl;
 
   std::fstream ctp_graph("ctp_graph.dot", std::fstream::out);
   pomdp.visualiseGraph(ctp_graph);
   ctp_graph.close();
-
-  // Evaluation parameters
-  const int64_t n_eval_trials = 10000;
 
   // Sample the initial belief
   std::cout << "Sampling initial belief" << std::endl;
@@ -197,13 +195,14 @@ int main(int argc, char* argv[]) {
   runMCVI(mcvi_ctp, init_belief, rng, params.max_sim_depth,
           params.max_node_size, params.max_sim_depth, params.eval_epsilon,
           params.converge_thresh, params.max_iterations, params.max_time_ms,
-          params.max_sim_depth, n_eval_trials, 10 * params.nb_particles_b0);
+          params.max_sim_depth, params.n_eval_trials,
+          10 * params.nb_particles_b0);
 
   // Compare to AO*
   auto aostar_ctp = new CTP(pomdp);
   runAOStar(aostar_ctp, init_belief, rng, params.max_sim_depth,
             params.max_iterations, params.max_time_ms, params.max_sim_depth,
-            n_eval_trials, 10 * params.nb_particles_b0);
+            params.n_eval_trials, 10 * params.nb_particles_b0);
 
   auto pomcp_ctp = new CTP(pomdp);
   const double pomcp_c = 2.0;
@@ -214,7 +213,7 @@ int main(int argc, char* argv[]) {
   const int64_t pomcp_depth = params.max_sim_depth;
   runPOMCP(pomcp_ctp, rng, params.max_belief_samples, pomcp_c, pomcp_nb_rollout,
            pomcp_time_out, pomcp_epsilon, pomcp_depth, params.max_sim_depth,
-           n_eval_trials, 10 * params.nb_particles_b0);
+           params.n_eval_trials, 10 * params.nb_particles_b0);
 
   return 0;
 }

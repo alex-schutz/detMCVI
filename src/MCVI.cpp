@@ -177,7 +177,7 @@ MCVIPlanner::PlanIncrement(std::shared_ptr<BeliefTreeNode> Tr_root,
   if (iter == 0) {
     // const auto action = GetFirstAction(Tr_root, R_lower, max_depth_sim,
     //                                    eval_depth, eval_epsilon);
-    const int64_t action = 0;
+    const int64_t action = _pomdp->GetSizeOfA() - 1;
     const auto node = AlphaVectorNode(action);
     _fsc.AddNode(node);
     _fsc.SetStartNodeIndex(0);

@@ -185,11 +185,9 @@ class CTP : public MCVI::SimInterface,
   std::pair<double, bool> get_state_value(const MCVI::State& state,
                                           int64_t max_depth) const {
     const auto f = state_value.find(state);
-    if (f != state_value.cend())
-      return {f->second.first, goal_reachable.at(state)};
+    if (f != state_value.cend()) return {f->second.first, true};
     const auto b = bestPath(state, max_depth);
     state_value.put(state, b.first);
-    goal_reachable.put(state, b.second);
     return b;
   }
 
