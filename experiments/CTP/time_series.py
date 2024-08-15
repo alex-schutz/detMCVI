@@ -125,11 +125,11 @@ def parse_file(filename) -> pd.DataFrame:
         {"Algorithm": "OrigMCVI", "Timestamp": timestamp, **stats}
         for timestamp, stats in origmcvi_stats.items()
     ]
-    orig_data = [
+    sarsop_data = [
         {"Algorithm": "SARSOP", "Timestamp": timestamp, **stats}
         for timestamp, stats in sarsop_stats.items()
     ]
-    combined_data = mcvi_data + ao_data + pomcp_data + orig_data
+    combined_data = mcvi_data + ao_data + pomcp_data + orig_data + sarsop_data
     return pd.DataFrame(combined_data)
 
 
