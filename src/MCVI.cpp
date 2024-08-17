@@ -245,6 +245,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                              int64_t completion_reps,
                              std::optional<StateValueFunction> valFunc,
                              std::atomic<bool>& exit_flag) {
+  OptimalPath solver(_pomdp);
   // Calculate the lower bound
   const double R_lower = FindRLower(_pomdp, _b0, eval_epsilon, eval_depth);
 
@@ -286,7 +287,7 @@ MCVIPlanner::PlanAndEvaluate(int64_t max_depth_sim, double epsilon,
                 << std::endl;
       const int64_t completed_count = EvaluationWithSimulationFSC(
           max_eval_steps, n_eval_trials, nb_particles_b0, valFunc, _pomdp, _rng,
-          _fsc, _heuristic);
+          _fsc, solver);
       std::cout << "detMCVI policy FSC contains " << _fsc.NumNodes()
                 << " nodes." << std::endl;
       if (completed_count >= completion_threshold)

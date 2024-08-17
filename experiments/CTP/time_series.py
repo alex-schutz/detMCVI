@@ -61,11 +61,12 @@ def parse_evaluation(lines: list[str]) -> dict[str, float | int]:
 
 
 def parse_file(filename) -> pd.DataFrame:
-    mcvi_stats = {}
+    detmcvi_stats = {}
     ao_stats = {}
     pomcp_stats = {}
     origmcvi_stats = {}
     sarsop_stats = {}
+    qmdp_stats = {}
 
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -76,7 +77,7 @@ def parse_file(filename) -> pd.DataFrame:
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
-                mcvi_stats[time] = parse_evaluation(info_lines)
+                detmcvi_stats[time] = parse_evaluation(info_lines)
                 i += 26
             elif lines[i].startswith("Evaluation of AO* policy"):
                 time = extract_float(lines[i].split("at time ")[1])
@@ -106,12 +107,19 @@ def parse_file(filename) -> pd.DataFrame:
                 info_lines = lines[i + 1 : i + 27]
                 sarsop_stats[time] = parse_evaluation(info_lines)
                 i += 26
+            elif lines[i].startswith("Evaluation of QMDP policy"):
+                time = extract_float(lines[i].split("at time ")[1])
+                if i + 27 > len(lines):
+                    break
+                info_lines = lines[i + 1 : i + 27]
+                qmdp_stats[time] = parse_evaluation(info_lines)
+                i += 26
             else:
                 i += 1
 
     mcvi_data = [
         {"Algorithm": "detMCVI", "Timestamp": timestamp, **stats}
-        for timestamp, stats in mcvi_stats.items()
+        for timestamp, stats in detmcvi_stats.items()
     ]
     ao_data = [
         {"Algorithm": "AO*", "Timestamp": timestamp, **stats}
@@ -129,7 +137,13 @@ def parse_file(filename) -> pd.DataFrame:
         {"Algorithm": "SARSOP", "Timestamp": timestamp, **stats}
         for timestamp, stats in sarsop_stats.items()
     ]
-    combined_data = mcvi_data + ao_data + pomcp_data + orig_data + sarsop_data
+    qmdp_data = [
+        {"Algorithm": "QMDP", "Timestamp": timestamp, **stats}
+        for timestamp, stats in qmdp_stats.items()
+    ]
+    combined_data = (
+        mcvi_data + ao_data + pomcp_data + orig_data + sarsop_data + qmdp_data
+    )
     return pd.DataFrame(combined_data)
 
 

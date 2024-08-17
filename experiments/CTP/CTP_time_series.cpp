@@ -9,6 +9,7 @@
 #include "MCVI.h"
 #include "POMCP.h"
 #include "Params.h"
+#include "QMDPTree.h"
 
 #define RANDOM_SEED (42)
 
@@ -50,21 +51,47 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                          int64_t eval_interval_ms, int64_t completion_threshold,
                          int64_t completion_reps, int64_t node_limit) {
   // Initialise heuristic
+  OptimalPath heuristic(pomdp);
   OptimalPath solver(pomdp);
 
   // Create root belief node
   const double init_upper =
-      CalculateUpperBound(init_belief, 0, eval_depth, solver, pomdp);
+      CalculateUpperBound(init_belief, 0, eval_depth, heuristic, pomdp);
   std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
       init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
 
   // Run AO*
   std::cout << "Running AO* on belief tree" << std::endl;
   RunAOStarAndEvaluate(
-      root, std::numeric_limits<int64_t>::max(), max_time_ms, solver,
+      root, std::numeric_limits<int64_t>::max(), max_time_ms, heuristic,
       eval_depth, max_eval_steps, n_eval_trials, nb_particles_b0,
       eval_interval_ms, completion_threshold, completion_reps, node_limit, rng,
       solver,
+      [&pomdp](const State& state, int64_t value) {
+        return pomdp->get_state_value(state, value);
+      },
+      pomdp);
+}
+
+void runQMDP(CTP* pomdp, const BeliefDistribution& init_belief,
+             std::mt19937_64& rng, int64_t eval_depth, int64_t max_time_ms,
+             int64_t max_eval_steps, int64_t n_eval_trials,
+             int64_t nb_particles_b0) {
+  // Initialise heuristic
+  OptimalPath heuristic(pomdp);
+  OptimalPath solver(pomdp);
+
+  // Create root belief node
+  const double init_upper =
+      CalculateUpperBound(init_belief, 0, eval_depth, heuristic, pomdp);
+  std::shared_ptr<BeliefTreeNode> root = CreateBeliefTreeNode(
+      init_belief, 0, init_upper, -std::numeric_limits<double>::infinity());
+
+  // Run QMDP
+  std::cout << "Running QMDP on belief tree" << std::endl;
+  RunQMDPAndEvaluate(
+      root, max_time_ms, heuristic, eval_depth, max_eval_steps, n_eval_trials,
+      nb_particles_b0, rng, solver,
       [&pomdp](const State& state, int64_t value) {
         return pomdp->get_state_value(state, value);
       },
@@ -167,6 +194,13 @@ int main(int argc, char* argv[]) {
                      params.eval_interval_ms, params.completion_threshold,
                      params.completion_reps, params.max_node_size);
   delete pomcp_ctp;
+
+  // Compare to QMDP
+  auto qmdp_ctp = new CTP(pomdp);
+  runQMDP(qmdp_ctp, init_belief, rng, params.max_sim_depth, params.max_time_ms,
+          params.max_sim_depth, params.n_eval_trials,
+          10 * params.nb_particles_b0);
+  delete qmdp_ctp;
 
   return 0;
 }
