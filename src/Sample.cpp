@@ -13,7 +13,7 @@ static std::string print_inf(double num) {
       return "-inf";
   } else {
     std::ostringstream stream;
-    stream << num;
+    stream << std::fixed << num;
     return stream.str();
   }
 }
