@@ -42,7 +42,9 @@ class Maze : public MCVI::SimInterface,
   int64_t GetNbAgent() const override { return 1; }
   const std::vector<std::string>& getActions() const { return actions; }
   const std::vector<std::string>& getObs() const { return observations; }
-  bool IsTerminal(const MCVI::State& sI) const override { return sI[0] == 0; }
+  bool IsTerminal(const MCVI::State& sI) const override {
+    return sI[0] == 0 && sI[1] == 0;
+  }
 
   void drawState(const MCVI::State& sI) const {
     const auto m = indexToPlayerLocation(_maze, sI[0]);
@@ -80,12 +82,16 @@ class Maze : public MCVI::SimInterface,
     // Start in any available position other than the goal
     static std::uniform_int_distribution<int64_t> ss_dist(1,
                                                           state_space_sz - 1);
-    return {ss_dist(rng)};
+    return {ss_dist(rng), 1};
   }
 
   double applyActionToState(const MCVI::State& sI, int64_t aI,
                             MCVI::State& sNext) const {
     sNext = sI;
+    if (sI[1] != 0) {  // init state
+      sNext[1] = 0;
+      return 0;
+    }
     if (IsTerminal(sI)) return 0;
     const auto curr_maze = indexToPlayerLocation(_maze, sI[0]);
     const std::pair<int64_t, int64_t> curr_loc = findPlayerLocation(curr_maze);
@@ -127,11 +133,11 @@ class Maze : public MCVI::SimInterface,
 
     // Player location is same as goal
     if (findGoalLocation(next_maze).first == -1) {
-      sNext = {0};
+      sNext = {0, 0};
       return _success_reward;
     }
 
-    sNext = {playerLocationToIndex(next_maze)};
+    sNext = {playerLocationToIndex(next_maze), 0};
     return _move_reward;
   }
 
@@ -283,7 +289,7 @@ class Maze : public MCVI::SimInterface,
   std::pair<double, bool> bestPath(const MCVI::State& state,
                                    int64_t max_depth) const {
     const auto [costs, predecessors] = calculate(state, max_depth);
-    const auto path_to_goal = reconstructPath({0}, predecessors);
+    const auto path_to_goal = reconstructPath({0, 0}, predecessors);
     const bool can_reach_goal =
         findGoalLocation(
             indexToPlayerLocation(_maze, path_to_goal.back().first[0]))
@@ -291,11 +297,12 @@ class Maze : public MCVI::SimInterface,
 
     if (!can_reach_goal) return {max_depth * _move_reward, false};
 
-    if (!costs.contains({0}))
+    if (!costs.contains(MCVI::State({0, 0})))
       throw std::logic_error("Cannot access goal from state " +
-                             std::to_string(state[0]));
+                             std::to_string(state[0]) + " " +
+                             std::to_string(state[1]));
 
-    return {-costs.at({0}), can_reach_goal};
+    return {-costs.at(MCVI::State({0, 0})), can_reach_goal};
   }
 
   int64_t countBlankSpaces(const std::vector<std::string>& maze) {
@@ -310,11 +317,13 @@ class Maze : public MCVI::SimInterface,
 
  public:
   void toSARSOP(std::ostream& os) {
-    const size_t num_states = state_space_sz;
     std::vector<MCVI::State> state_enum;
-    for (int64_t s = 0; s < state_space_sz; ++s) state_enum.push_back({s});
-    const double n = std::sqrt((num_states + 1) / 2);
-    os << "discount: " << std::exp(std::log(0.01) / (4.0 * n * n)) << std::endl;
+    for (int64_t s = 0; s < state_space_sz; ++s) state_enum.push_back({s, 0});
+    for (int64_t s = 1; s < state_space_sz; ++s) state_enum.push_back({s, 1});
+    const size_t num_states = state_enum.size();
+    const double n = std::sqrt((state_space_sz + 1) / 2);
+    os << "discount: " << std::exp(std::log(0.01) / (2.0 * n * n + n))
+       << std::endl;
     os << "values: reward" << std::endl;
     os << "states: " << num_states << std::endl;
     os << "actions: ";
@@ -323,7 +332,10 @@ class Maze : public MCVI::SimInterface,
     os << "observations: " << GetSizeOfObs() << std::endl << std::endl;
 
     // Initial belief
-    os << "start exclude: 0" << std::endl;
+    os << "start include: ";
+    for (int64_t s = state_space_sz; s < 2 * state_space_sz - 1; ++s)
+      os << s << " ";
+    os << std::endl;
 
     // Transition probabilities  T : <action> : <start-state> : <end-state> %f
     // Observation probabilities O : <action> : <end-state> : <observation> %f
