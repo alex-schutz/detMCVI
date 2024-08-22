@@ -6,9 +6,10 @@ for N in $(seq 5 5 30); do
     pomdpfile=${pfile}.pomdp
     outfile=${outfol}/MazeInstance_${N}_${i}.txt
     start=$(date +%s.%N)
-    build/experiments/Maze/maze_to_sarsop ${pfile}
-    taskset --cpu-list 1 /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/pomdpsol ${pomdpfile} 2>&1 1> /dev/null
-    /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/polgraph ${pomdpfile} --policy-file out.policy --policy-graph policy.dot > /dev/null
+    build/experiments/Maze/maze_to_sarsop ${pfile} \
+      && taskset --cpu-list 1 /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/pomdpsol ${pomdpfile} --memory 16000 \
+      && /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/polgraph ${pomdpfile} --policy-file out.policy --policy-graph policy.dot \
+      || break
     end=$(date +%s.%N)
     runtime=$(echo "$end - $start" | bc -l)
     echo $runtime

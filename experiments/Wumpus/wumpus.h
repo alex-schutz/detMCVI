@@ -534,7 +534,7 @@ class Wumpus : public MCVI::SimInterface,
     // Initial belief
     os << "start: " << std::endl;
     auto init_belief = SampleInitialBelief(init_belief_sz, this);
-    for (const auto& s : state_enum) os << init_belief[s] << " ";
+    for (const auto& s : state_enum) os << std::fixed << init_belief[s] << " ";
     os << std::endl << std::endl;
 
     // Transition probabilities  T : <action> : <start-state> : <end-state> %f

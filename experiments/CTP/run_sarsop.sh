@@ -1,4 +1,4 @@
-for N in 5 10 15; do
+for N in 15 20; do
   problem_folder=experiments/CTP/evaluation/ctp_results_${N}x10_2024-08-15_18-00
   outfol=experiments/CTP/evaluation/sarsop/${N}
   mkdir -p ${outfol}
@@ -7,9 +7,10 @@ for N in 5 10 15; do
     pomdpfile=${pfile}.pomdp
     outfile=${outfol}/CTPInstance${N}_${i}.txt
     start=$(date +%s.%N)
-    build/experiments/CTP/ctp_to_sarsop ${pfile}
-    taskset --cpu-list 1 /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/pomdpsol ${pomdpfile} 2>&1 1> /dev/null
-    /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/polgraph ${pomdpfile} --policy-file out.policy --policy-graph policy.dot > /dev/null
+    build/experiments/CTP/ctp_to_sarsop ${pfile} \
+      && taskset --cpu-list 1 /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/pomdpsol ${pomdpfile} \
+      && /home/alex/ori/infjesp/third_party_dependencies/sarsop/src/polgraph ${pomdpfile} --policy-file out.policy --policy-graph policy.dot \
+      || continue
     end=$(date +%s.%N)
     runtime=$(echo "$end - $start" | bc -l)
     echo $runtime

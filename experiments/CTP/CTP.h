@@ -562,7 +562,7 @@ class CTP : public MCVI::SimInterface,
       if (s[sfIdx("loc")] != (int64_t)nodes.size())
         os << "0 ";
       else
-        os << init_prob(s) << " ";
+        os << std::fixed << init_prob(s) << " ";
     }
     os << std::endl << std::endl;
 
