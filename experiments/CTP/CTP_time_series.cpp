@@ -165,6 +165,7 @@ int main(int argc, char* argv[]) {
   auto mcvi_ctp = new CTP(pomdp);
   auto aostar_ctp = new CTP(pomdp);
   auto pomcp_ctp = new CTP(pomdp);
+  auto qmdp_ctp = new CTP(pomdp);
 
   // Run MCVI
   runMCVIIncrements(
@@ -175,6 +176,12 @@ int main(int argc, char* argv[]) {
       params.completion_threshold, params.completion_reps);
   delete mcvi_ctp;
 
+  // Compare to QMDP
+  runQMDP(qmdp_ctp, init_belief, rng, params.max_sim_depth, params.max_time_ms,
+          params.max_sim_depth, params.n_eval_trials,
+          10 * params.nb_particles_b0);
+  delete qmdp_ctp;
+
   // Compare to AO*
   runAOStarIncrements(aostar_ctp, init_belief, rng, params.max_sim_depth,
                       params.max_time_ms, params.max_sim_depth,
@@ -183,7 +190,7 @@ int main(int argc, char* argv[]) {
                       params.completion_reps, params.max_node_size);
   delete aostar_ctp;
 
-  // Compare to POMCP offline
+  //   Compare to POMCP offline
   const double pomcp_c = 2.0;
   const int64_t pomcp_nb_rollout = 200;
   const double pomcp_epsilon = 0.01;
@@ -194,13 +201,6 @@ int main(int argc, char* argv[]) {
                      params.eval_interval_ms, params.completion_threshold,
                      params.completion_reps, params.max_node_size);
   delete pomcp_ctp;
-
-  // Compare to QMDP
-  auto qmdp_ctp = new CTP(pomdp);
-  runQMDP(qmdp_ctp, init_belief, rng, params.max_sim_depth, params.max_time_ms,
-          params.max_sim_depth, params.n_eval_trials,
-          10 * params.nb_particles_b0);
-  delete qmdp_ctp;
 
   return 0;
 }

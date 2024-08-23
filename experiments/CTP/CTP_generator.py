@@ -143,7 +143,7 @@ def generate_delaunay_graph_set(location_count: int, set_size: int, seed: int):
 
 
 def ctp_to_file(G: nx.Graph, origin: int, goal: int, f: TextIO):
-    print("CTPNodes: " + " ".join(map(str, range(len(G.nodes)))), file=f)
+    print("CTPNodes: " + " ".join(map(str, G.nodes)), file=f)
     print("CTPEdges:", file=f)
     for e, w in nx.get_edge_attributes(G, "weight").items():
         print(f"{min(e)} {max(e)} {w}", file=f)

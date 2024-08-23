@@ -163,6 +163,13 @@ int main(int argc, char* argv[]) {
       params.completion_threshold, params.completion_reps);
   delete mcvi_maze;
 
+  // Compare to QMDP
+  auto qmdp_maze = new Maze(pomdp);
+  runQMDP(qmdp_maze, init_belief, rng, params.max_sim_depth, params.max_time_ms,
+          params.max_sim_depth, params.n_eval_trials,
+          10 * params.nb_particles_b0);
+  delete qmdp_maze;
+
   // Compare to AO*
   auto aostar_maze = new Maze(pomdp);
   runAOStarIncrements(aostar_maze, init_belief, rng, params.max_sim_depth,
@@ -184,13 +191,6 @@ int main(int argc, char* argv[]) {
                      params.eval_interval_ms, params.completion_threshold,
                      params.completion_reps, params.max_node_size);
   delete pomcp_maze;
-
-  // Compare to QMDP
-  auto qmdp_maze = new Maze(pomdp);
-  runQMDP(qmdp_maze, init_belief, rng, params.max_sim_depth, params.max_time_ms,
-          params.max_sim_depth, params.n_eval_trials,
-          10 * params.nb_particles_b0);
-  delete qmdp_maze;
 
   return 0;
 }

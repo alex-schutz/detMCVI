@@ -70,7 +70,7 @@ def run_maze_instance(N, i, problem_file, results_folder, executable):
             executable,
             problem_file,
             "--max_sim_depth",
-            str(10 * N * N),
+            str(2 * N * N + N),
             "--max_time_ms",
             str(max_time[N]),
             "--eval_interval_ms",
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     executable = "maze_timeseries" + timestr
     instantiate_maze(executable=executable)
 
-    max_workers = min(cpu_count() - 2, 4)
+    max_workers = min(cpu_count() - 2, 3)
     tp = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
     problem_sets = max_time.keys()
