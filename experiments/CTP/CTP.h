@@ -72,11 +72,11 @@ class CTP : public MCVI::SimInterface,
   int64_t origin;
   int64_t goal;
   std::map<std::string, size_t> state_factor_sizes;
-  int64_t max_obs_width;
   std::vector<std::string> actions;
   std::vector<std::string> observations;
   double _idle_reward;
   double _bad_action_reward;
+  double _disambiguate_reward;
   double _complete_reward = 0;
   mutable MCVI::LRUCache<MCVI::State, bool, MCVI::StateHash, MCVI::StateEqual>
       goal_reachable;
@@ -97,15 +97,15 @@ class CTP : public MCVI::SimInterface,
         origin(origin),
         goal(goal),
         state_factor_sizes(initStateSpace()),
-        max_obs_width(initObsWidth()),
         actions(initActions()),
         observations(initObs()),
         _idle_reward(initIdleReward()),
         _bad_action_reward(initBadReward()),
+        _disambiguate_reward(initDisambiguateReward()),
         goal_reachable(250000),
         state_value(250000) {}
 
-  int64_t GetSizeOfObs() const override { return nodes.size() * max_obs_width; }
+  int64_t GetSizeOfObs() const override { return nodes.size(); }
   int64_t GetSizeOfA() const override { return actions.size(); }
   double GetDiscount() const override { return 1.0; }
   int64_t GetNbAgent() const override { return 1; }
@@ -148,7 +148,7 @@ class CTP : public MCVI::SimInterface,
     std::uniform_real_distribution<> unif(0, 1);
     std::map<std::string, int64_t> state;
     // agent starts at special initial state (for init observation)
-    state["loc"] = (int64_t)nodes.size();
+    state["loc"] = -1;
     // stochastic edge status
     for (const auto& [edge, p] : stoch_edges)
       state[edge2str(edge)] = (unif(rng)) < p ? 0 : 1;
@@ -197,20 +197,27 @@ class CTP : public MCVI::SimInterface,
     if (IsTerminal(state)) return 0;
     const int64_t loc_idx = sfIdx("loc");
     const int64_t loc = state.at(loc_idx);
-    if (loc == (int64_t)nodes.size()) {  // special initial state
+    if (loc == -1) {  // special initial state
       sNext[loc_idx] = origin;
       return 0;
     }
-    if (loc == goal) return _complete_reward;  // goal is absorbing
+    if (loc == goal) return 0;  // goal is absorbing
 
     if (actions.at(action) == "decide_goal_unreachable")
-      return goalUnreachable(state) ? _complete_reward : _bad_action_reward;
+      return goalUnreachable(state) ? 0 : _bad_action_reward;
 
     const int64_t dest_loc = nodes.at(action);
+
     if (loc == dest_loc) return _idle_reward;  // idling
 
     // invalid move
-    if (!nodesAdjacent(loc, dest_loc, state)) return _bad_action_reward;
+    if (!nodesConnected(loc, dest_loc)) return _bad_action_reward;
+
+    // disambiguate stochastic edge (blocked)
+    if (!edgeUnblocked(loc, dest_loc, state))
+      return dest_loc < loc ? -edges.at({dest_loc, loc})
+                            : -edges.at({loc, dest_loc});
+    // return _disambiguate_reward;
 
     // moving
     sNext[loc_idx] = dest_loc;
@@ -229,7 +236,6 @@ class CTP : public MCVI::SimInterface,
     for (const auto& [name, state_elem] : names) {
       const auto sf_sz = state_factor_sizes.find(name);
       assert(sf_sz != state_factor_sizes.cend());
-      //   assert(sf_sz->second > state_elem);
       state.push_back(state_elem);
     }
     return state;
@@ -239,28 +245,6 @@ class CTP : public MCVI::SimInterface,
     const auto sf_sz = state_factor_sizes.find(state_factor);
     assert(sf_sz != state_factor_sizes.cend());
     return (int64_t)std::distance(state_factor_sizes.cbegin(), sf_sz);
-  }
-
-  // Return all stochastic edges adjacent to `node`
-  std::vector<std::pair<int64_t, int64_t>> AdjacentStochEdges(
-      int64_t node) const {
-    std::vector<std::pair<int64_t, int64_t>> edges;
-    for (const auto& [edge, p] : stoch_edges) {
-      if (edge.first == node || edge.second == node) {
-        edges.push_back(edge);
-      }
-    }
-
-    auto compareEdges = [node](const std::pair<int64_t, int64_t>& edge1,
-                               const std::pair<int64_t, int64_t>& edge2) {
-      int64_t other1 = (edge1.first == node) ? edge1.second : edge1.first;
-      int64_t other2 = (edge2.first == node) ? edge2.second : edge2.first;
-      return other1 < other2;
-    };
-
-    std::sort(edges.begin(), edges.end(), compareEdges);
-
-    return edges;
   }
 
   bool goalUnreachable(const MCVI::State& state) const {
@@ -310,25 +294,21 @@ class CTP : public MCVI::SimInterface,
     return state_factors;
   }
 
-  int64_t initObsWidth() const {
-    size_t max_stoch_edges_at_node = 0;
-    for (const auto& node : nodes)
-      max_stoch_edges_at_node =
-          std::max(max_stoch_edges_at_node, AdjacentStochEdges(node).size());
-
-    return std::pow(2, max_stoch_edges_at_node);
-  }
-
   std::vector<std::string> initObs() const {
-    std::vector<std::string> obs;  // Observation space can be very large!
+    std::vector<std::string> obs;
+    for (const auto& n : nodes) obs.push_back(std::to_string(n));
     return obs;
   }
 
-  bool nodesAdjacent(int64_t a, int64_t b, const MCVI::State& state) const {
-    if (a == (int64_t)nodes.size() || b == (int64_t)nodes.size()) return false;
+  bool nodesConnected(int64_t a, int64_t b) const {
     if (a == b) return true;
     const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
     if (edges.find(edge) == edges.end()) return false;  // edge does not exist
+    return true;
+  }
+
+  bool edgeUnblocked(int64_t a, int64_t b, const MCVI::State& state) const {
+    const auto edge = a < b ? std::pair(a, b) : std::pair(b, a);
 
     // check if edge is stochastic
     const auto stoch_ptr = stoch_edges.find(edge);
@@ -339,33 +319,24 @@ class CTP : public MCVI::SimInterface,
   }
 
   int64_t observeState(const MCVI::State& state) const {
-    int64_t observation = 0;
-
     int64_t loc = state.at(sfIdx("loc"));
-    if (loc == (int64_t)nodes.size())
-      loc = origin;  // observe initial state as if at origin
-    const int64_t loc_idx = std::distance(
-        nodes.begin(), std::find(nodes.begin(), nodes.end(), loc));
-
-    // stochastic edge status
-    int64_t n = 0;
-    for (const auto& edge : AdjacentStochEdges(loc)) {
-      if (state.at(sfIdx(edge2str(edge)))) observation |= ((int64_t)1 << n);
-      ++n;
-    }
-
-    observation += loc_idx * max_obs_width;
-
-    return observation;
+    return std::distance(nodes.begin(),
+                         std::find(nodes.begin(), nodes.end(), loc));
   }
 
   bool checkFinished(const MCVI::State& sI, int64_t aI,
                      const MCVI::State& sNext) const {
     const int64_t loc_idx = sfIdx("loc");
-    if (sI.at(loc_idx) == (int64_t)nodes.size()) return false;
+    if (sI.at(loc_idx) == -1) return false;
     if (actions.at(aI) == "decide_goal_unreachable" && goalUnreachable(sI))
       return true;
     return sNext.at(loc_idx) == goal;
+  }
+
+  double initDisambiguateReward() const {
+    const double min_edge =
+        std::min_element(edges.begin(), edges.end(), CmpPair)->second;
+    return -min_edge;
   }
 
   double initIdleReward() const {
@@ -434,7 +405,7 @@ class CTP : public MCVI::SimInterface,
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
     MCVI::State best_case_state = findMaxSumElement(belief, sf_indices);
-    if (best_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
+    if (best_case_state.at(sfIdx("loc")) == -1)
       best_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(best_case_state);
@@ -452,7 +423,7 @@ class CTP : public MCVI::SimInterface,
     const auto sf_indices = sfToIndices(sf_keys);
     // get state with most traversable edges
     MCVI::State worst_case_state = findMinSumElement(belief, sf_indices);
-    if (worst_case_state.at(sfIdx("loc")) == (int64_t)nodes.size())
+    if (worst_case_state.at(sfIdx("loc")) == -1)
       worst_case_state[sfIdx("loc")] = origin;
 
     const auto it = state_value.find(worst_case_state);
@@ -559,7 +530,7 @@ class CTP : public MCVI::SimInterface,
     // Initial belief
     os << "start: " << std::endl;
     for (const auto& s : state_enum) {
-      if (s[sfIdx("loc")] != (int64_t)nodes.size())
+      if (s[sfIdx("loc")] != -1)
         os << "0 ";
       else
         os << std::fixed << init_prob(s) << " ";
