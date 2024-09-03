@@ -22,7 +22,8 @@ def plot_nx_graph(G: nx.Graph, origin, goal):
     probs = nx.get_edge_attributes(G, "blocked_prob")
     weights = nx.get_edge_attributes(G, "weight")
     edge_labels = {
-        e: (f"{w}\np: {probs[e]}" if e in probs else f"{w}") for e, w in weights.items()
+        e: (f"{int(w)}\np: {probs[e]}" if e in probs else f"{int(w)}")
+        for e, w in weights.items()
     }
     edge_style = ["dashed" if edge in probs.keys() else "solid" for edge in G.edges]
     pos = nx.get_node_attributes(G, "pos")
@@ -42,6 +43,7 @@ def plot_nx_graph(G: nx.Graph, origin, goal):
         bbox={"boxstyle": "square", "pad": 0, "color": "white"},
         rotate=False,
         font_size=8,
+        verticalalignment="baseline",
         clip_on=False,
     )
     ax = plt.gca()
