@@ -12,29 +12,38 @@ def plot_nx_graph(G: nx.Graph, origin, goal):
     # Plot graph
     node_colour = []
     for node in G.nodes:
-        c = "tab:purple"
+        c = "white"
         if node == goal:
-            c = "lightgreen"
+            c = "#2ca02c"
         elif node == origin:
-            c = "orange"
+            c = "#ff7f0e"
         node_colour.append(c)
     edge_labels = []
     probs = nx.get_edge_attributes(G, "blocked_prob")
     weights = nx.get_edge_attributes(G, "weight")
     edge_labels = {
-        e: (f"p: {probs[e]}\n{w}" if e in probs else f"{w}") for e, w in weights.items()
+        e: (f"{w}\np: {probs[e]}" if e in probs else f"{w}") for e, w in weights.items()
     }
-    edge_colour = ["blue" if edge in probs.keys() else "black" for edge in G.edges]
+    edge_style = ["dashed" if edge in probs.keys() else "solid" for edge in G.edges]
     pos = nx.get_node_attributes(G, "pos")
     nx.draw(
         G,
         with_labels=True,
         node_size=500,
         node_color=node_colour,
-        edge_color=edge_colour,
+        edgecolors="black",
         pos=pos,
+        style=edge_style,
     )
-    nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_color="blue")
+    nx.draw_networkx_edge_labels(
+        G,
+        pos={p: (v[0], v[1]) for p, v in pos.items()},
+        edge_labels=edge_labels,
+        bbox={"boxstyle": "square", "pad": 0, "color": "white"},
+        rotate=False,
+        font_size=8,
+        clip_on=False,
+    )
     ax = plt.gca()
     ax.set_aspect("equal", adjustable="box")
     plt.show()
