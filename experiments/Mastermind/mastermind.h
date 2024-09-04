@@ -160,6 +160,82 @@ class Mastermind : public MCVI::SimInterface {
 
     return observations.stateIndex(obs_factors);
   }
+
+  std::vector<MCVI::State> enumerateStates(
+      size_t max_size = std::numeric_limits<int64_t>::max()) const {
+    std::vector<MCVI::State> enum_states;
+    std::vector<size_t> sizes;
+    for (const auto& pair : state_factor_sizes) sizes.push_back(pair.second);
+
+    // Initialize a state vector with the first state (all zeros)
+    MCVI::State current_state(state_factor_sizes.size(), 0);
+    enum_states.push_back(current_state);
+
+    // Generate all combinations of state factors
+    while (true) {
+      // Find the rightmost factor that can be incremented
+      size_t factor_index = state_factor_sizes.size();
+      while (factor_index > 0) {
+        factor_index--;
+        if (current_state[factor_index] + 1 < (int64_t)sizes[factor_index]) {
+          current_state[factor_index]++;
+          break;
+        } else {
+          // Reset this factor and carry over to the next factor
+          current_state[factor_index] = 0;
+        }
+      }
+
+      // If we completed a full cycle (all factors are zero again), we are done
+      if (factor_index == 0 && current_state[0] == 0) {
+        break;
+      }
+      // warn if overflow
+      if (enum_states.size() >= max_size)
+        throw std::runtime_error("Maximum size exceeded.");
+      enum_states.push_back(current_state);
+    }
+    return enum_states;
+  }
+
+ public:
+  void toSARSOP(std::ostream& os) {
+    std::vector<MCVI::State> state_enum = enumerateStates();
+    const size_t num_states = state_enum.size();
+    os << "discount: " << std::exp(std::log(0.01) / (24)) << std::endl;
+    os << "values: reward" << std::endl;
+    os << "states: " << num_states << std::endl;
+    os << "actions: " << GetSizeOfA() << std::endl;
+    os << "observations: " << GetSizeOfObs() << std::endl << std::endl;
+
+    // Initial belief
+    os << "start include: ";
+    for (size_t s = 0; s < num_states; ++s)
+      if (state_enum.at(s)[sfIdx("success")] == 0) os << s << " ";
+    os << std::endl;
+
+    // Transition probabilities  T : <action> : <start-state> : <end-state> %f
+    // Observation probabilities O : <action> : <end-state> : <observation> %f
+    // Reward     R: <action> : <start-state> : <end-state> : <observation> %f
+    for (size_t sI = 0; sI < state_enum.size(); ++sI) {
+      for (int64_t a = 0; a < GetSizeOfA(); ++a) {
+        MCVI::State sNext;
+        double reward = applyActionToState(state_enum[sI], a, sNext);
+        if (IsTerminal(state_enum[sI])) {
+          reward = 0;
+          sNext = state_enum[sI];
+        }
+        const int64_t obs = observeState(state_enum[sI], a);
+        const size_t eI = std::distance(
+            state_enum.begin(),
+            std::find(state_enum.begin(), state_enum.end(), sNext));
+        os << "T : " << a << " : " << sI << " : " << eI << " 1.0" << std::endl;
+        os << "O : " << a << " : " << sI << " : " << obs << " 1.0" << std::endl;
+        os << "R : " << a << " : " << sI << " : " << eI << " : * " << reward
+           << std::endl;
+      }
+    }
+  }
 };
 
 void ReadMastermindParams(const std::string& filename, int& colour_count,

@@ -3,3 +3,9 @@ target_link_libraries(mastermind_experiment mcvi_library)
 
 add_executable(mastermind_timeseries mastermind_time_series.cpp)
 target_link_libraries(mastermind_timeseries mcvi_library)
+
+add_executable(mastermind_to_sarsop mastermind_to_sarsop.cpp)
+target_link_libraries(mastermind_to_sarsop mcvi_library)
+
+add_executable(mastermind_evaluate_sarsop evaluate_sarsop.cpp)
+target_link_libraries(mastermind_evaluate_sarsop mcvi_library)
