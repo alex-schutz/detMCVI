@@ -16,7 +16,7 @@ bool QMDPTimeExpired(const std::chrono::steady_clock::time_point& begin,
   const auto now = std::chrono::steady_clock::now();
   const auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(now - begin);
-  if (elapsed.count() >= max_computation_ms * 1000) return true;
+  if (elapsed.count() >= max_computation_ms * 1e3) return true;
 
   return false;
 }
@@ -45,11 +45,15 @@ bool QMDPIter(std::shared_ptr<BeliefTreeNode> root,
   // expand node
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
     root->GetOrAddChildren(a, heuristic, eval_depth, QMDPInfBoundFunc, pomdp);
+    if (QMDPTimeExpired(start, max_time_ms)) return true;
   }
   // build tree for children of best action
   root->UpdateBestAction();
+  if (QMDPTimeExpired(start, max_time_ms)) return true;
   const auto actChildren = root->GetChildren(root->GetBestActUBound());
+  if (QMDPTimeExpired(start, max_time_ms)) return true;
   for (const auto& [obs, obsNode] : actChildren) {
+    if (QMDPTimeExpired(start, max_time_ms)) return true;
     if (QMDPIter(obsNode.GetBelief(), heuristic, eval_depth - 1, rng, pomdp,
                  start, max_time_ms))
       return true;
