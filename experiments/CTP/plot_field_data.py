@@ -89,3 +89,4 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
 output = "show"
 do_plot(result, "completed problem Percentage", "Success rate", output=output)
 do_plot(result, "completed problem Average regret", "Average regret", -1, output=output)
+do_plot(result, "policy nodes", "Policy nodes", output=output)
