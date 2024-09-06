@@ -21,6 +21,7 @@ result = pd.concat(dfs)
 
 
 def do_plot(df, y, ytitle, mul=1, output="show"):
+    colours = ["#0097b2", "#cb6ce6", "#90e079", "#f5bd45"]
     x = "Algorithm"
     alg_mapping = {a: i for i, a in enumerate(sorted(df[x].unique()))}
     df["alg num"] = df[x].map(alg_mapping)
@@ -35,6 +36,8 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
             x=df["alg num"],
             boxpoints=False,
             showlegend=False,
+            fillcolor="rgba(0,0,0,0)",
+            line=dict(color=colours[0]),
         )
     )
 
@@ -45,8 +48,7 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
             mode="markers",
             marker=dict(
                 color=[
-                    px.colors.qualitative.Set1[i % len(px.colors.qualitative.Set1)]
-                    for i in result["Set number"]
+                    colours[(i % (len(colours) - 1)) + 1] for i in result["Set number"]
                 ],
                 # size=10,
             ),
@@ -62,12 +64,19 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
             ticktext=list(alg_mapping.keys()),
             title="Algorithm",
         ),
-        yaxis=dict(title=ytitle),
+        yaxis=dict(
+            title=ytitle,
+        ),
         width=250,
         height=250,
     )
 
-    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+    fig.update_layout(
+        margin=dict(l=0, r=0, b=0, t=0),
+        font=dict(size=16),
+    )
+
+    fig.update_yaxes(minor=dict(tickmode="auto", nticks=5, showgrid=True))
 
     if output == "show":
         fig.show()
