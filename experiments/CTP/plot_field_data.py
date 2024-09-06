@@ -64,8 +64,10 @@ def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
             ticktext=list(alg_mapping.keys()),
             title="Algorithm",
         ),
-        yaxis=dict(
-            title=ytitle,
+        yaxis=(
+            dict(title=ytitle, tickformat="~s")
+            if df[y].max() > 1000
+            else dict(title=ytitle)
         ),
         width=250,
         height=250,
@@ -90,7 +92,7 @@ output = "show"
 do_plot(
     result,
     "completed problem Percentage",
-    "Failure rate",
+    "Failure rate (%)",
     -1,
     offset=100,
     output=output,
