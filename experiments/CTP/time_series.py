@@ -73,42 +73,48 @@ def parse_file(filename) -> pd.DataFrame:
         i = 0
         while i < len(lines):
             if lines[i].startswith("Evaluation of policy"):
-                time = extract_float(lines[i].split("at time ")[1])
+                tline = lines[i].split("at time ")
+                time = extract_float(tline[1]) if len(tline) > 1 else np.nan
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
                 detmcvi_stats[time] = parse_evaluation(info_lines)
                 i += 26
-            elif lines[i].startswith("Evaluation of AO* policy"):
-                time = extract_float(lines[i].split("at time ")[1])
+            elif lines[i].startswith("Evaluation of") and "AO*" in lines[i]:
+                tline = lines[i].split("at time ")
+                time = extract_float(tline[1]) if len(tline) > 1 else np.nan
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
                 ao_stats[time] = parse_evaluation(info_lines)
                 i += 26
             elif lines[i].startswith("Evaluation of POMCP policy"):
-                time = extract_float(lines[i].split("at time ")[1])
+                tline = lines[i].split("at time ")
+                time = extract_float(tline[1]) if len(tline) > 1 else np.nan
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
                 pomcp_stats[time] = parse_evaluation(info_lines)
                 i += 26
             elif lines[i].startswith("Evaluation of OrigMCVI policy"):
-                time = extract_float(lines[i].split("at time ")[1])
+                tline = lines[i].split("at time ")
+                time = extract_float(tline[1]) if len(tline) > 1 else np.nan
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
                 origmcvi_stats[time] = parse_evaluation(info_lines)
                 i += 26
             elif lines[i].startswith("Evaluation of SARSOP policy"):
-                time = extract_float(lines[i].split("at time ")[1])
+                tline = lines[i].split("at time ")
+                time = extract_float(tline[1]) if len(tline) > 1 else np.nan
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
                 sarsop_stats[time] = parse_evaluation(info_lines)
                 i += 26
             elif lines[i].startswith("Evaluation of QMDP policy"):
-                time = extract_float(lines[i].split("at time ")[1])
+                tline = lines[i].split("at time ")
+                time = extract_float(tline[1]) if len(tline) > 1 else np.nan
                 if i + 27 > len(lines):
                     break
                 info_lines = lines[i + 1 : i + 27]
