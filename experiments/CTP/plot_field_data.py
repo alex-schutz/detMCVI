@@ -20,7 +20,7 @@ for i in range(10):
 result = pd.concat(dfs)
 
 
-def do_plot(df, y, ytitle, mul=1, output="show"):
+def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
     colours = ["#0097b2", "#cb6ce6", "#90e079", "#f5bd45"]
     x = "Algorithm"
     alg_mapping = {a: i for i, a in enumerate(sorted(df[x].unique()))}
@@ -32,7 +32,7 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
 
     fig.add_trace(
         go.Box(
-            y=mul * df[y],
+            y=offset + mul * df[y],
             x=df["alg num"],
             boxpoints=False,
             showlegend=False,
@@ -43,7 +43,7 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
 
     fig.add_trace(
         go.Scatter(
-            y=mul * df[y],
+            y=offset + mul * df[y],
             x=df["jitter"],
             mode="markers",
             marker=dict(
@@ -87,6 +87,13 @@ def do_plot(df, y, ytitle, mul=1, output="show"):
 
 
 output = "show"
-do_plot(result, "completed problem Percentage", "Success rate", output=output)
+do_plot(
+    result,
+    "completed problem Percentage",
+    "Failure rate",
+    -1,
+    offset=100,
+    output=output,
+)
 do_plot(result, "completed problem Average regret", "Average regret", -1, output=output)
 do_plot(result, "policy nodes", "Policy nodes", output=output)
