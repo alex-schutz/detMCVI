@@ -22,8 +22,7 @@ def plot_nx_graph(G: nx.Graph, origin, goal):
     probs = nx.get_edge_attributes(G, "blocked_prob")
     weights = nx.get_edge_attributes(G, "weight")
     edge_labels = {
-        e: (f"{int(w)}\np: {probs[e]}" if e in probs else f"{int(w)}")
-        for e, w in weights.items()
+        e: (f"{w}\np: {probs[e]}" if e in probs else f"{w}") for e, w in weights.items()
     }
     edge_style = ["dashed" if edge in probs.keys() else "solid" for edge in G.edges]
     pos = nx.get_node_attributes(G, "pos")
@@ -69,6 +68,8 @@ def generate_graph(
     plot=False,
     grid_size=10,
 ) -> tuple[nx.Graph, int, int, bool]:
+    # grid_size=100
+    # seed=57043235
     # Define world parameters
     xmax = grid_size  # max x-grid coordinate
     ymax = grid_size  # max y-grid coordinate
@@ -117,6 +118,7 @@ def generate_graph(
     # Define stochastic edges and probabilities
     num_stoch_edges = round(prop_stoch * len(G.edges))
     stoch_edge_idx = np.random.choice(len(G.edges), num_stoch_edges, replace=False)
+    # stoch_edge_idx = [6, 12, 9, 13, 7, 4, 15]
     edge_probs: dict[tuple[int, int], float] = {}
     for i, e in enumerate(G.edges):
         if i in stoch_edge_idx:

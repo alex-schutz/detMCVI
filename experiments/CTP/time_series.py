@@ -158,10 +158,12 @@ def lighten_colour(colour_str, factor=0.2):
     return f"rgba({r},{g},{b},{factor})"
 
 
+algs = ["detMCVI", "AO*", "POMCP", "OrigMCVI", "QMDP"]
+colours = ["#cb6ce6", "#0097b2", "#90e079", "#a0e079", "#f5bd45"]
+
+
 def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
-    algs = ["detMCVI", "AO*", "POMCP"]
     fig = go.Figure()
-    colours = ["#cb6ce6", "#0097b2", "#90e079"]
 
     for i, alg in enumerate(algs):
         data = df[df["Algorithm"] == alg].sort_values("Timestamp")
@@ -172,82 +174,91 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
                 "completed problem Percentage",
             ]
         ]
-        fig.add_trace(
-            go.Scatter(
-                x=data["Timestamp"],
-                y=data["completed problem Average regret"],
-                mode="lines+markers",
-                line_shape="hv",
-                line=dict(color=colours[i]),
-                name=alg,
-                customdata=data_info,
-                hovertemplate="Computation time: %{x:.2f}s<br>Average regret: %{y:.2f}<br>Highest regret: %{customdata[0]:.2f}<br>Lowest regret: %{customdata[1]:.2f}<br>Percentage completed: %{customdata[2]:.2f}%",
+        if len(data) == 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=data["Timestamp"],
+                    y=-data["completed problem Average regret"],
+                    mode="markers" if len(data) == 1 else "lines",
+                    # line_shape="hv",
+                    marker_symbol="cross",
+                    line=dict(color=colours[i]),
+                    name=alg,
+                    customdata=data_info,
+                    hovertemplate="Computation time: %{x:.2f}s<br>Average regret: %{y:.2f}<br>Highest regret: %{customdata[0]:.2f}<br>Lowest regret: %{customdata[1]:.2f}<br>Percentage completed: %{customdata[2]:.2f}%",
+                    error_y=dict(
+                        type="data",
+                        array=1.96
+                        * np.sqrt(data["completed problem Regret variance"])
+                        / np.sqrt(data["completed problem Count"]),
+                        visible=True,
+                    ),
+                )
             )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data["Timestamp"],
-                y=data["completed problem Highest regret"],
-                fill="tonexty",
-                fillcolor=lighten_colour(colours[i], 0.2),
-                mode="lines",
-                line=dict(color=lighten_colour(colours[i], 0.2)),
-                line_shape="hv",
-                name="Highest regret",
+
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=data["Timestamp"],
+                    y=-data["completed problem Average regret"],
+                    mode="markers" if len(data) == 1 else "lines",
+                    # line_shape="hv",
+                    marker_symbol="cross",
+                    line=dict(color=colours[i]),
+                    name=alg,
+                    customdata=data_info,
+                    hovertemplate="Computation time: %{x:.2f}s<br>Average regret: %{y:.2f}<br>Highest regret: %{customdata[0]:.2f}<br>Lowest regret: %{customdata[1]:.2f}<br>Percentage completed: %{customdata[2]:.2f}%",
+                )
             )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data["Timestamp"],
-                y=data["completed problem Lowest regret"],
-                fill="tonexty",
-                fillcolor=lighten_colour(colours[i], 0.2),
-                mode="lines",
-                line=dict(color=lighten_colour(colours[i], 0.2)),
-                line_shape="hv",
-                name="Lowest regret",
+            fig.add_trace(
+                go.Scatter(
+                    x=data["Timestamp"],
+                    y=-data["completed problem Average regret"]
+                    + 1.96
+                    * np.sqrt(data["completed problem Regret variance"])
+                    / np.sqrt(data["completed problem Count"]),
+                    fill=None,
+                    fillcolor=lighten_colour(colours[i], 0.2),
+                    mode="lines",
+                    line=dict(color=lighten_colour(colours[i], 0.0)),
+                    # line_shape="hv",
+                    showlegend=False,
+                )
             )
-        )
-
-    fig.update_layout(
-        title=title,
-        xaxis_title="Planning time (s)",
-        yaxis_title="Regret",
-        xaxis_range=[0, df["Timestamp"].max()],
-    )
-
-    if output == "show":
-        fig.show()
-    elif output in ["png", "eps", "pdf"]:
-        fig.write_image(f"{figname}.{output}", scale=2)
-    elif output == "html":
-        fig.write_html(f"{figname}.html")
-
-
-def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show"):
-    algs = ["detMCVI", "AO*", "POMCP"]
-    fig = go.Figure()
-    colours = ["#cb6ce6", "#0097b2", "#90e079"]
-
-    for i, alg in enumerate(algs):
-        data = df[df["Algorithm"] == alg].sort_values("Timestamp")
-        fig.add_trace(
-            go.Scatter(
-                x=data["Timestamp"],
-                line=dict(color=colours[i]),
-                y=data[dataname],
-                mode="lines",
-                name=alg,
-                line_shape="hv",
+            fig.add_trace(
+                go.Scatter(
+                    x=data["Timestamp"],
+                    y=-data["completed problem Average regret"]
+                    - 1.96
+                    * np.sqrt(data["completed problem Regret variance"])
+                    / np.sqrt(data["completed problem Count"]),
+                    fill="tonexty",
+                    fillcolor=lighten_colour(colours[i], 0.2),
+                    mode="lines",
+                    line=dict(color=lighten_colour(colours[i], 0.0)),
+                    # line_shape="hv",
+                    name="95% CI",
+                    showlegend=False,
+                )
             )
-        )
 
     fig.update_layout(
         # title=title,
         xaxis_title="Planning time (s)",
-        yaxis_title=ylabel,
+        yaxis_title="Regret",
         xaxis_range=[0, df["Timestamp"].max()],
-        font=dict(size=32),
+        font=dict(size=16),
+        width=250,
+        height=250,
+        showlegend=False,
+    )
+    fig.update_xaxes(
+        domain=(0.15, 1),
+        tickfont=dict(size=14),
+    )
+    fig.update_yaxes(
+        domain=(0.15, 1),
+        tickfont=dict(size=14),
     )
     fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
 
@@ -259,28 +270,136 @@ def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show")
         fig.write_html(f"{figname}.html")
 
 
+def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show"):
+
+    fig = go.Figure()
+
+    for i, alg in enumerate(algs):
+        data = df[df["Algorithm"] == alg].sort_values("Timestamp")
+        fig.add_trace(
+            go.Scatter(
+                x=data["Timestamp"],
+                line=dict(color=colours[i]),
+                y=data[dataname],
+                mode="markers" if len(data) == 1 else "lines",
+                marker_symbol="cross",
+                name=alg,
+                # line_shape="hv",
+            )
+        )
+
+    fig.update_layout(
+        # title=title,
+        xaxis_title="Planning time (s)",
+        yaxis_title=ylabel,
+        xaxis_range=[0, df["Timestamp"].max()],
+        font=dict(size=16),
+        showlegend=False,
+        width=250,
+        height=250,
+    )
+    fig.update_xaxes(
+        domain=(0.15, 1),
+        tickfont=dict(size=14),
+    )
+    fig.update_yaxes(
+        domain=(0.15, 1),
+        tickfont=dict(size=14),
+    )
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+    if dataname == "policy nodes":
+        fig.update_layout(
+            yaxis_range=[0, df[df["Algorithm"] != "POMCP"][dataname].max() * 1.05]
+        )
+
+    if output == "show":
+        fig.show()
+    elif output in ["png", "eps", "pdf"]:
+        fig.write_image(f"{figname}.{output}")
+    elif output == "html":
+        fig.write_html(f"{figname}.html")
+
+
+def plot_legend(df, figname):
+    fig = go.Figure()
+    for i, alg in enumerate(algs):
+        data = df[df["Algorithm"] == alg].sort_values("Timestamp")
+        if len(data) < 1:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=[1],
+                y=[4],
+                mode="markers" if len(data) == 1 else "lines",
+                marker_symbol="cross",
+                line=dict(color=colours[i]),
+                name=alg,
+                # visible="legendonly",
+            )
+        )
+
+    # Update layout to remove the plot area and axes
+    fig.update_layout(
+        xaxis=dict(
+            showline=False,
+            showgrid=False,
+            showticklabels=False,
+            zeroline=False,
+            domain=(0.999, 1),
+        ),
+        yaxis=dict(
+            showline=False,
+            showgrid=False,
+            showticklabels=False,
+            zeroline=False,
+            domain=(0.999, 1),
+        ),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(255,255,255,1)",
+        showlegend=True,
+        legend=dict(
+            x=0,  # Adjust legend position as needed
+            y=1,  # Adjust legend position as needed
+        ),
+        font=dict(size=16),
+        width=120,
+        height=250,
+    )
+
+    # Remove margins
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+
+    if output == "show":
+        fig.show()
+    elif output in ["png", "eps", "pdf"]:
+        fig.write_image(f"{figname}.{output}")
+    elif output == "html":
+        fig.write_html(f"{figname}.html")
+
+
 if __name__ == "__main__":
     output = "show"
-    # output="png"
+    output = "png"
+    output = "pdf"
     # output="html"
 
-    series_file = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_21-47/WumpusInstance_2.txt"
-    series_file2 = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_17-08/WumpusInstance_2.txt"
+    series_file = "CTPInstance_plot.txt"
+    # series_file2 = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_17-08/WumpusInstance_2.txt"
 
     df = parse_file(series_file)
-    df = df[df["Algorithm"] != "detMCVI"]
-    df2 = parse_file(series_file2)
-    df2 = df2[df2["Algorithm"] == "detMCVI"]
-    df = pd.concat([df, df2])
+    # df = df[df["Algorithm"] != "detMCVI"]
+    # df2 = parse_file(series_file2)
+    # df2 = df2[df2["Algorithm"] == "detMCVI"]
+    # df = pd.concat([df, df2])
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-    plot_timeseries(df, "Policy value", "timeseries_5_value", output)
+    plot_timeseries(df, "Policy value", "timeseries_regret", output)
     plot_data(
         df,
         "completed problem Percentage",
-        "Goal reached %",
+        "Success rate %",
         "Policy completion",
-        "timeseries_5_comp",
+        "timeseries_success",
         output,
     )
     plot_data(
@@ -288,6 +407,7 @@ if __name__ == "__main__":
         "policy nodes",
         "Policy nodes",
         "Policy size",
-        "timeseries_5_nodes",
+        "timeseries_nodes",
         output,
     )
+    plot_legend(df, "legend")
