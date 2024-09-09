@@ -6,18 +6,33 @@ import numpy as np
 
 # datafile = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/field_trial_1/ctp_results_all.csv"
 # df = pd.read_csv(datafile)
-folder = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/field_data_1"
+folder = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/ctp_results_30x50_2024-09-09_11-24"
 
-dfs = []
-for i in range(10):
-    try:
-        x = parse_file(f"{folder}/CTPInstance_30_{i}.txt")
-        x["Set number"] = i
-        dfs.append(x)
-    except:
-        pass
+# dfs = []
+# for i in range(50):
+#     try:
+#         x = parse_file(f"{folder}/CTPInstance_30_{i}.txt")
+#         x["Set number"] = i
+#         dfs.append(x)
+#     except:
+#         pass
 
-result = pd.concat(dfs)
+# result = pd.concat(dfs)
+
+df = pd.read_csv(f"{folder}/ctp_results_all.csv")
+
+result = (
+    df.groupby(["Set number", "Algorithm"])
+    .apply(
+        lambda group: (
+            # group[group["completed problem Percentage"] >= 99].iloc[0]
+            # if any(group["completed problem Percentage"] >= 99)
+            # else
+            group.iloc[-1]
+        )
+    )
+    .reset_index(drop=True)
+)
 
 
 def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
