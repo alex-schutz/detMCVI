@@ -159,7 +159,7 @@ def lighten_colour(colour_str, factor=0.2):
 
 
 algs = ["detMCVI", "AO*", "POMCP", "OrigMCVI", "QMDP"]
-colours = ["#cb6ce6", "#0097b2", "#90e079", "#a0e079", "#f5bd45"]
+colours = ["#cb6ce6", "#90e079", "#0097b2", "#a0e079", "#f5bd45"]
 
 
 def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
@@ -377,14 +377,25 @@ def plot_legend(df, figname):
         fig.write_html(f"{figname}.html")
 
 
+def make_zero_row(alg: str) -> dict:
+    return {
+        "Algorithm": alg,
+        "Timestamp": 0,
+        "completed problem Count": 0,
+        "completed problem Percentage": 0,
+        "policy nodes": 0,
+        "completed problem Average regret": np.nan,
+        "completed problem Regret variance": 0,
+    }
+
+
 if __name__ == "__main__":
     output = "show"
-    output = "png"
-    output = "pdf"
+    # output = "png"
+    # output = "pdf"
     # output="html"
 
     series_file = "CTPInstance_plot.txt"
-    # series_file2 = "experiments/Wumpus/evaluation/wumpus_results_2_2024-08-10_17-08/WumpusInstance_2.txt"
 
     df = parse_file(series_file)
     # df = df[df["Algorithm"] != "detMCVI"]
@@ -392,6 +403,12 @@ if __name__ == "__main__":
     # df2 = df2[df2["Algorithm"] == "detMCVI"]
     # df = pd.concat([df, df2])
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+    zero_rows = []
+    for alg in df["Algorithm"].unique():
+        zero_rows += make_zero_row(alg)
+
+    df = pd.concat([pd.DataFrame(zero_rows), df])
 
     plot_timeseries(df, "Policy value", "timeseries_regret", output)
     plot_data(
