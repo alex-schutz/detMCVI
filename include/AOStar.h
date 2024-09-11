@@ -125,7 +125,7 @@ void AOStarIter(std::vector<std::shared_ptr<BeliefTreeNode>>& graph,
     }
     ++i;
   }
-}  // namespace MCVI
+}
 
 void RunAOStar(std::shared_ptr<BeliefTreeNode> initial_belief, int64_t max_iter,
                int64_t max_computation_ms, const OptimalPath& heuristic,
@@ -223,8 +223,7 @@ void RunAOStarAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
       policy_tree.close();
       std::remove(policy_tree_file.c_str());
       if (node_count >= node_limit) {
-        std::cout << "POMCP planning complete, reached node limit."
-                  << std::endl;
+        std::cout << "AO* planning complete, reached node limit." << std::endl;
         return;
       }
     }

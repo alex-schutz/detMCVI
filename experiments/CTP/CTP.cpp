@@ -140,9 +140,9 @@ void runQMDP(CTP* pomdp, const BeliefDistribution& init_belief,
 
   // Run QMDP
   std::cout << "Running QMDP on belief tree" << std::endl;
-  RunQMDPAndEvaluate(
-      root, max_time_ms, heuristic, eval_depth, max_eval_steps, n_eval_trials,
-      nb_particles_b0, rng, solver,
+  const int64_t t = RunQMDP(root, max_time_ms, heuristic, eval_depth, pomdp);
+  RunQMDPEvaluation(
+      root, t, max_eval_steps, n_eval_trials, nb_particles_b0, rng, solver,
       [&pomdp](const State& state, int64_t value) {
         return pomdp->get_state_value(state, value);
       },

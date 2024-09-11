@@ -224,6 +224,8 @@ std::pair<AlphaVectorFSC, std::shared_ptr<BeliefTreeNode>> MCVIPlanner::Plan(
         std::chrono::duration_cast<std::chrono::microseconds>(now - iter_start)
                 .count() /
             1000;
+    std::cerr << " ms remaining " << ms_remaining << " max time "
+              << max_computation_ms << std::endl;
     const auto [fsc, root, precision, converged, timed_out, max_iter] =
         PlanIncrement(Tr_root, R_lower, i, ms_remaining, max_depth_sim, epsilon,
                       max_nb_iter, eval_depth, eval_epsilon, exit_flag);
