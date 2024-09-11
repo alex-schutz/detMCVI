@@ -213,10 +213,13 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
             fig.add_trace(
                 go.Scatter(
                     x=data["Timestamp"],
-                    y=-data["completed problem Average regret"]
-                    + 1.96
-                    * np.sqrt(data["completed problem Regret variance"])
-                    / np.sqrt(data["completed problem Count"]),
+                    y=np.maximum(
+                        -data["completed problem Average regret"]
+                        + 1.96
+                        * np.sqrt(data["completed problem Regret variance"])
+                        / np.sqrt(data["completed problem Count"]),
+                        -data["completed problem Lowest regret"],
+                    ),
                     fill=None,
                     fillcolor=lighten_colour(colours[i], 0.2),
                     mode="lines",
@@ -228,10 +231,13 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
             fig.add_trace(
                 go.Scatter(
                     x=data["Timestamp"],
-                    y=-data["completed problem Average regret"]
-                    - 1.96
-                    * np.sqrt(data["completed problem Regret variance"])
-                    / np.sqrt(data["completed problem Count"]),
+                    y=np.minimum(
+                        -data["completed problem Average regret"]
+                        - 1.96
+                        * np.sqrt(data["completed problem Regret variance"])
+                        / np.sqrt(data["completed problem Count"]),
+                        -data["completed problem Highest regret"],
+                    ),
                     fill="tonexty",
                     fillcolor=lighten_colour(colours[i], 0.2),
                     mode="lines",
@@ -377,16 +383,22 @@ def plot_legend(df, figname):
         fig.write_html(f"{figname}.html")
 
 
-def make_zero_row(alg: str) -> dict:
-    return {
-        "Algorithm": alg,
-        "Timestamp": 0,
-        "completed problem Count": 0,
-        "completed problem Percentage": 0,
-        "policy nodes": 0,
-        "completed problem Average regret": np.nan,
-        "completed problem Regret variance": 0,
-    }
+def make_zero_rows(algs: list[str], columns) -> pd.DataFrame:
+    ds = []
+    for alg in algs:
+        d = {
+            "Algorithm": alg,
+            "Timestamp": 0,
+            "completed problem Count": 0,
+            "completed problem Percentage": 0,
+            "policy nodes": 0,
+            "completed problem Average regret": np.nan,
+            "completed problem Regret variance": 0,
+        }
+        ds.append(d)
+    df = pd.DataFrame(ds)
+    df.reindex(columns=columns, fill_value=0)
+    return df
 
 
 if __name__ == "__main__":
@@ -404,11 +416,9 @@ if __name__ == "__main__":
     # df = pd.concat([df, df2])
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-    zero_rows = []
-    for alg in df["Algorithm"].unique():
-        zero_rows += make_zero_row(alg)
+    zero_rows = make_zero_rows(list(df["Algorithm"].unique()), df.columns)
 
-    df = pd.concat([pd.DataFrame(zero_rows), df])
+    df = pd.concat([zero_rows, df])
 
     plot_timeseries(df, "Policy value", "timeseries_regret", output)
     plot_data(
