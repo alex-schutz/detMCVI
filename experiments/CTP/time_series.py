@@ -213,11 +213,11 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
             fig.add_trace(
                 go.Scatter(
                     x=data["Timestamp"],
-                    y=np.maximum(
+                    y=np.minimum(
                         -data["completed problem Average regret"]
-                        + 1.96
-                        * np.sqrt(data["completed problem Regret variance"])
-                        / np.sqrt(data["completed problem Count"]),
+                        # + 1.96
+                        + np.sqrt(data["completed problem Regret variance"]),
+                        # / np.sqrt(data["completed problem Count"]),
                         -data["completed problem Lowest regret"],
                     ),
                     fill=None,
@@ -231,11 +231,11 @@ def plot_timeseries(df: pd.DataFrame, title, figname, output="show"):
             fig.add_trace(
                 go.Scatter(
                     x=data["Timestamp"],
-                    y=np.minimum(
+                    y=np.maximum(
                         -data["completed problem Average regret"]
-                        - 1.96
-                        * np.sqrt(data["completed problem Regret variance"])
-                        / np.sqrt(data["completed problem Count"]),
+                        # - 1.96
+                        - np.sqrt(data["completed problem Regret variance"]),
+                        # / np.sqrt(data["completed problem Count"]),
                         -data["completed problem Highest regret"],
                     ),
                     fill="tonexty",
