@@ -1,7 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from time_series import parse_file
+from time_series import parse_file, lighten_colour
 import numpy as np
 
 # datafile = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/field_trial_1/ctp_results_all.csv"
@@ -41,10 +41,9 @@ def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
     alg_mapping = {a: i for i, a in enumerate(sorted(df[x].unique()))}
     df["alg num"] = df[x].map(alg_mapping)
 
-    df["jitter"] = df["alg num"] + np.linspace(-0.1, 0.1, num=len(df))
+    df["jitter"] = df["alg num"] + np.linspace(-0.2, 0.2, num=len(df))
 
     fig = go.Figure()
-
     fig.add_trace(
         go.Box(
             y=offset + mul * df[y],
@@ -53,6 +52,7 @@ def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
             showlegend=False,
             fillcolor="rgba(0,0,0,0)",
             line=dict(color=colours[0]),
+            zorder=1,
         )
     )
 
@@ -63,12 +63,14 @@ def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
             mode="markers",
             marker=dict(
                 color=[
-                    colours[(i % (len(colours) - 1)) + 1] for i in result["Set number"]
+                    lighten_colour(colours[(i % (len(colours) - 1)) + 1], 0.7)
+                    for i in result["Set number"]
                 ],
                 # size=10,
             ),
             showlegend=False,
             text=result["Set number"],
+            zorder=0,
         )
     )
 
