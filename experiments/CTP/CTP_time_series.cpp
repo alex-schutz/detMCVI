@@ -26,14 +26,14 @@ void runMCVIIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                        int64_t eval_interval_ms, int64_t completion_threshold,
                        int64_t completion_reps) {
   // Initialise heuristic
-  OptimalPath solver(pomdp);
+  OptimalPath heuristic(pomdp);
 
   // Initialise the FSC
   const auto init_fsc = AlphaVectorFSC(max_node_size);
 
   // Run MCVI
   std::cout << "Running MCVI" << std::endl;
-  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, solver, rng);
+  auto planner = MCVIPlanner(pomdp, init_fsc, init_belief, heuristic, rng);
   const auto [fsc, root] = planner.PlanAndEvaluate(
       max_sim_depth, converge_thresh, std::numeric_limits<int64_t>::max(),
       max_time_ms, eval_depth, eval_epsilon, max_eval_steps, n_eval_trials,
@@ -49,10 +49,10 @@ void runAOStarIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                          int64_t max_time_ms, int64_t max_eval_steps,
                          int64_t n_eval_trials, int64_t nb_particles_b0,
                          int64_t eval_interval_ms, int64_t completion_threshold,
-                         int64_t completion_reps, int64_t node_limit) {
+                         int64_t completion_reps, int64_t node_limit,
+                         OptimalPath& solver) {
   // Initialise heuristic
   OptimalPath heuristic(pomdp);
-  OptimalPath solver(pomdp);
 
   // Create root belief node
   const double init_upper =
@@ -78,10 +78,10 @@ void runQMDPIncrements(CTP* pomdp, const BeliefDistribution& init_belief,
                        int64_t max_time_ms, int64_t max_eval_steps,
                        int64_t n_eval_trials, int64_t nb_particles_b0,
                        int64_t eval_interval_ms, int64_t completion_threshold,
-                       int64_t completion_reps, int64_t node_limit) {
+                       int64_t completion_reps, int64_t node_limit,
+                       OptimalPath& solver) {
   // Initialise heuristic
   OptimalPath heuristic(pomdp);
-  OptimalPath solver(pomdp);
 
   // Create root belief node
   const double init_upper =
@@ -109,10 +109,7 @@ void runPOMCPIncrements(CTP* pomdp, std::mt19937_64& rng,
                         int64_t max_eval_steps, int64_t n_eval_trials,
                         int64_t nb_particles_b0, int64_t eval_interval_ms,
                         int64_t completion_threshold, int64_t completion_reps,
-                        int64_t node_limit) {
-  // Initialise heuristic
-  OptimalPath solver(pomdp);
-
+                        int64_t node_limit, OptimalPath& solver) {
   // Create root node
   POMCP::TreeNodePtr root_node = std::make_shared<POMCP::TreeNode>(0);
 
@@ -166,6 +163,8 @@ int main(int argc, char* argv[]) {
     init_belief = DownsampleBelief(init_belief, params.max_belief_samples, rng);
   }
   std::cout << "Initial belief size: " << init_belief.size() << std::endl;
+  auto solver_ctp = new CTP(pomdp);
+  OptimalPath solver(solver_ctp);
   auto mcvi_ctp = new CTP(pomdp);
   auto aostar_ctp = new CTP(pomdp);
   auto pomcp_ctp = new CTP(pomdp);
@@ -185,7 +184,7 @@ int main(int argc, char* argv[]) {
                     params.max_time_ms, params.max_sim_depth,
                     params.n_eval_trials, 10 * params.nb_particles_b0,
                     params.eval_interval_ms, params.completion_threshold,
-                    params.completion_reps, params.max_node_size);
+                    params.completion_reps, params.max_node_size, solver);
   delete qmdp_ctp;
 
   // Compare to AO*
@@ -193,7 +192,7 @@ int main(int argc, char* argv[]) {
                       params.max_time_ms, params.max_sim_depth,
                       params.n_eval_trials, 10 * params.nb_particles_b0,
                       params.eval_interval_ms, params.completion_threshold,
-                      params.completion_reps, params.max_node_size);
+                      params.completion_reps, params.max_node_size, solver);
   delete aostar_ctp;
 
   //   Compare to POMCP offline
@@ -205,8 +204,9 @@ int main(int argc, char* argv[]) {
                      params.max_time_ms, params.max_sim_depth,
                      params.n_eval_trials, 10 * params.nb_particles_b0,
                      params.eval_interval_ms, params.completion_threshold,
-                     params.completion_reps, params.max_node_size);
+                     params.completion_reps, params.max_node_size, solver);
   delete pomcp_ctp;
 
+  delete solver_ctp;
   return 0;
 }
