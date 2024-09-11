@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <deque>
+
 #include "BeliefTree.h"
 #include "MCVI.h"
 
@@ -34,39 +36,43 @@ static double QMDPInfBoundFunc(const BeliefDistribution& /*belief*/,
   return -std::numeric_limits<double>::infinity();
 }
 
-bool QMDPIter(std::shared_ptr<BeliefTreeNode> root,
-              const OptimalPath& heuristic, int64_t eval_depth,
-              std::mt19937_64& rng, SimInterface* pomdp,
+bool QMDPIter(std::deque<std::shared_ptr<BeliefTreeNode>>& fringe,
+              const OptimalPath& heuristic, int64_t max_eval_depth,
+              SimInterface* pomdp,
               const std::chrono::steady_clock::time_point& start,
               int64_t max_time_ms) {
   if (QMDPTimeExpired(start, max_time_ms)) return true;
+  if (fringe.empty()) return true;
+  std::shared_ptr<BeliefTreeNode> b = fringe.front();
+  fringe.pop_front();
+  const int64_t eval_depth = max_eval_depth - b->GetDepth();
   if (eval_depth < 1) return false;
-  if (terminalBelief(root, pomdp)) return false;
+  if (terminalBelief(b, pomdp)) return false;
   // expand node
   for (int64_t a = 0; a < pomdp->GetSizeOfA(); ++a) {
-    root->GetOrAddChildren(a, heuristic, eval_depth, QMDPInfBoundFunc, pomdp);
+    b->GetOrAddChildren(a, heuristic, eval_depth, QMDPInfBoundFunc, pomdp);
     if (QMDPTimeExpired(start, max_time_ms)) return true;
   }
   // build tree for children of best action
-  root->UpdateBestAction();
-  if (QMDPTimeExpired(start, max_time_ms)) return true;
-  const auto actChildren = root->GetChildren(root->GetBestActUBound());
-  if (QMDPTimeExpired(start, max_time_ms)) return true;
+  b->UpdateBestAction();
+  const auto actChildren = b->GetChildren(b->GetBestActUBound());
   for (const auto& [obs, obsNode] : actChildren) {
     if (QMDPTimeExpired(start, max_time_ms)) return true;
-    if (QMDPIter(obsNode.GetBelief(), heuristic, eval_depth - 1, rng, pomdp,
-                 start, max_time_ms))
-      return true;
+    fringe.push_back(obsNode.GetBelief());
   }
   return false;
 }
 
 int64_t RunQMDP(std::shared_ptr<BeliefTreeNode> initial_belief,
                 int64_t max_computation_ms, const OptimalPath& heuristic,
-                int64_t eval_depth, std::mt19937_64& rng, SimInterface* pomdp) {
+                int64_t eval_depth, SimInterface* pomdp) {
   const auto start = std::chrono::steady_clock::now();
-  QMDPIter(initial_belief, heuristic, eval_depth, rng, pomdp, start,
-           max_computation_ms);
+  std::deque<std::shared_ptr<BeliefTreeNode>> fringe;
+  fringe.push_back(initial_belief);
+  while (true)
+    if (QMDPIter(fringe, heuristic, eval_depth, pomdp, start,
+                 max_computation_ms))
+      break;
 
   if (QMDPTimeExpired(start, max_computation_ms)) {
     std::cout << "QMDP planning complete, reached maximum computation time."
@@ -111,8 +117,8 @@ void RunQMDPAndEvaluate(std::shared_ptr<BeliefTreeNode> initial_belief,
                         const OptimalPath& solver,
                         std::optional<StateValueFunction> valFunc,
                         SimInterface* pomdp) {
-  const int64_t t = RunQMDP(initial_belief, max_computation_ms, heuristic,
-                            eval_depth, rng, pomdp);
+  const int64_t t =
+      RunQMDP(initial_belief, max_computation_ms, heuristic, eval_depth, pomdp);
   RunQMDPEvaluation(initial_belief, t, max_eval_steps, n_eval_trials,
                     nb_particles_b0, rng, solver, valFunc, pomdp);
   return;
