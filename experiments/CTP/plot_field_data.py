@@ -1,28 +1,14 @@
-import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from time_series import parse_file, lighten_colour
+from time_series import lighten_colour
 import numpy as np
 
-# datafile = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/field_trial_1/ctp_results_all.csv"
-# df = pd.read_csv(datafile)
-folder = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/ctp_results_30x50_2024-09-09_11-24"
+folder = "/home/alex/ori/detMCVI/experiments/CTP/evaluation/field_trial_3"
 
-# dfs = []
-# for i in range(50):
-#     try:
-#         x = parse_file(f"{folder}/CTPInstance_30_{i}.txt")
-#         x["Set number"] = i
-#         dfs.append(x)
-#     except:
-#         pass
-
-# result = pd.concat(dfs)
-
-df = pd.read_csv(f"{folder}/ctp_results_all.csv")
+full_df = pd.read_csv(f"{folder}/ctp_results_all.csv")
 
 result = (
-    df.groupby(["Set number", "Algorithm"])
+    full_df.groupby(["Set number", "Algorithm"])
     .apply(
         lambda group: (
             # group[group["completed problem Percentage"] >= 99].iloc[0]
@@ -36,9 +22,10 @@ result = (
 
 
 def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
-    colours = ["#0097b2", "#cb6ce6", "#90e079", "#f5bd45"]
+    colours = ["#cb6ce6", "#90e079", "#f5bd45", "#0097b2"]
     x = "Algorithm"
-    alg_mapping = {a: i for i, a in enumerate(sorted(df[x].unique()))}
+    alg_mapping = {"detMCVI": 0, "AO*": 1, "QMDP": 2}
+    # alg_mapping = {a: i for i, a in enumerate(df[x].unique())}
     df["alg num"] = df[x].map(alg_mapping)
 
     df["jitter"] = df["alg num"] + np.linspace(-0.2, 0.2, num=len(df))
@@ -51,7 +38,7 @@ def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
             boxpoints=False,
             showlegend=False,
             fillcolor="rgba(0,0,0,0)",
-            line=dict(color=colours[0]),
+            line=dict(color=colours[-1]),
             zorder=1,
         )
     )
@@ -63,8 +50,8 @@ def do_plot(df, y, ytitle, mul=1, offset=0, output="show"):
             mode="markers",
             marker=dict(
                 color=[
-                    lighten_colour(colours[(i % (len(colours) - 1)) + 1], 0.7)
-                    for i in result["Set number"]
+                    lighten_colour(colours[(i % (len(colours) - 1))], 0.7)
+                    for i in result["alg num"]
                 ],
                 # size=10,
             ),
