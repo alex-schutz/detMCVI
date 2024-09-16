@@ -297,12 +297,16 @@ def plot_data(df: pd.DataFrame, dataname, ylabel, title, figname, output="show")
     fig.update_layout(
         # title=title,
         xaxis_title="Planning time (s)",
-        yaxis_title=ylabel,
         xaxis_range=[0, df["Timestamp"].max()],
         font=dict(size=16),
         showlegend=False,
         width=250,
         height=250,
+        yaxis=(
+            dict(title=ylabel, tickformat="~s")
+            if df[dataname].max() > 1000
+            else dict(title=ylabel)
+        ),
     )
     fig.update_xaxes(
         domain=(0.15, 1),
@@ -407,7 +411,7 @@ if __name__ == "__main__":
     # output = "pdf"
     # output="html"
 
-    series_file = "CTPInstance_plot.txt"
+    series_file = "CTPInstance_plot_2.txt"
 
     df = parse_file(series_file)
     # df = df[df["Algorithm"] != "detMCVI"]
