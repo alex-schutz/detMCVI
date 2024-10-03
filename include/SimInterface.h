@@ -23,8 +23,8 @@ class SimInterface {
  private:
   /* data */
  public:
-  SimInterface(){};
-  virtual ~SimInterface(){};
+  SimInterface() {};
+  virtual ~SimInterface() {};
 
   // ------- obligate functions ----------
   virtual std::tuple<State, int64_t, double, bool> Step(
@@ -50,6 +50,8 @@ class SimInterface {
       const MCVI::StateMap<double>& /*belief*/, int64_t /*max_depth*/) const {
     return std::nullopt;
   }
+
+  virtual StateMap<double> TrueInitBelief() const { return StateMap<double>(); }
 
   // Maybe add visulization functions? :)
 };

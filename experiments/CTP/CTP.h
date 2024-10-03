@@ -203,8 +203,11 @@ class CTP : public MCVI::SimInterface,
     }
     if (loc == goal) return _complete_reward;  // goal is absorbing
 
-    if (actions.at(action) == "decide_goal_unreachable")
-      return goalUnreachable(state) ? _complete_reward : _bad_action_reward;
+    if (actions.at(action) == "decide_goal_unreachable") {
+      if (!goalUnreachable(state)) return _bad_action_reward;
+      sNext[loc_idx] = goal;
+      return _idle_reward;
+    }
 
     const int64_t dest_loc = nodes.at(action);
     if (loc == dest_loc) return _idle_reward;  // idling
@@ -494,7 +497,6 @@ class CTP : public MCVI::SimInterface,
     if (best_state == costs.end())
       throw std::logic_error("Could not find path");
 
-    if (goalUnreachable(state)) return {_complete_reward, true};
     return {-best_state->second, true};
   }
 
@@ -543,6 +545,17 @@ class CTP : public MCVI::SimInterface,
       else
         prob *= p;
     return prob;
+  }
+
+ public:
+  MCVI::BeliefDistribution TrueInitBelief() const override {
+    std::vector<MCVI::State> state_enum = enumerateStates();
+    MCVI::StateMap<double> b;
+    for (const auto& s : state_enum) {
+      if (s[sfIdx("loc")] == (int64_t)nodes.size()) b[s] = init_prob(s);
+    }
+    std::cerr << "Initial belief size " << b.size() << std::endl;
+    return MCVI::BeliefDistribution(b);
   }
 
  public:

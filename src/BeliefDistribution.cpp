@@ -11,12 +11,12 @@ std::ostream& operator<<(std::ostream& os, const BeliefDistribution& bd) {
   } else {
     os << "{ ";
     for (const auto& pair : bd) {
-      os << "<";
+      os << "[";
       const auto& v = pair.first;
       for (const auto& state_elem : v) {
         os << state_elem << ", ";
       }
-      os << ">: " << pair.second << ", ";
+      os << "]: " << pair.second << ", ";
     }
     os << "}";
   }

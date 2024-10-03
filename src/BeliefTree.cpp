@@ -12,7 +12,6 @@ void ObservationNode::BackUp(AlphaVectorFSC& fsc, double R_lower,
 }
 
 void ObservationNode::BackUpFromNextBelief() {
-  if (_next_belief->GetBestPolicyNode() == -1) return;
   double nextLower = _next_belief->GetLower() + _sum_reward;
   double nextUpper = _next_belief->GetUpper() + _sum_reward;
 
@@ -188,18 +187,20 @@ const ActionNode& BeliefTreeNode::GetOrAddChildren(
   const auto it = _action_edges.find(action);
   if (it != _action_edges.cend()) return it->second;
   AddChild(action, heuristic, eval_depth, lower_bound_func, pomdp);
+  UpdateBestAction();
   return _action_edges.at(action);
 }
 
 void BeliefTreeNode::BackUpBestActionUpperNoFSC() {
-  if (_bestActUBound == -1) return;
   _action_edges.at(_bestActUBound).BackUpNoFSC();
+  UpdateBestAction();
 }
 
 void BeliefTreeNode::BackUpActions(AlphaVectorFSC& fsc, double R_lower,
                                    int64_t max_depth_sim, SimInterface* pomdp) {
   for (auto& [action, actionNode] : _action_edges)
     actionNode.BackUp(fsc, R_lower, max_depth_sim, pomdp);
+  UpdateBestAction();
 }
 
 void ObservationNode::BackUpFromPolicyGraph(AlphaVectorFSC& fsc, double R_lower,
